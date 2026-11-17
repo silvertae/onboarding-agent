@@ -14,7 +14,7 @@ def test_get_my_tasks_returns_31(newhire_token):
     tasks = get_my_tasks(as_user(newhire_token))
 
     assert len(tasks) == 31
-    assert set(tasks[0]) == {"id", "code", "title", "status", "due_date", "owner", "blocked_by"}
+    assert set(tasks[0]) == {"id", "code", "title", "status", "due_date", "owner", "blocked_by", "handled_by", "my_turn"}
     by_code = {t["code"]: t for t in tasks}
     hr02, hr03 = by_code["HR-02"], by_code["HR-03"]
     # 시드 상태에서 HR-03은 HR-02 완료 후 열린다
@@ -27,6 +27,25 @@ def test_get_my_tasks_returns_31(newhire_token):
     assert all(t["blocked_by"] == [] for t in tasks if t["status"] != "blocked")
     assert hr02["owner"] == "인사팀"
     assert any(t["owner"] == "AI팀" for t in tasks)
+
+
+def test_get_my_tasks_marks_who_acts(newhire_token):
+    """담당자가 처리하는 과제(staff_only)는 신입의 할 일이 아니다. 웹 '지금 할 일'과 같은 기준."""
+    by_code = {t["code"]: t for t in get_my_tasks(as_user(newhire_token))}
+
+    ga02 = by_code["GA-02"]  # 지문 등록·출입 확인: 총무가 처리
+    assert ga02["handled_by"] == "담당자"
+    assert ga02["my_turn"] is False
+    for code in ("AI-05", "AI-10"):  # 평가 과제도 담당자 처리
+        assert by_code[code]["handled_by"] == "담당자"
+        assert by_code[code]["my_turn"] is False
+
+    ai01 = by_code["AI-01"]  # 사무실 돌며 인사하기: 신입이 직접
+    assert ai01["handled_by"] == "신입"
+    assert ai01["my_turn"] == (ai01["status"] in ("todo", "rework"))
+    # my_turn은 열려 있고(todo·rework) 신입이 처리하는 과제에만 참이다
+    for t in by_code.values():
+        assert t["my_turn"] == (t["status"] in ("todo", "rework") and t["handled_by"] == "신입")
 
 
 def test_search_knowledge_scope(newhire_token, service):
