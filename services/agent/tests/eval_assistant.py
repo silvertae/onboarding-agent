@@ -102,15 +102,17 @@ def main() -> int:
         rows = service.table("task_instances").select("id, status").eq("new_hire_id", hire["id"]).execute().data
         return {r["id"]: r["status"] for r in rows}
 
-    todo_titles = [
-        r["task_templates"]["title"]
-        for r in service.table("task_instances")
-        .select("status, task_templates(title)")
+    open_rows = (
+        service.table("task_instances")
+        .select("status, task_templates(title, completion_mode)")
         .eq("new_hire_id", hire["id"])
-        .eq("status", "todo")
+        .in_("status", ["todo", "rework"])
         .execute()
         .data
-    ]
+    )
+    # 신입이 할 일(웹 '지금 할 일'과 같은 기준)과 담당자가 처리할 열린 과제를 나눈다
+    todo_titles = [r["task_templates"]["title"] for r in open_rows if r["task_templates"]["completion_mode"] != "staff_only"]
+    staff_titles = [r["task_templates"]["title"] for r in open_rows if r["task_templates"]["completion_mode"] == "staff_only"]
 
     def unanswered_ids_since(since: str) -> list[dict]:
         return (
@@ -129,7 +131,11 @@ def main() -> int:
     results: list[tuple[str, bool, dict]] = []
     try:
         r = ask(client, "오늘 뭐 해야 해?")
-        ok = not r["error"] and not r["unanswered"] and any(t in r["text"] for t in todo_titles)
+        # 담당자 처리 과제는 언급하더라도 "담당자"와 함께여야 한다(신입 할 일로 안내하면 실패)
+        sentences = re.split(r"[\n.!?]", r["text"])
+        staff_misled = [t for t in staff_titles if any(t in x and "담당자" not in x for x in sentences)]
+        ok = not r["error"] and not r["unanswered"] and any(t in r["text"] for t in todo_titles) and not staff_misled
+        r["staff_misled"] = staff_misled
         results.append(("오늘 뭐 해야 해?", ok, r))
 
         r = ask(client, "노트북 경비 계정과목이 뭐야?")
@@ -161,6 +167,8 @@ def main() -> int:
         print(f"\n[{'PASS' if ok else 'FAIL'}] {question}")
         print(f"  events={_compact(r['types'])} unanswered={r['unanswered']} knowledge={r['knowledge']} tasks={r['tasks']}")
         print(f"  first_token={r['first_token_s']}s total={r['total_s']}s")
+        if r.get("staff_misled"):
+            print(f"  담당자 처리 과제를 할 일로 안내: {r['staff_misled']}")
         preview = r["text"].replace("\n", " ")
         print(f"  answer: {preview[:PREVIEW]}{'…' if len(preview) > PREVIEW else ''}")
     passed = sum(ok for _, ok, _ in results)
