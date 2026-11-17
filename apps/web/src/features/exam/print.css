@@ -1,0 +1,50 @@
+/* 시험 인쇄 뷰(S8). 화면에서는 A4 미리보기, 인쇄할 때는 상단 바·버튼을 숨긴다. */
+@page {
+  size: A4;
+  margin: 16mm 18mm;
+}
+
+.exam-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 18mm;
+  box-sizing: border-box;
+  font-size: 12pt;
+}
+
+.exam-question {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  /* 공통 상단 바(Layout)와 화면 전용 조작부를 숨긴다. 시험지 안의 머리말(제목·이름·날짜)은 남긴다 */
+  body:has(.exam-print) header:not(.exam-sheet header),
+  .no-print {
+    display: none !important;
+  }
+
+  .exam-print {
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* 여백은 @page가 맡는다 */
+  .exam-sheet {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .exam-print * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
