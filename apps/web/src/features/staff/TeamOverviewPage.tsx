@@ -1,9 +1,11 @@
+import { MessageSquare } from 'lucide-react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
 import { Badge } from '@/components/ui/badge'
 import { progress, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { formatKoreanDate, formatSchedule, hireDayLabel, isBeforeHire } from './format'
 import { useHires, type Hire } from './hires'
+import { useUnanswered } from './knowledge'
 import { ASSESSMENT_LABEL, assessmentsOf, initials, isTeamTask } from './teamTasks'
 import { EmptyState, ErrorText, LoadingText, PageHeader, Panel } from './ui'
 
@@ -79,12 +81,34 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
   )
 }
 
+// 에이전트가 답하지 못한 우리 팀 질문 수 → S10
+function UnansweredBanner({ count }: { count: number }) {
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-[18px] border border-[#f1dfb4] bg-[#fffaf0] px-6 py-5">
+      <span className="grid size-10 place-items-center rounded-xl bg-[#fdf2dc] text-[#7a4f00]" aria-hidden>
+        <MessageSquare className="size-5" />
+      </span>
+      <div className="flex-1">
+        <p className="font-semibold">미답변 질문 {count}건</p>
+        <p className="text-sm text-[var(--text-secondary)]">에이전트가 답하지 못한 우리 팀 질문이에요. 답을 등록하면 다음부터 바로 답해요.</p>
+      </div>
+      <Link
+        to="/knowledge"
+        className="rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-accent"
+      >
+        답 등록하기
+      </Link>
+    </div>
+  )
+}
+
 // S5 팀 신입 현황: 우리 팀 신입 카드. 진행률은 팀 과제 기준이다.
 export function TeamOverviewPage() {
   const { profile } = useAuth()
   const teamId = profile?.team_id ?? null
   const tasksQuery = useVisibleTasks()
   const hiresQuery = useHires()
+  const unansweredCount = useUnanswered().data?.length ?? 0
 
   const hires = (hiresQuery.data ?? []).filter((h) => !teamId || h.team_id === teamId)
   const teamName = hires.find((h) => h.team)?.team?.name ?? '우리 팀'
@@ -93,6 +117,8 @@ export function TeamOverviewPage() {
   return (
     <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
       <PageHeader title={`${teamName} 신입 현황`} description="팀 과제 기준 진행률이에요. 경영지원 과제는 각 부서가 관리합니다." />
+
+      {unansweredCount > 0 && <UnansweredBanner count={unansweredCount} />}
 
       {tasksQuery.isLoading || hiresQuery.isLoading ? (
         <LoadingText />

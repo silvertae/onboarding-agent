@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { HIRES, makeTask, TEAM_ID } from './testFixtures'
 
-const { state } = vi.hoisted(() => ({ state: { tasks: [] as unknown[] } }))
+const { state } = vi.hoisted(() => ({ state: { tasks: [] as unknown[], unanswered: [] as unknown[] } }))
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 vi.mock('@/app/AuthProvider', () => ({
@@ -20,6 +20,7 @@ vi.mock('@/lib/tasks', async (importOriginal) => ({
   useTaskActions: () => ({}),
 }))
 vi.mock('./hires', () => ({ useHires: () => ({ data: HIRES, isLoading: false, isError: false }) }))
+vi.mock('./knowledge', () => ({ useUnanswered: () => ({ data: state.unanswered, isLoading: false, isError: false }) }))
 
 import { TeamOverviewPage } from './TeamOverviewPage'
 
@@ -48,8 +49,9 @@ const tasks: TaskView[] = [
   team({ new_hire_id: 'h2', status: 'done', template: { title: '간단 코딩테스트', kind: 'assessment', completion_mode: 'staff_only' }, assessment_result: 'pass' }),
 ]
 
-function renderPage() {
+function renderPage(unanswered: unknown[] = []) {
   state.tasks = tasks
+  state.unanswered = unanswered
   return render(
     <MemoryRouter>
       <TeamOverviewPage />
@@ -80,5 +82,16 @@ describe('TeamOverviewPage (S5)', () => {
     const card = screen.getByRole('link', { name: /정민서/ })
     expect(within(card).getByText('통과')).toBeInTheDocument()
     expect(card).toHaveAttribute('href', '/team/hires/h2')
+  })
+
+  it('미답변 질문이 있으면 상단에 수를 보여 주고 지식 관리로 연결한다', () => {
+    renderPage([{ id: 'u1' }, { id: 'u2' }])
+    expect(screen.getByText('미답변 질문 2건')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '답 등록하기' })).toHaveAttribute('href', '/knowledge')
+  })
+
+  it('미답변 질문이 없으면 배너를 보여 주지 않는다', () => {
+    renderPage([])
+    expect(screen.queryByText(/미답변 질문/)).not.toBeInTheDocument()
   })
 })

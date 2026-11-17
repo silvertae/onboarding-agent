@@ -25,5 +25,7 @@ export function useGuardedAction() {
     }
   }, [])
 
-  return { busy, error, run }
+  const clearError = useCallback(() => setError(null), [])
+
+  return { busy, error, run, clearError }
 }

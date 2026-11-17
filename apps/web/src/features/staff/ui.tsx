@@ -60,6 +60,7 @@ export function SegmentTabs<K extends string>({
             )}
           >
             {item.label}
+            {item.count !== undefined && ' '}
             {item.count !== undefined && (
               <span
                 className={cn(
