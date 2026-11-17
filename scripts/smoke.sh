@@ -103,7 +103,11 @@ case "$status" in
   2*) fail 5 "공개 가입이 열려 있습니다($status). 대시보드에서 가입을 끄고 $signup_email 계정을 지우세요" ;;
   000) fail 5 "Supabase Auth에 연결하지 못했습니다" ;;
 esac
-pass 5 "공개 가입 거부($status)"
+# 요청 제한·서버 오류 같은 다른 실패는 가입이 꺼졌다는 증거가 아니다. 가입 차단 오류만 통과시킨다.
+if ! jq -e '.error_code == "signup_disabled"' "$body_file" >/dev/null 2>&1; then
+  fail 5 "가입 요청이 ${status}로 실패했지만 가입 차단(signup_disabled) 응답이 아닙니다"
+fi
+pass 5 "공개 가입 거부($status signup_disabled)"
 
 # 6. 토큰 없는 채팅 요청 거부
 status="$(http -X POST "$agent/chat" -H "Content-Type: application/json" \

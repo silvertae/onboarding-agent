@@ -6,6 +6,8 @@ FAKE_FAULTS(쉼표 구분)로 고장을 하나씩 켠다:
   bad_login     로그인 거부
   task_count    과제가 30개만 보인다
   signup_open   공개 가입이 열려 있다
+  signup_429    가입 요청이 요청 제한(429)으로 실패한다(가입 차단 여부를 알 수 없음)
+  signup_500    가입 요청이 서버 오류로 실패한다
   chat_open     토큰 없이 /chat이 200
 첫 줄에 실제 포트 번호를 출력한다.
 """
@@ -74,6 +76,10 @@ class Handler(BaseHTTPRequestHandler):
             self._body()
             if "signup_open" in FAULTS:
                 return self._send(200, {"id": "new-user"})
+            if "signup_429" in FAULTS:
+                return self._send(429, {"error_code": "over_request_rate_limit"})
+            if "signup_500" in FAULTS:
+                return self._send(500, {"error_code": "unexpected_failure"})
             return self._send(422, {"error_code": "signup_disabled"})
         if path == "/chat":
             self._body()

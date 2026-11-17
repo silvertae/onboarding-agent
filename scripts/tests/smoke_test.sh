@@ -49,6 +49,8 @@ run_case "SPA 리라이트 없으면 실패"         2    "no_spa"
 run_case "신입 로그인 실패"                3    "bad_login"
 run_case "과제가 31개가 아니면 실패"        4    "task_count"
 run_case "공개 가입이 열려 있으면 실패"      5    "signup_open"
+run_case "가입 요청이 429면 차단 확인 실패"   5    "signup_429"
+run_case "가입 요청이 500이면 차단 확인 실패"  5    "signup_500"
 run_case "토큰 없는 /chat이 401이 아니면 실패" 6    "chat_open"
 
 # 인자·비밀번호 누락

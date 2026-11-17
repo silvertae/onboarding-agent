@@ -81,7 +81,7 @@ jobs:
           persist-credentials: false
       - name: 설정 자리표시 확인
         run: |
-          if grep -n REPLACE_ME apps/web/.env.staging .firebaserc; then
+          if grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging .firebaserc; then
             echo "::error::apps/web/.env.staging 또는 .firebaserc에 REPLACE_ME가 남아 있습니다. docs/deploy.md '먼저 할 일' 6을 확인하세요."
             exit 1
           fi

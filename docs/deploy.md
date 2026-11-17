@@ -267,7 +267,7 @@ gcloud services list --enabled --project "$PROJECT_ID" | grep -E 'run|cloudbuild
 gcloud secrets list --project "$PROJECT_ID"                   # 이름 3개
 gh variable list --repo "$REPO"; gh variable list --repo "$REPO" --env staging; gh variable list --repo "$REPO" --env production
 gh secret list --repo "$REPO" --env staging; gh secret list --repo "$REPO" --env production
-grep -n REPLACE_ME apps/web/.env.staging apps/web/.env.production .firebaserc   # 출력 없어야 함
+grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging apps/web/.env.production .firebaserc   # 출력 없어야 함
 ```
 
 ## 배포 흐름

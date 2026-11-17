@@ -34,7 +34,7 @@ jobs:
 
       - name: 태그가 main에 머지된 커밋인지 확인
         run: |
-          git fetch --no-tags origin main
+          # fetch-depth: 0으로 origin/main 이력까지 받아 두었다(추가 fetch는 인증이 없어 쓰지 않는다)
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "::error::태그 커밋 $GITHUB_SHA가 main에 없습니다. main에 머지된 커밋에만 태그를 붙이세요."
             exit 1
@@ -43,7 +43,7 @@ jobs:
       - name: 배포 설정 확인
         run: |
           fail=0
-          if grep -n REPLACE_ME apps/web/.env.production .firebaserc; then
+          if grep -nE '^[^#]*REPLACE_ME' apps/web/.env.production .firebaserc; then
             echo "::error::apps/web/.env.production 또는 .firebaserc에 REPLACE_ME가 남아 있습니다."; fail=1
           fi
           for v in GCP_PROJECT_ID SUPABASE_PROJECT_REF SUPABASE_URL SUPABASE_ANON_KEY AGENT_URL WEB_URL; do

@@ -34,7 +34,7 @@ jobs:
       - name: 배포 설정 확인
         run: |
           fail=0
-          if grep -n REPLACE_ME apps/web/.env.staging .firebaserc; then
+          if grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging .firebaserc; then
             echo "::error::apps/web/.env.staging 또는 .firebaserc에 REPLACE_ME가 남아 있습니다."; fail=1
           fi
           for v in GCP_PROJECT_ID SUPABASE_PROJECT_REF SUPABASE_URL SUPABASE_ANON_KEY AGENT_URL WEB_URL; do
