@@ -22,6 +22,7 @@ flowchart LR
         Auth["Auth<br/>이메일·비밀번호"]
         API["PostgREST · Realtime"]
         DB[("Postgres<br/>RLS · RPC")]
+        Storage["Storage<br/>과제 서식"]
     end
     subgraph GCP["Google Cloud (서울)"]
         Agent["에이전트 서비스<br/>Cloud Run · FastAPI · Google ADK"]
@@ -32,6 +33,7 @@ flowchart LR
     Static --> Web
     Web -- "사용자 토큰<br/>조회 · 상태 변경 RPC" --> API
     Web -- "로그인" --> Auth
+    Web -- "사용자 토큰<br/>서식 올리기 · 내려받기" --> Storage
     Web -- "사용자 토큰<br/>/chat (SSE) · /exams · /admin" --> Agent
     Agent -- "사용자 토큰<br/>RLS 그대로 적용" --> API
     Agent -- "관리자 키<br/>/admin 계정 생성만" --> Auth
@@ -73,6 +75,7 @@ erDiagram
     teams |o--o{ profiles : "소속"
     teams |o--o{ task_templates : "팀 과제"
     task_templates ||--o{ task_instances : "템플릿"
+    task_templates ||--o{ task_template_files : "서식"
     profiles ||--o{ task_instances : "신입"
     teams |o--o{ knowledge_items : "팀 지식"
     profiles ||--o{ unanswered_questions : "질문한 신입"
@@ -118,6 +121,15 @@ erDiagram
         jsonb result "신입 제출 내용"
         text rework_reason
         assessment_result assessment_result "pass | needs_followup"
+    }
+    task_template_files {
+        uuid id PK
+        uuid template_id FK
+        text file_name "원본 파일 이름"
+        text storage_path "task-forms 버킷 경로"
+        int size_bytes
+        uuid uploaded_by FK
+        bool is_seed "기본 서식 여부"
     }
     knowledge_items {
         uuid id PK
@@ -176,7 +188,7 @@ stateDiagram-v2
 
 상태 변경은 DB 함수만 담당하고 화면에서 사람이 누른다. 에이전트는 상태를 바꾸는 도구가 없으므로, LLM이 잘못 판단해도 업무 상태가 망가지지 않는다. 에이전트가 답을 만들 때는 도구가 돌려준 지식과 과제에만 근거하도록 지시하고, 근거가 없으면 미답변으로 넘긴다. 실제 모델 평가 문항으로 이를 확인한다.
 
-모든 테이블에 RLS를 적용한다. 신입은 본인 과제만 볼 수 있고, 시험 문제·답안은 교육 담당자만 볼 수 있다(pgTAP 테스트). OpenAI 키와 Supabase 관리자 키는 Secret Manager에만 두고, 웹 번들에는 공개 키만 들어간다. 관리자 키는 계정 생성 경로에서만 쓴다. 에이전트 서비스가 토큰의 역할을 확인하고, 초기화 함수는 DB에서 관리자만 실행할 수 있다. 공개 가입은 막는다.
+모든 테이블에 RLS를 적용한다. 신입은 본인 과제만 볼 수 있고, 시험 문제·답안은 교육 담당자만 볼 수 있다(pgTAP 테스트). 과제 서식은 비공개 버킷에 두고, 그 과제의 담당자만 올리고 지우며 같은 조직 사용자는 서명 URL로만 내려받는다. OpenAI 키와 Supabase 관리자 키는 Secret Manager에만 두고, 웹 번들에는 공개 키만 들어간다. 관리자 키는 계정 생성 경로에서만 쓴다. 에이전트 서비스가 토큰의 역할을 확인하고, 초기화 함수는 DB에서 관리자만 실행할 수 있다. 공개 가입은 막는다.
 
 모든 API는 로그인 토큰이 필요하다. 사용자당 하루 채팅 50회, 시험 생성 10회를 DB에서 집계해 막는다. OpenAI 프로젝트 월 한도와 GCP 예산 알림을 둔다. 스테이징과 운영을 다른 클라우드 프로젝트로 나누고, 운영은 버전 태그와 승인으로만 배포한다.
 
@@ -198,7 +210,7 @@ stateDiagram-v2
 |---|---|
 | 웹 | React 19, Vite, TypeScript, Tailwind CSS v4, shadcn/ui, TanStack Query, supabase-js |
 | 에이전트 | Python 3.12, FastAPI, Google ADK, LiteLLM, OpenAI API |
-| 데이터 | Supabase (Postgres, Auth, Realtime), RLS, PL/pgSQL 함수 |
+| 데이터 | Supabase (Postgres, Auth, Realtime, Storage), RLS, PL/pgSQL 함수 |
 | 인프라 | Cloud Run (서울), Firebase Hosting, Secret Manager, GitHub Actions (Workload Identity Federation) |
 | 테스트 | Vitest + Testing Library, pytest, pgTAP, 실제 모델 평가 스크립트, 배포 점검 스크립트 |
 
@@ -224,7 +236,7 @@ npm run test:web && npm run test:agent && npm run db:test
 | [심사위원 안내](judge-guide.md) | 접속, 역할별 계정, 5분 체험 순서, 사용 한도 |
 | [시연 스크립트](demo-script.md) | 시연 흐름과 기대 결과, 리허설·실패 조건 점검 기록 |
 | [설계](superpowers/specs/2026-11-17-onboarding-agent-design.md) | 목표, 비목표, 실패 조건, 결정된 구조 |
-| [화면 명세](screens.md) | 화면 S1~S11 |
+| [화면 명세](screens.md) | 화면 S1~S12 |
 | [API·환경변수 계약](contracts.md) | 웹·에이전트·DB 사이의 기준 |
 | [배포 안내](deploy.md) | 환경 구성, 배포 흐름, 되돌리기, 운영 점검 |
 | [구현 계획](superpowers/plans/2026-11-17-onboarding-agent.md) | 작업 단위, 인터페이스, 테스트 |

@@ -8,7 +8,7 @@
 |---|---|
 | `docs/contracts.md` | API·환경변수 계약. 웹·에이전트·DB 사이의 기준 |
 | `docs/architecture.md` | 아키텍처, 데이터 모델, 권한, 배포 구조 |
-| `docs/screens.md` | 화면 S1~S11과 상태 문구 |
+| `docs/screens.md` | 화면 S1~S12와 상태 문구 |
 | `docs/design/onboarding-design/README.md` | 디자인 토큰(색·라운드·글꼴), 화면 시안 |
 | `docs/deploy.md` | 클라우드 준비, 배포 흐름, 되돌리기, 운영 점검 |
 | `docs/superpowers/specs/2026-11-17-onboarding-agent-design.md` | 목표·비목표·실패 조건 |
@@ -40,7 +40,7 @@
 
 ## 데이터·비밀값
 
-- 회사 CI는 화면 브랜딩과 시드 조직명에만 쓴다. 실명·주민번호·계좌·카드번호·지문 관련 값, 실제 내부 업무 문서는 넣지 않는다. 파일 업로드 기능 없음.
+- 회사 CI는 화면 브랜딩과 시드 조직명에만 쓴다. 실명·주민번호·계좌·카드번호·지문 관련 값, 실제 내부 업무 문서는 넣지 않는다. 파일 업로드는 담당자가 과제 템플릿에 서식(docx·xlsx·pdf, 10MB 이하)을 올리는 기능만 있다(`task-forms` 버킷, Leo 승인 2026-11-18). 시드 서식도 가상 내용만 담는다.
 - `.env*` 파일을 만들거나 읽지 않는다. 비밀값은 Secret Manager와 GitHub Secrets에만 두고, 웹 번들에는 `VITE_*` 공개 값만 넣는다.
 - 키·비밀번호가 필요하면 출력하지 않고 스테이징 Secret Manager에서 바로 넘긴다. 예: `OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)"`. 없는 값은 이름만 말하고 Leo에게 맡긴다.
 - 로그인 화면의 데모 계정 버튼은 개발 모드(`import.meta.env.DEV`)에서만.
