@@ -196,6 +196,21 @@ gcloud iam workload-identity-pools providers describe github-repo --project "$PR
 
 ### 6. GitHub 변수·비밀값, 공개 값 파일, 보호 규칙
 
+**저장소는 공개(GitHub 무료 플랜)로 운영한다.** 무료 플랜에서 환경·환경 비밀값·실행 제한·브랜치 보호·규칙 세트·배포 승인자를 쓰려면 공개 저장소여야 한다. 운영 기간 중 다시 비공개로 바꾸면 환경 설정이 무시되어 배포가 멈추고 보호가 풀린다. 공개 전환 전에 전체 이력(PR 기록 포함)을 gitleaks와 개인정보 패턴으로 검사했다(2026-11-17, 비밀값 0건).
+
+공개로 바꾼 뒤 먼저 한다:
+
+```bash
+# 외부 기여자의 PR 워크플로는 승인 후에만 실행(포크 PR에는 비밀값이 전달되지 않지만 실행 자체도 막는다)
+gh api -X PUT "repos/$REPO/actions/permissions/fork-pr-contributor-approval" -f approval_policy=all_external_contributors
+# 워크플로 기본 토큰은 읽기 전용(워크플로마다 필요한 권한만 명시한다)
+gh api -X PUT "repos/$REPO/actions/permissions/workflow" -f default_workflow_permissions=read
+# 비밀값 검사와 푸시 차단(공개 저장소는 무료)
+gh api -X PATCH "repos/$REPO" \
+  -f 'security_and_analysis[secret_scanning][status]=enabled' \
+  -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
+```
+
 에이전트 주소는 배포 전에 정해진다: `https://agent-<staging|prod>-<프로젝트 번호>.$REGION.run.app`.
 
 ```bash
@@ -205,10 +220,12 @@ gh variable set GCP_PREVIEW_WIF_PROVIDER    --repo "$REPO" --body "<5의 스테�
 gh variable set GCP_PREVIEW_SERVICE_ACCOUNT --repo "$REPO" --body "$PREVIEW"
 
 # 환경 만들기: staging은 main 브랜치에서만, production은 v* 태그에서만 실행되게 제한한다.
-for e in staging production; do
-  echo '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' |
-    gh api -X PUT "repos/$REPO/environments/$e" --input -
-done
+# production은 Leo의 승인을 받아야 배포가 시작된다.
+LEO_ID=$(gh api user --jq .id)        # Leo 계정으로 로그인한 gh에서 실행
+echo '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' |
+  gh api -X PUT "repos/$REPO/environments/staging" --input -
+echo "{\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true},\"reviewers\":[{\"type\":\"User\",\"id\":$LEO_ID}]}" |
+  gh api -X PUT "repos/$REPO/environments/production" --input -
 gh api -X POST "repos/$REPO/environments/staging/deployment-branch-policies" -f name=main -f type=branch
 gh api -X POST "repos/$REPO/environments/production/deployment-branch-policies" -f name='v*' -f type=tag
 
@@ -258,7 +275,7 @@ gh variable set ALLOWED_ORIGIN_REGEX --repo "$REPO" --env staging \
 - `apps/web/.env.staging`, `apps/web/.env.production`: Supabase URL, anon 키, 에이전트 주소(위 변수와 **같은 값**).
 - `.firebaserc`: 스테이징·운영 프로젝트 ID와 각 사이트 ID. 대상 `staging`은 스테이징 프로젝트에, `prod`는 운영 프로젝트에만 연결한다.
 
-보호 규칙: `main` 보호(PR 필수, CI 필수, 강제 푸시·삭제 금지), `v*` 태그 보호(관리자만 만들기·옮기기·지우기), `production` 승인자. 비공개 저장소에서 환경 실행 제한·브랜치 보호·규칙 세트는 GitHub 유료 플랜(Pro·Team)이어야 쓸 수 있다. **지원되지 않으면 PR 브랜치가 환경을 선언해 배포 계정을 받을 수 있으므로 알려 달라.**
+보호 규칙: `main` 보호(PR 필수, CI 필수, 강제 푸시·삭제 금지), `v*` 태그 보호(관리자만 만들기·옮기기·지우기). `production` 승인자는 위 환경 만들기에서 설정했다. 모두 저장소가 공개여야 동작한다(무료 플랜).
 
 ```bash
 gh api -X PUT "repos/$REPO/branches/main/protection" --input - <<'EOF'
@@ -288,8 +305,6 @@ gh api -X POST "repos/$REPO/rulesets" --input - <<'EOF'
 EOF
 ```
 
-`production` 환경에 Leo를 승인자로 추가한다(**Settings → Environments → production → Required reviewers**).
-
 ### 끝났는지 확인
 
 ```bash
@@ -299,6 +314,8 @@ for P in "$STAGING_PROJECT" "$PROD_PROJECT"; do
   gcloud secrets list --project "$P"                           # 프로젝트마다 이름 2개
   gcloud iam service-accounts list --project "$P"               # 운영에는 github-preview가 없어야 함
 done
+gh api "repos/$REPO" --jq .visibility                           # public
+gh api "repos/$REPO/environments/production" --jq '[.protection_rules[].type]'   # required_reviewers, branch_policy
 gh variable list --repo "$REPO"                                 # GCP_PREVIEW_* 3개만
 gh variable list --repo "$REPO" --env staging; gh variable list --repo "$REPO" --env production
 gh secret list --repo "$REPO"                                   # 비어 있어야 함
@@ -310,7 +327,7 @@ grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging apps/web/.env.production .fire
 
 1. 작업 브랜치 → PR. `ci`가 테스트하고, 스테이징 설정으로 빌드한 웹을 미리보기 채널 `pr-<번호>`(스테이징 프로젝트)에 올려 PR에 주소를 남긴다. 미리보기 웹은 스테이징 Supabase·스테이징 에이전트를 쓴다.
 2. CI 통과 → squash 머지 → `deploy-staging`이 스테이징 프로젝트에 반영하고 `smoke.sh`로 점검한다.
-3. 스테이징에서 확인되면 Leo가 `main`의 커밋에 태그(`git tag v0.1.0 && git push origin v0.1.0`) → `deploy-prod`가 운영 프로젝트에 같은 순서로 반영한다. `main`에 없는 커밋의 태그는 거부된다.
+3. 스테이징에서 확인되면 Leo가 `main`의 커밋에 태그(`git tag v0.1.0 && git push origin v0.1.0`) → Leo가 Actions 화면에서 `production` 배포를 승인 → `deploy-prod`가 운영 프로젝트에 같은 순서로 반영한다. `main`에 없는 커밋의 태그는 거부된다.
 
 각 단계는 실패하면 그 자리에서 멈춘다. DB 마이그레이션은 에이전트·웹보다 먼저 적용되며, 추가만 하므로 앞 버전 코드와도 동작한다.
 
