@@ -242,6 +242,7 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
         </Link>
         <Input
           aria-label="시험 제목"
+          disabled={busy}
           value={title}
           placeholder="시험 제목(비우면 주제로 저장)"
           maxLength={200}
@@ -279,12 +280,12 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
             <h2 id="exam-conditions" className="font-semibold">출제 조건</h2>
             <div>
               <Label htmlFor="exam-topic" className="mb-1">주제</Label>
-              <Input id="exam-topic" value={topic} maxLength={200} placeholder="예: JavaScript 비동기·스코프" onChange={(e) => setTopic(e.target.value)} />
+              <Input id="exam-topic" disabled={busy} value={topic} maxLength={200} placeholder="예: JavaScript 비동기·스코프" onChange={(e) => setTopic(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="exam-difficulty" className="mb-1">난이도</Label>
-                <select id="exam-difficulty" className={fieldClass} value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+                <select id="exam-difficulty" disabled={busy} className={fieldClass} value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
                   {(Object.keys(DIFFICULTY_LABEL) as Difficulty[]).map((d) => (
                     <option key={d} value={d}>{DIFFICULTY_LABEL[d]}</option>
                   ))}
@@ -292,17 +293,17 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
               </div>
               <div>
                 <Label htmlFor="exam-count" className="mb-1">문항 수</Label>
-                <Input id="exam-count" type="number" inputMode="numeric" min={1} max={10} value={count} onChange={(e) => setCount(e.target.value)} aria-describedby="exam-count-hint" />
+                <Input id="exam-count" disabled={busy} type="number" inputMode="numeric" min={1} max={10} value={count} onChange={(e) => setCount(e.target.value)} aria-describedby="exam-count-hint" />
                 <p id="exam-count-hint" className="mt-1 text-xs text-muted-foreground">1~10</p>
               </div>
             </div>
             <div>
               <Label htmlFor="exam-style" className="mb-1">문항 스타일</Label>
-              <Input id="exam-style" value={style} maxLength={200} placeholder="예: 손으로 푸는 코드 읽기" onChange={(e) => setStyle(e.target.value)} />
+              <Input id="exam-style" disabled={busy} value={style} maxLength={200} placeholder="예: 손으로 푸는 코드 읽기" onChange={(e) => setStyle(e.target.value)} />
             </div>
             <div>
               <Label htmlFor="exam-hire" className="mb-1">참고할 신입</Label>
-              <select id="exam-hire" className={fieldClass} value={hireId} onChange={(e) => setHireId(e.target.value)}>
+              <select id="exam-hire" disabled={busy} className={fieldClass} value={hireId} onChange={(e) => setHireId(e.target.value)}>
                 <option value="">선택 안 함</option>
                 {(hires.data ?? []).map((h) => (
                   <option key={h.id} value={h.id}>{h.full_name}</option>

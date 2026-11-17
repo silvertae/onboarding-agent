@@ -293,4 +293,22 @@ describe('ExamEditorPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toBeEnabled())
     expect(within(card(1)).getByText('문제 9')).toBeInTheDocument()
   })
+
+  it('저장하는 동안에는 문항·제목·출제 조건 입력을 막고, 끝나면 풀린다', async () => {
+    state.exam = examWith([q(1)])
+    let finish: (id: string) => void = () => {}
+    saveExam.mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve }))
+    renderAt('/team/exams/e1')
+    await userEvent.click(within(card(1)).getByRole('button', { name: '수정' }))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    for (const label of ['문제', '모범 답안', '채점 기준', '배점']) {
+      expect(within(card(1)).getByLabelText(label)).toBeDisabled()
+    }
+    for (const label of ['시험 제목', '주제', '난이도', '문항 수', '문항 스타일', '참고할 신입']) {
+      expect(screen.getByLabelText(label)).toBeDisabled()
+    }
+    finish('e1')
+    await waitFor(() => expect(within(card(1)).getByLabelText('문제')).toBeEnabled())
+    expect(screen.getByLabelText('주제')).toBeEnabled()
+  })
 })

@@ -122,20 +122,21 @@ export function QuestionCard({ number, total, question, startEditing = false, di
         <div className="mt-4 grid gap-3">
           <div>
             <Label htmlFor={field('prompt')} className="mb-1">문제</Label>
-            <Textarea id={field('prompt')} value={question.prompt} rows={4} onChange={(e) => onChange({ ...question, prompt: e.target.value })} />
+            <Textarea id={field('prompt')} disabled={busy} value={question.prompt} rows={4} onChange={(e) => onChange({ ...question, prompt: e.target.value })} />
           </div>
           <div>
             <Label htmlFor={field('model_answer')} className="mb-1">모범 답안</Label>
-            <Textarea id={field('model_answer')} value={question.model_answer} rows={3} onChange={(e) => onChange({ ...question, model_answer: e.target.value })} />
+            <Textarea id={field('model_answer')} disabled={busy} value={question.model_answer} rows={3} onChange={(e) => onChange({ ...question, model_answer: e.target.value })} />
           </div>
           <div>
             <Label htmlFor={field('rubric')} className="mb-1">채점 기준</Label>
-            <Textarea id={field('rubric')} value={question.rubric} rows={2} onChange={(e) => onChange({ ...question, rubric: e.target.value })} />
+            <Textarea id={field('rubric')} disabled={busy} value={question.rubric} rows={2} onChange={(e) => onChange({ ...question, rubric: e.target.value })} />
           </div>
           <div className="w-32">
             <Label htmlFor={field('points')} className="mb-1">배점</Label>
             <Input
               id={field('points')}
+              disabled={busy}
               type="number"
               inputMode="numeric"
               min={1}
