@@ -4,15 +4,17 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { vi } from 'vitest'
 import { AgentError } from '@/lib/agent'
+import { DbError } from '@/lib/errors'
 import type { DraftQuestion, ExamWithQuestions } from './exams'
 
-const { agentFetch, saveExam, state } = vi.hoisted(() => ({
+const { agentFetch, saveExam, signOut, state } = vi.hoisted(() => ({
   agentFetch: vi.fn(),
+  signOut: vi.fn(async () => ({ error: null })),
   saveExam: vi.fn(async (_e: unknown) => 'e1'),
   state: { exam: undefined as unknown },
 }))
 
-vi.mock('@/lib/supabase', () => ({ supabase: {} }))
+vi.mock('@/lib/supabase', () => ({ supabase: { auth: { signOut } } }))
 vi.mock('@/app/AuthProvider', () => ({
   useAuth: () => ({
     profile: { id: 'trainer', org_id: 'org-1', role: 'team_trainer', department: null, team_id: 'team-ai', full_name: '가상 서준' },
@@ -84,6 +86,7 @@ function savedQuestions(): DraftQuestion[] {
 beforeEach(() => {
   agentFetch.mockReset()
   saveExam.mockClear()
+  signOut.mockClear()
   state.exam = undefined
 })
 
@@ -257,5 +260,37 @@ describe('ExamEditorPage', () => {
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/team/exams/e-new'))
     expect(saveExam.mock.calls[0][0]).toMatchObject({ id: undefined, title: 'JS 기초 시험', status: 'draft' })
+  })
+
+  it('저장이 인증 오류(401·JWT 만료)로 실패하면 로그아웃한다', async () => {
+    state.exam = examWith([q(1)])
+    saveExam.mockRejectedValueOnce(new DbError(401, 'JWT expired', 'PGRST301'))
+    renderAt('/team/exams/e1')
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1))
+  })
+
+  it('저장이 인증 외 오류로 실패하면 안내만 하고 로그아웃하지 않는다', async () => {
+    state.exam = examWith([q(1)])
+    saveExam.mockRejectedValueOnce(new DbError(500, 'boom'))
+    renderAt('/team/exams/e1')
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect(await screen.findByText('저장하지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(signOut).not.toHaveBeenCalled()
+  })
+
+  it('문항을 다시 만드는 동안에는 저장·확정·인쇄를 막는다', async () => {
+    state.exam = examWith([q(1), q(2)])
+    let finish: (r: Response) => void = () => {}
+    agentFetch.mockReturnValueOnce(new Promise<Response>((resolve) => { finish = resolve }))
+    renderAt('/team/exams/e1')
+    await userEvent.click(within(card(1)).getByRole('button', { name: '다시 만들기' }))
+    await userEvent.click(within(card(1)).getByRole('button', { name: '새 문항 만들기' }))
+    for (const name of ['저장', '확정', '시험지 인쇄', '답안지 인쇄']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
+    finish(ok(q(9)))
+    await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toBeEnabled())
+    expect(within(card(1)).getByText('문제 9')).toBeInTheDocument()
   })
 })

@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useHires } from '@/features/staff/hires'
 import { AgentError } from '@/lib/agent'
+import { isAuthError } from '@/lib/errors'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import {
   DIFFICULTY_LABEL,
@@ -92,6 +94,8 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<{ text: string; retry: boolean } | null>(null)
   const [saving, setSaving] = useState(false)
+  // 진행 중인 문항 다시 만들기 수. 끝나기 전에 저장·확정·인쇄하면 결과가 사라지므로 막는다
+  const [regenerating, setRegenerating] = useState(0)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const snapshot = (over: Partial<Snapshot> = {}): Snapshot => ({
@@ -121,7 +125,7 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
   const canGenerate = Boolean(topic.trim()) && countValid && !generating && !saving
   const totalPoints = items.reduce((sum, q) => sum + (q.points || 0), 0)
   const empty = items.length === 0
-  const busy = generating || saving
+  const busy = generating || saving || regenerating > 0
 
   async function generate() {
     setGenerating(true)
@@ -144,13 +148,18 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
   }
 
   async function regenerateAt(key: string, instruction: string) {
-    const next = await regenerateQuestion({
-      topic: topic.trim() || title.trim(),
-      difficulty,
-      existing_prompts: items.filter((q) => q.key !== key && q.prompt.trim()).map((q) => q.prompt),
-      ...(instruction ? { instruction } : {}),
-    })
-    setItems((prev) => prev.map((q) => (q.key === key ? { ...draftOf(next), key } : q)))
+    setRegenerating((n) => n + 1)
+    try {
+      const next = await regenerateQuestion({
+        topic: topic.trim() || title.trim(),
+        difficulty,
+        existing_prompts: items.filter((q) => q.key !== key && q.prompt.trim()).map((q) => q.prompt),
+        ...(instruction ? { instruction } : {}),
+      })
+      setItems((prev) => prev.map((q) => (q.key === key ? { ...draftOf(next), key } : q)))
+    } finally {
+      setRegenerating((n) => n - 1)
+    }
   }
 
   function update(key: string, next: DraftQuestion) {
@@ -203,7 +212,13 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
         void queryClient.invalidateQueries({ queryKey: examKeys.detail(savedId) })
       }
       return savedId
-    } catch {
+    } catch (error) {
+      // saveExam은 useMutation 밖에서 부르므로 전역 MutationCache 대신 여기서 인증 오류를 처리한다.
+      // 로그아웃하면 RoleGuard가 /login으로 보내고 편집 중인 시험 내용은 화면에서 사라진다.
+      if (isAuthError(error)) {
+        void supabase.auth.signOut()
+        return null
+      }
       setSaveError(SAVE_FAILED)
       return null
     } finally {
