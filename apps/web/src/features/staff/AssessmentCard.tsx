@@ -13,6 +13,23 @@ import { useGuardedAction } from './useGuardedAction'
 
 type Choice = 'none' | Enums<'assessment_result'>
 
+type FormValues = { scheduled: string; location: string; choice: Choice; note: string }
+type Field = keyof FormValues
+const FIELDS: Field[] = ['scheduled', 'location', 'choice', 'note']
+
+function serverValues(task: TaskView): FormValues {
+  return {
+    scheduled: isoToLocalInput(task.scheduled_at),
+    location: task.location ?? '',
+    choice: task.assessment_result ?? 'none',
+    note: task.assessment_note ?? '',
+  }
+}
+
+function sameValues(a: FormValues, b: FormValues): boolean {
+  return FIELDS.every((key) => a[key] === b[key])
+}
+
 const CHOICES: { value: Choice; label: string }[] = [
   { value: 'none', label: '미기록' },
   { value: 'pass', label: ASSESSMENT_LABEL.pass },
@@ -25,17 +42,34 @@ export function AssessmentCard({ task }: { task: TaskView }) {
   const { recordAssessment } = useTaskActions()
   const { busy, error, run } = useGuardedAction()
   const id = useId()
-  const [scheduled, setScheduled] = useState(isoToLocalInput(task.scheduled_at))
-  const [location, setLocation] = useState(task.location ?? '')
-  const [choice, setChoice] = useState<Choice>(task.assessment_result ?? 'none')
-  const [note, setNote] = useState(task.assessment_note ?? '')
+  const server = serverValues(task)
+  // base = 폼을 마지막으로 맞춘 서버 값. 서버 값이 바뀌면(다른 탭·담당자 저장, realtime) 손대지 않은 칸만 따라간다.
+  const [base, setBase] = useState(server)
+  const [form, setForm] = useState(server)
   const [saved, setSaved] = useState(false)
+  if (!sameValues(base, server)) {
+    setBase(server)
+    setForm((current) => {
+      const next = { ...current }
+      for (const key of FIELDS) if (current[key] === base[key]) (next as Record<Field, string>)[key] = server[key]
+      return next
+    })
+  }
+  const { scheduled, location, choice, note } = form
+  const set = <K extends Field>(key: K, value: FormValues[K]) => {
+    setSaved(false)
+    setForm((f) => ({ ...f, [key]: value }))
+  }
+
+  // record_assessment는 비운 일정·장소를 무시하고 기존 값을 유지한다(coalesce). 지운 것처럼 보이지 않게 저장을 막는다.
+  const clearsSaved = (base.scheduled !== '' && scheduled === '') || (base.location.trim() !== '' && location.trim() === '')
 
   // 선행 과제 대기·해당 없음이면 서버가 거절한다.
   const locked = task.status === 'blocked' || task.status === 'na'
   const disabled = locked || busy
 
   async function save() {
+    if (clearsSaved) return
     setSaved(false)
     const ok = await run(() =>
       recordAssessment(task.id, {
@@ -65,7 +99,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
             <label htmlFor={`${id}-at`} className="text-sm font-semibold">
               일정
             </label>
-            <Input id={`${id}-at`} type="datetime-local" value={scheduled} onChange={(e) => setScheduled(e.target.value)} disabled={disabled} />
+            <Input id={`${id}-at`} type="datetime-local" value={scheduled} onChange={(e) => set('scheduled', e.target.value)} disabled={disabled} />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor={`${id}-loc`} className="text-sm font-semibold">
@@ -74,7 +108,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
             <Input
               id={`${id}-loc`}
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={(e) => set('location', e.target.value)}
               placeholder="장소"
               maxLength={100}
               disabled={disabled}
@@ -98,7 +132,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
                   name={`${id}-result`}
                   value={c.value}
                   checked={choice === c.value}
-                  onChange={() => setChoice(c.value)}
+                  onChange={() => set('choice', c.value)}
                   className="sr-only"
                 />
                 {c.label}
@@ -114,7 +148,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
           <Textarea
             id={`${id}-note`}
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => set('note', e.target.value)}
             placeholder="신입에게도 보여요"
             maxLength={1000}
             disabled={disabled}
@@ -122,6 +156,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
         </div>
 
         {locked && <p className="text-sm text-muted-foreground">선행 과제가 끝나면 기록할 수 있어요.</p>}
+        {clearsSaved && <p className="text-sm text-destructive">저장된 일정·장소는 지울 수 없어요. 새 값으로 바꿔 주세요.</p>}
         {error && <ErrorText>{error}</ErrorText>}
         {saved && (
           <p role="status" className="text-sm text-[#1b6530]">
@@ -130,7 +165,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
         )}
 
         <div className="flex justify-end">
-          <Button type="button" size="lg" className="px-5" disabled={disabled} onClick={() => void save()}>
+          <Button type="button" size="lg" className="px-5" disabled={disabled || clearsSaved} onClick={() => void save()}>
             저장
           </Button>
         </div>
