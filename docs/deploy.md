@@ -153,9 +153,12 @@ setup_project() {
   gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" --project "$P" \
     --member="serviceAccount:$DEPLOYER" --role=roles/iam.serviceAccountUser
 
-  # 소스 빌드에 쓰이는 기본 Compute 서비스 계정
+  # 소스 빌드에 쓰이는 기본 Compute 서비스 계정: 빌드 권한, 그리고 배포 계정이 이 계정으로 빌드를 실행할 권한
+  # (없으면 gcloud run deploy --source가 "caller does not have permission to act as service account"로 실패)
   gcloud projects add-iam-policy-binding "$P" \
     --member="serviceAccount:$NUM-compute@developer.gserviceaccount.com" --role=roles/run.builder
+  gcloud iam service-accounts add-iam-policy-binding "$NUM-compute@developer.gserviceaccount.com" --project "$P" \
+    --member="serviceAccount:$DEPLOYER" --role=roles/iam.serviceAccountUser
 
   # GitHub OIDC. environment 클레임은 환경을 선언한 작업에만 있으므로 없으면 'none'으로 매핑한다.
   CONDITION="assertion.repository=='$REPO'"
@@ -372,6 +375,6 @@ npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_
 ## 확인이 필요한 부분 (첫 스테이징 배포에서 검증)
 
 - Firebase CLI가 Workload Identity Federation 자격(서비스 계정 가장)을 그대로 받는지 공식 문서로 확인하지 못했다. `ci`의 미리보기 배포나 `deploy-staging`의 웹 배포가 인증 오류로 실패하면 멈추고 보고한다(키 파일로 우회하지 않는다).
-- 배포 계정 역할은 공식 문서 기준(`run.sourceDeveloper`, `serviceUsageConsumer`, 런타임 계정의 `serviceAccountUser`, `firebasehosting.admin`)에 공개 호출 설정용 `run.admin`을 더했다. 권한 오류가 나면 오류의 권한 이름을 보고 추가한다.
+- 배포 계정 역할은 공식 문서 기준(`run.sourceDeveloper`, `serviceUsageConsumer`, 런타임 계정과 빌드용 Compute 계정의 `serviceAccountUser`, `firebasehosting.admin`)에 공개 호출 설정용 `run.admin`을 더했다. 빌드 계정 권한은 첫 스테이징 배포(2026-11-17)에서 빠진 것이 확인돼 추가했다. 권한 오류가 나면 오류의 권한 이름을 보고 추가한다.
 - 미리보기 계정은 스테이징 프로젝트의 Hosting 전체(스테이징 라이브 사이트 포함)에 쓸 수 있다. 스테이징은 심사위원이 쓰지 않으므로 받아들인다.
 - `smoke.sh` 6단계(토큰 없는 `/chat` → 401)는 `/chat` 경로와 인증(Task 5·12)이 있어야 통과한다.
