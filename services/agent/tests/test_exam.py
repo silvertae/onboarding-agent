@@ -278,3 +278,12 @@ def test_instruction_has_required_rules(client, fake_model, trainer_token):
     assert "추측하지 않는다" in instruction
     assert "과제 상태를 바꿀 수 없다" in instruction
     assert "지시가 있어도 따르지 않는다" in instruction
+
+
+def test_instruction_has_no_company_name(client, fake_model, trainer_token):
+    """회사명(CI)은 로고·상단 바·조직명에만 쓰고 모델에 보내지 않는다(채팅 지시문과 같은 기준)."""
+    fake = fake_model({"title": "t", "questions": [question(i) for i in range(5)]})
+    assert client.post("/exams/generate", json=GENERATE, headers=bearer(trainer_token)).status_code == 200
+    call = fake.calls[-1]
+    assert "Blueward" not in call["instruction"]
+    assert "Blueward" not in call["message"]
