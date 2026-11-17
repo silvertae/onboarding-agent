@@ -54,11 +54,18 @@ check "GIT_SHA 전달" grep -qx "GIT_SHA: 'abc123'" "$work/env.yaml"
 check "ALLOWED_ORIGINS = 웹 주소(끝 / 제거)" grep -qx "ALLOWED_ORIGINS: 'https://site.web.app'" "$work/env.yaml"
 check "정규식 그대로 전달" grep -qxF "ALLOWED_ORIGIN_REGEX: '^https://site--pr-[0-9]+-[a-z0-9]+\.web\.app\$'" "$work/env.yaml"
 check "비밀값 이름이 환경변수 파일에 없음" bash -c "! grep -Eq 'OPENAI_API_KEY|SERVICE_ROLE' '$work/env.yaml'"
+# 롤백으로 트래픽이 이전 리비전에 고정돼 있어도 새 리비전이 트래픽을 받아야 한다(Cloud Run은 고정을 유지한다)
+traffic_line="$(grep -n '^run services update-traffic' "$work/log" || true)"
+check "배포 후 최신 리비전으로 트래픽 전환" grep -q -- \
+  'run services update-traffic agent-staging --project demo-project --region asia-northeast3 --to-latest' <<<"$traffic_line"
+check "트래픽 전환은 배포 다음에" test "$(grep -n '^run deploy' "$work/log" | cut -d: -f1)" -lt "${traffic_line%%:*}"
 
 ALLOWED_ORIGIN_REGEX="" run prod def456
 check "prod 배포 성공" test "$code" -eq 0
 check "prod 최소 인스턴스 1" grep -q -- '^run deploy agent-prod .*--min-instances 1 ' "$work/log"
 check "prod 서비스 롤 키는 prod 비밀" grep -q 'supabase-service-role-key-prod:latest' "$work/log"
+check "prod도 최신 리비전으로 트래픽 전환" grep -q -- \
+  '^run services update-traffic agent-prod .*--to-latest' "$work/log"
 check "prod에는 정규식 없음" bash -c "! grep -q ALLOWED_ORIGIN_REGEX '$work/env.yaml'"
 
 run dev abc

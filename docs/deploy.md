@@ -346,6 +346,7 @@ gcloud run revisions list --service agent-prod --region "$REGION" --project "$PR
 gcloud run services update-traffic agent-prod --region "$REGION" --project "$PROD_PROJECT" \
   --to-revisions <이전 리비전 이름>=100
 # 다시 최신으로: gcloud run services update-traffic agent-prod --region "$REGION" --project "$PROD_PROJECT" --to-latest
+# 다음 배포(deploy-agent.sh)는 배포 직후 --to-latest로 트래픽을 새 리비전에 돌린다. 롤백한 고정이 다음 배포까지 남지 않는다.
 ```
 
 **웹만** (Firebase Hosting 이전 릴리스): Firebase 콘솔 → 운영 프로젝트 → Hosting → 해당 사이트 → 릴리스 기록 → 이전 릴리스의 **롤백**. CLI로는

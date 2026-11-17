@@ -76,5 +76,13 @@ gcloud run deploy "$service" \
   --set-secrets "OPENAI_API_KEY=openai-api-key:latest,SUPABASE_SERVICE_ROLE_KEY=supabase-service-role-key-${env_name}:latest" \
   --quiet
 
+# 롤백(update-traffic --to-revisions)으로 트래픽이 이전 리비전에 고정돼 있으면 Cloud Run은 새 배포에도
+# 그 고정을 유지한다. 방금 배포한 리비전이 트래픽을 받도록 최신으로 되돌린다.
+gcloud run services update-traffic "$service" \
+  --project "$GCP_PROJECT_ID" \
+  --region "$region" \
+  --to-latest \
+  --quiet
+
 gcloud run services describe "$service" \
   --project "$GCP_PROJECT_ID" --region "$region" --format 'value(status.url)'
