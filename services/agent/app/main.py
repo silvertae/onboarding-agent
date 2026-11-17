@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.chat_routes import router as chat_router
 from app.config import Settings, get_settings
 
 
@@ -22,6 +23,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health")
     def health() -> dict:
         return {"ok": True, "version": settings.git_sha}
+
+    app.include_router(chat_router)
 
     return app
 
