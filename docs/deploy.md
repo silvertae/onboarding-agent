@@ -356,4 +356,4 @@ npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_
 - Firebase CLI가 Workload Identity Federation 자격(서비스 계정 가장)을 그대로 받는지 공식 문서로 확인하지 못했다. `ci`의 미리보기 배포나 `deploy-staging`의 웹 배포가 인증 오류로 실패하면 멈추고 보고한다(키 파일로 우회하지 않는다).
 - 배포 계정 역할은 공식 문서 기준(`run.sourceDeveloper`, `serviceUsageConsumer`, 런타임 계정의 `serviceAccountUser`, `firebasehosting.admin`)에 공개 호출 설정용 `run.admin`을 더했다. 권한 오류가 나면 오류의 권한 이름을 보고 추가한다.
 - 미리보기 계정은 스테이징 프로젝트의 Hosting 전체(스테이징 라이브 사이트 포함)에 쓸 수 있다. 스테이징은 심사위원이 쓰지 않으므로 받아들인다.
-- CI의 `pgTAP·에이전트 테스트`는 `main`에 pgTAP 테스트(Task 2)가 있어야 통과한다(없으면 `no pgTAP tests found`). 계정 부트스트랩 단계는 Task 3에서 CI에 추가한다.
+- `smoke.sh` 6단계(토큰 없는 `/chat` → 401)는 `/chat` 경로와 인증(Task 5·12)이 있어야 통과한다.

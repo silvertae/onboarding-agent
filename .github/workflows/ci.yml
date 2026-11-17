@@ -65,9 +65,10 @@ jobs:
         run: supabase start -x studio,imgproxy,mailpit,logflare,vector,edge-runtime,supavisor
       - name: pgTAP
         run: npm run db:test
-      # 계정 부트스트랩(`npm run bootstrap`)은 스크립트가 생기는 Task 3 PR에서 이 자리에 추가한다.
+      - name: 계정 부트스트랩
+        run: npm run bootstrap
       - name: 에이전트 pytest
-        run: bash scripts/with-local-env.sh npm run test:agent
+        run: npm run test:agent
 
   preview-build:
     name: 미리보기 웹 빌드
