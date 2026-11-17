@@ -9,7 +9,7 @@ import { STAGE_LABEL } from '@/lib/labels'
 import { blockedBy, groupByStage, progress, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
 import { AssessmentCard } from './AssessmentCard'
-import { formatDateTime, formatKoreanDate, formatMonthDay, hireDayLabel } from './format'
+import { formatDateTime, formatKoreanDate, formatMonthDay, hireDayLabel, submittedLabel } from './format'
 import { useHires } from './hires'
 import { isRecord } from './json'
 import { reviewActions } from './reviewActions'
@@ -27,7 +27,7 @@ function dueText(task: TaskView, all: TaskView[]): string {
     return blockers.length ? `${blockers.map((t) => t.template.title).join(', ')} 완료 후` : '선행 과제 완료 후'
   }
   if (task.template.kind === 'assessment' && task.scheduled_at) return formatDateTime(task.scheduled_at)
-  if (task.submitted_at) return `${formatDateTime(task.submitted_at)} 제출`
+  if (task.submitted_at) return `${formatDateTime(task.submitted_at)} ${submittedLabel(task.template.completion_mode)}`
   return `기한 ${formatMonthDay(task.due_date)}`
 }
 
@@ -199,7 +199,11 @@ export function HireDetailPage() {
             <Panel aria-label="기술스택·경력 조사 결과">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
                 <h2 className="text-[17px] font-semibold">기술스택·경력 조사 결과</h2>
-                {survey.submitted_at && <span className="text-xs text-muted-foreground">{formatDateTime(survey.submitted_at)} 제출</span>}
+                {survey.submitted_at && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateTime(survey.submitted_at)} {submittedLabel(survey.template.completion_mode)}
+                  </span>
+                )}
               </div>
               <div className="px-6 py-5">
                 {survey.result ? <SubmittedResult task={survey} /> : <p className="text-sm text-muted-foreground">아직 제출 전이에요.</p>}

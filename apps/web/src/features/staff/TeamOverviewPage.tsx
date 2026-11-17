@@ -34,8 +34,11 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
         </div>
         {pending > 0 ? (
           <Badge variant="submitted">확인 대기 {pending}</Badge>
+        ) : isBeforeHire(hire.hire_date) ? (
+          <Badge variant="blocked">입사 전</Badge>
         ) : (
-          isBeforeHire(hire.hire_date) && <Badge variant="blocked">입사 전</Badge>
+          // 0건도 보이되 강조하지 않는다(S5 명세의 '확인 대기 수')
+          <span className="shrink-0 text-xs text-muted-foreground">확인 대기 0</span>
         )}
       </div>
 
@@ -118,7 +121,14 @@ export function TeamOverviewPage() {
     <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
       <PageHeader title={`${teamName} 신입 현황`} description="팀 과제 기준 진행률이에요. 경영지원 과제는 각 부서가 관리합니다." />
 
-      {unansweredCount > 0 && <UnansweredBanner count={unansweredCount} />}
+      {unansweredCount > 0 ? (
+        <UnansweredBanner count={unansweredCount} />
+      ) : (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <MessageSquare className="size-4" aria-hidden />
+          미답변 질문 없음
+        </p>
+      )}
 
       {tasksQuery.isLoading || hiresQuery.isLoading ? (
         <LoadingText />

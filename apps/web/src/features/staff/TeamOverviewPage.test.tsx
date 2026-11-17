@@ -90,8 +90,16 @@ describe('TeamOverviewPage (S5)', () => {
     expect(screen.getByRole('link', { name: '답 등록하기' })).toHaveAttribute('href', '/knowledge')
   })
 
-  it('미답변 질문이 없으면 배너를 보여 주지 않는다', () => {
+  it('미답변 질문이 없으면 강조 배너 대신 "미답변 질문 없음"을 흐리게 보인다', () => {
     renderPage([])
-    expect(screen.queryByText(/미답변 질문/)).not.toBeInTheDocument()
+    expect(screen.getByText('미답변 질문 없음')).toBeInTheDocument()
+    expect(screen.queryByText(/미답변 질문 \d+건/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '답 등록하기' })).not.toBeInTheDocument()
+  })
+
+  it('확인 대기가 없는 신입 카드에도 "확인 대기 0"을 흐리게 보인다', () => {
+    renderPage()
+    const card = screen.getByRole('link', { name: /정민서/ })
+    expect(within(card).getByText('확인 대기 0')).toBeInTheDocument()
   })
 })

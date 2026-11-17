@@ -70,3 +70,8 @@ export function isoToLocalInput(iso: string | null | undefined): string {
   const at = new Date(iso)
   return `${dateParts.format(at)}T${timeParts.format(at)}`
 }
+
+// 제출 시각 앞에 붙일 말. 신입이 직접 완료하는 과제(self)는 확인 절차가 없으므로 "완료"라고 쓴다.
+export function submittedLabel(completionMode: string): '완료' | '제출' {
+  return completionMode === 'self' ? '완료' : '제출'
+}
