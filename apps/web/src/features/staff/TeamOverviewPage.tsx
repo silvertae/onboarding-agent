@@ -111,7 +111,8 @@ export function TeamOverviewPage() {
   const teamId = profile?.team_id ?? null
   const tasksQuery = useVisibleTasks()
   const hiresQuery = useHires()
-  const unansweredCount = useUnanswered().data?.length ?? 0
+  const unanswered = useUnanswered()
+  const unansweredCount = unanswered.data?.length ?? 0
 
   const hires = (hiresQuery.data ?? []).filter((h) => !teamId || h.team_id === teamId)
   const teamName = hires.find((h) => h.team)?.team?.name ?? '우리 팀'
@@ -124,10 +125,13 @@ export function TeamOverviewPage() {
       {unansweredCount > 0 ? (
         <UnansweredBanner count={unansweredCount} />
       ) : (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <MessageSquare className="size-4" aria-hidden />
-          미답변 질문 없음
-        </p>
+        // 조회에 성공한 빈 목록일 때만 '없음'을 보인다(실패·로딩 중에는 아무것도 보이지 않음)
+        unanswered.isSuccess && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MessageSquare className="size-4" aria-hidden />
+            미답변 질문 없음
+          </p>
+        )
       )}
 
       {tasksQuery.isLoading || hiresQuery.isLoading ? (

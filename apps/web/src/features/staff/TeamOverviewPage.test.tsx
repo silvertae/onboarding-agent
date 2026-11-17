@@ -4,7 +4,9 @@ import { vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { HIRES, makeTask, TEAM_ID } from './testFixtures'
 
-const { state } = vi.hoisted(() => ({ state: { tasks: [] as unknown[], unanswered: [] as unknown[] } }))
+const { state } = vi.hoisted(() => ({
+  state: { tasks: [] as unknown[], unanswered: [] as unknown[] | undefined, unansweredStatus: 'success' as 'success' | 'error' | 'pending' },
+}))
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 vi.mock('@/app/AuthProvider', () => ({
@@ -20,7 +22,14 @@ vi.mock('@/lib/tasks', async (importOriginal) => ({
   useTaskActions: () => ({}),
 }))
 vi.mock('./hires', () => ({ useHires: () => ({ data: HIRES, isLoading: false, isError: false }) }))
-vi.mock('./knowledge', () => ({ useUnanswered: () => ({ data: state.unanswered, isLoading: false, isError: false }) }))
+vi.mock('./knowledge', () => ({
+  useUnanswered: () => ({
+    data: state.unanswered,
+    isLoading: state.unansweredStatus === 'pending',
+    isError: state.unansweredStatus === 'error',
+    isSuccess: state.unansweredStatus === 'success',
+  }),
+}))
 
 import { TeamOverviewPage } from './TeamOverviewPage'
 
@@ -49,9 +58,10 @@ const tasks: TaskView[] = [
   team({ new_hire_id: 'h2', status: 'done', template: { title: '간단 코딩테스트', kind: 'assessment', completion_mode: 'staff_only' }, assessment_result: 'pass' }),
 ]
 
-function renderPage(unanswered: unknown[] = []) {
+function renderPage(unanswered: unknown[] | undefined = [], unansweredStatus: 'success' | 'error' | 'pending' = 'success') {
   state.tasks = tasks
   state.unanswered = unanswered
+  state.unansweredStatus = unansweredStatus
   return render(
     <MemoryRouter>
       <TeamOverviewPage />
@@ -95,6 +105,16 @@ describe('TeamOverviewPage (S5)', () => {
     expect(screen.getByText('미답변 질문 없음')).toBeInTheDocument()
     expect(screen.queryByText(/미답변 질문 \d+건/)).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '답 등록하기' })).not.toBeInTheDocument()
+  })
+
+  it('미답변 조회가 실패하거나 진행 중이면 "미답변 질문 없음"이라고 잘못 안내하지 않는다', () => {
+    renderPage(undefined, 'error')
+    expect(screen.queryByText('미답변 질문 없음')).not.toBeInTheDocument()
+  })
+
+  it('미답변 조회가 진행 중이면 빈 상태 문구를 보이지 않는다', () => {
+    renderPage(undefined, 'pending')
+    expect(screen.queryByText('미답변 질문 없음')).not.toBeInTheDocument()
   })
 
   it('확인 대기가 없는 신입 카드에도 "확인 대기 0"을 흐리게 보인다', () => {
