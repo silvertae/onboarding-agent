@@ -31,7 +31,7 @@
 |---|---|---|
 | `apps/web` | React 19 + Vite + TypeScript, Tailwind v4 + shadcn/ui, supabase-js, TanStack Query | Firebase Hosting |
 | `services/agent` | Python 3.12 + FastAPI + Google ADK (LiteLLM으로 OpenAI) | Cloud Run (`asia-northeast3`) |
-| `supabase` | 스키마, RLS, RPC, 가상 조직 데이터 | Supabase (운영 Pro, 스테이징 무료) |
+| `supabase` | 스키마, RLS, RPC, 가상 조직 데이터 | Supabase (스테이징·운영 모두 무료 플랜, 일시 정지 방지 `keepalive`) |
 
 환경: 로컬 → 스테이징(`main` 머지 시 자동 배포) → 운영(`v*` 태그 시 배포).
 
@@ -45,7 +45,7 @@
 |---|---|---|
 | 스테이징 | 웹 https://blueward-onboarding-stg-web.web.app · 에이전트 `agent-staging` (Cloud Run, 서울) | ✅ `main` 머지마다 자동 배포, smoke 6단계 통과 |
 | PR 미리보기 | PR마다 `…--pr-<번호>-….web.app` (스테이징 DB·에이전트 사용) | ✅ CI가 PR에 주소 댓글 |
-| 운영 | — | ⏳ 운영 GCP·Supabase Pro·OpenAI 준비 후 `v*` 태그로 배포 ([docs/deploy.md](docs/deploy.md)) |
+| 운영 | — | ⏳ 운영 GCP·Supabase(무료)·OpenAI 준비 후 `v*` 태그로 배포 ([docs/deploy.md](docs/deploy.md)) |
 
 ### 0단계: 공통 기반과 배포 경로 (순차)
 
@@ -87,7 +87,7 @@
 
 1. 리허설에서 나온 수정 머지: 시험 지시문 회사명·마크다운 코드 표시 제거([#22](https://github.com/silvertae/onboarding-agent/pull/22)), 운영 Supabase 필수 설정 문서([#23](https://github.com/silvertae/onboarding-agent/pull/23))
 2. GitHub 보호 설정: `main` 보호(최신 `main` 반영 필수 포함), `v*` 태그 규칙 ([docs/deploy.md](docs/deploy.md) 6)
-3. 운영 환경 준비(Leo): 운영 GCP 프로젝트, Supabase Pro, OpenAI 운영 키, GitHub `production` 환경 → `.env.production`·`.firebaserc` 운영 값 PR
+3. 운영 환경 준비(Leo): 운영 GCP 프로젝트, Supabase 운영 프로젝트(무료 플랜), OpenAI 운영 키, GitHub `production`·`keepalive` 환경 → `.env.production`·`.firebaserc` 운영 값 PR
 4. `v1.0.0` 태그 → 운영 배포 → 운영 리허설 → 데모 초기화 → 운영 점검 기록
 5. 부트스트랩 개선: 배포 때 기본 계정 비밀번호가 바뀌지 않았으면 다시 설정하지 않기(재설정 시 기존 로그인 세션이 끊김)
 6. 실제 도입 단계: `service_role` 테이블 권한을 마이그레이션에 명시(지금은 Supabase 기본 설정에 의존)

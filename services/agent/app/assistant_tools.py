@@ -13,18 +13,24 @@ from app.db import user_client
 OWNER_LABEL = {"hr": "인사팀", "ga": "총무팀", "accounting": "회계팀"}
 STAGE_ORDER = {"day1": 0, "week1": 1, "month1": 2}
 FINISHED = ("done", "na")
+OPEN_FOR_NEW_HIRE = ("todo", "rework")
 MAX_QUESTION_LENGTH = 1000
 
 
 def get_my_tasks(user: CurrentUser) -> list[dict]:
-    """내 온보딩 과제. blocked_by는 아직 끝나지 않은(done·na가 아닌) 선행 과제 코드다."""
+    """내 온보딩 과제. blocked_by는 아직 끝나지 않은(done·na가 아닌) 선행 과제 코드다.
+
+    handled_by: 그 과제를 처리하는 사람("신입" | "담당자"). completion_mode가 staff_only면 담당자다.
+    my_turn: 신입이 지금 할 차례인지. 웹 신입 홈의 '지금 할 일'과 같은 기준(todo·rework이면서 staff_only가 아님).
+    """
     rows = cast(
         list[dict[str, Any]],
         user_client(user.token)
         .table("task_instances")
         .select(
             "id, status, due_date,"
-            " task_templates!inner(code, title, department, stage, sort_order, prerequisite_codes, teams(name))"
+            " task_templates!inner(code, title, department, stage, sort_order, prerequisite_codes, completion_mode,"
+            " teams(name))"
         )
         .eq("new_hire_id", user.id)
         .execute()
@@ -42,6 +48,7 @@ def get_my_tasks(user: CurrentUser) -> list[dict]:
             if r["status"] == "blocked"
             else []
         )
+        handled_by = "담당자" if t["completion_mode"] == "staff_only" else "신입"
         tasks.append(
             {
                 "id": r["id"],
@@ -51,6 +58,8 @@ def get_my_tasks(user: CurrentUser) -> list[dict]:
                 "due_date": r["due_date"],
                 "owner": owner,
                 "blocked_by": blocked_by,
+                "handled_by": handled_by,
+                "my_turn": r["status"] in OPEN_FOR_NEW_HIRE and handled_by == "신입",
             }
         )
     return tasks

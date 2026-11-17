@@ -9,7 +9,7 @@
 |---|---|---|---|
 | 용도 | 개발·테스트 | `main` 최신, PR 미리보기의 백엔드 | 심사위원 접속 |
 | GCP 프로젝트 | — | 스테이징 전용 프로젝트 | 운영 전용 프로젝트 |
-| DB·인증 | Supabase CLI | Supabase 무료 프로젝트(별도 조직) | Supabase Pro 프로젝트, 서울(`ap-northeast-2`) |
+| DB·인증 | Supabase CLI | Supabase 무료 프로젝트 | Supabase 무료 프로젝트, 서울(`ap-northeast-2`) — 일시 정지 방지 `keepalive` |
 | 에이전트 | `localhost:8000` | Cloud Run `agent-staging`, 최소 0 | Cloud Run `agent-prod`, 최소 1 |
 | 웹 | `localhost:5173` | Firebase Hosting 대상 `staging` + PR 미리보기 채널 | Firebase Hosting 대상 `prod` |
 | 배포 계기 | — | `main` 푸시 | `v*` 태그(Leo) |
@@ -25,6 +25,8 @@ Cloud Run 공통(`scripts/deploy-agent.sh`): 리전 `asia-northeast3`, 메모리
 | `.github/workflows/ci.yml` | PR: 웹 테스트·빌드 / 배포 스크립트 검사 / 로컬 Supabase로 pgTAP·에이전트 pytest / 스테이징 설정 웹 빌드(인증 없음) → 미리보기 채널(`pr-<번호>`, 7일)에 배포하고 PR에 주소 댓글 |
 | `.github/workflows/deploy-staging.yml` | `main` 푸시: 설정 확인 → DB 마이그레이션 → 계정 부트스트랩 → 에이전트 → 웹 → `smoke.sh` |
 | `.github/workflows/deploy-prod.yml` | `v*` 태그: 태그 커밋이 `main`에 있는지 확인한 뒤 위와 같은 순서를 운영 대상으로 |
+| `.github/workflows/keepalive.yml` | 하루 세 번(한국 09:17·17:17·01:17) 스테이징·운영 Supabase에 신입 로그인·과제 조회를 보내 무료 플랜 일시 정지를 막는다. 실패하면 알림. Actions에서 수동 실행도 가능 |
+| `scripts/keepalive.sh <supabase_url> <anon_key>` | 위 요청. `DEMO_PASSWORD` 필요, 아무것도 바꾸지 않는다 |
 | `scripts/deploy-agent.sh <staging\|prod> <git_sha>` | Cloud Run 배포. 비밀값은 Secret Manager 참조로만 연결 |
 | `scripts/smoke.sh <web> <agent> <supabase> <anon_key>` | 배포 후 6단계 점검. `DEMO_PASSWORD` 필요, `EXPECT_VERSION`으로 커밋 확인 |
 | `scripts/tests/*` | 위 두 스크립트를 가짜 서버·가짜 gcloud로 검사(CI `배포 스크립트 검사`) |
@@ -91,15 +93,25 @@ npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROD_PR
 
 | | 운영 | 스테이징 |
 |---|---|---|
-| 조직 | Pro 플랜 조직 | 별도 무료 조직 |
+| 조직·플랜 | 무료(Free). 스테이징과 같은 무료 조직이어도 된다 | 무료(Free) |
 | 리전 | Northeast Asia (Seoul) `ap-northeast-2` | 아무 곳(서울 권장) |
+
+**운영도 무료 플랜으로 둔다(Leo 결정, 2026-11-17, 프로토타입 비용 절감).** 무료 플랜의 차이와 대응:
+
+| 무료 플랜 제약 | 대응 |
+|---|---|
+| 일주일 동안 활동이 적으면 프로젝트가 일시 정지된다(하루 몇 건의 요청이면 대개 유지되지만 보장은 아님) | `.github/workflows/keepalive.yml`이 하루 세 번 실제 로그인·조회를 보낸다. 실패하면 GitHub 알림 메일. Supabase도 정지 약 일주일 전과 정지 시 메일을 보낸다 |
+| 자동 백업이 보장되지 않고 다운로드할 수 없다 | 데모 데이터는 마이그레이션·부트스트랩·데모 초기화로 다시 만들 수 있다. 관리자가 만든 심사위원 계정만 다시 만들어야 한다 |
+| 활성 무료 프로젝트는 계정당 2개 | 스테이징·운영 두 개로 딱 맞다. 다른 무료 프로젝트를 켜지 않는다 |
+| DB 500MB, 월 사용자 5만, 트래픽 5GB | 시연 규모에서는 여유 있다 |
+
+정지되면 Supabase 대시보드에서 프로젝트를 열고 **Restore**를 누른다(데이터·설정·키는 그대로). 정지가 실제로 생기면 **Billing → Upgrade to Pro**로 같은 프로젝트를 바로 Pro로 올릴 수 있다(주소·키 변경 없음).
 
 두 프로젝트 모두:
 - **프로젝트 생성 화면의 Security 설정**: "Enable Data API" 켬, **"Automatically expose new tables" 켬**, "Enable automatic RLS" 끔. 관리자 키(`service_role`)의 테이블 권한(`profiles` 조회·추가, `teams`·`task_instances` 조회)은 마이그레이션에 따로 적혀 있지 않고 이 기본 설정에 기대므로, 끄면 계정 부트스트랩과 관리자 계정 등록이 "permission denied"로 실패한다. `anon`·`authenticated` 권한은 마이그레이션이 전부 회수한 뒤 필요한 것만 다시 주므로 이 설정과 상관없다. 로컬 Supabase와 스테이징이 같은 조건이다. (실제 도입 단계에서 `service_role` 권한을 마이그레이션에 명시하면 이 설정을 끌 수 있다.)
 - **Authentication → Sign In / Providers → "Allow new users to sign up" 끄기** (`smoke.sh` 5단계가 확인한다).
 - **Authentication → URL Configuration → Site URL**을 해당 웹 주소로.
 - **Project Settings → API Keys**에서 프로젝트 URL, anon 키(공개), service_role 키(비밀)를 확인. 로컬 CLI와 같은 JWT 형식(Legacy API keys)을 쓴다.
-- 운영 프로젝트는 **Database → Backups**가 켜져 있는지 확인.
 
 CI용 액세스 토큰(**Account → Access Tokens**)은 환경마다 따로 만들어 6에서 각 GitHub 환경의 비밀값으로만 넣는다. 프로젝트 범위를 고를 수 있으면 해당 프로젝트로 좁힌다. 저장소 공통 비밀값으로 두지 않는다(같은 저장소의 PR 작업에서도 읽힐 수 있다).
 
@@ -309,6 +321,27 @@ gh api -X POST "repos/$REPO/rulesets" --input - <<'EOF'
 EOF
 ```
 
+### keepalive 환경 (Supabase 일시 정지 방지)
+
+예약 작업은 `main`에서 돌기 때문에 `production` 환경(태그 전용)을 쓸 수 없다. 공개 값과 신입 계정 비밀번호만 담은 별도 환경 `keepalive`를 `main` 전용으로 만든다. 환경을 하나씩 준비한 만큼만 깨우고, 값이 없는 쪽은 건너뛴다.
+
+```bash
+echo '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' |
+  gh api -X PUT "repos/$REPO/environments/keepalive" --input -
+gh api -X POST "repos/$REPO/environments/keepalive/deployment-branch-policies" -f name=main -f type=branch
+
+# 대상별 공개 값은 각 환경 변수에서 복사, 비밀번호는 각 환경의 DEMO_PASSWORD와 같은 값을 프롬프트에 입력
+for T in STAGING PROD; do
+  E=$([ $T = STAGING ] && echo staging || echo production)
+  gh variable set ${T}_SUPABASE_URL      --repo "$REPO" --env keepalive --body "$(gh variable get SUPABASE_URL --repo "$REPO" --env $E)"
+  gh variable set ${T}_SUPABASE_ANON_KEY --repo "$REPO" --env keepalive --body "$(gh variable get SUPABASE_ANON_KEY --repo "$REPO" --env $E)"
+  gh secret   set ${T}_DEMO_PASSWORD     --repo "$REPO" --env keepalive
+done
+gh workflow run keepalive --repo "$REPO"     # 바로 한 번 실행해 확인
+```
+
+`DEMO_PASSWORD`를 바꾸면 `keepalive` 환경의 같은 값도 함께 바꾼다(아니면 keepalive가 실패로 알린다).
+
 ### 끝났는지 확인
 
 ```bash
@@ -369,7 +402,7 @@ npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_
 | `/health` 가동 시간 점검과 알림 | 운영 프로젝트 Cloud Monitoring 가동 시간 확인(`AGENT_URL/health`, 5분 간격) + 알림 채널 | |
 | GCP 예산 알림(프로젝트별) | 결제 → 예산 및 알림 | |
 | OpenAI 월 한도(환경별) | OpenAI Project → Limits | |
-| Supabase 운영이 Pro, 백업 켜짐 | 대시보드 → Billing, Database → Backups | |
+| Supabase 일시 정지 방지 | Actions → `keepalive` 최근 실행이 성공(하루 세 번), 실패 알림 메일 수신 설정 | |
 | 공개 가입 꺼짐(두 환경) | `smoke.sh` 5단계 | |
 | 최소 인스턴스를 0으로 내릴 날짜 | 운영 시작 + 한 달: `gcloud run services update agent-prod --region $REGION --project $PROD_PROJECT --min-instances 0` | |
 

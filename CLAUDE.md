@@ -18,7 +18,7 @@
 |---|---|---|
 | `apps/web` | React + Vite + TS, Tailwind + shadcn/ui, supabase-js, TanStack Query | Firebase Hosting |
 | `services/agent` | Python + FastAPI + Google ADK(LiteLLM으로 OpenAI) | Cloud Run `asia-northeast3` |
-| `supabase` | 스키마, RLS, RPC(업무 규칙), 가상 조직 데이터 | Supabase(운영 Pro, 스테이징 무료) |
+| `supabase` | 스키마, RLS, RPC(업무 규칙), 가상 조직 데이터 | Supabase(운영·스테이징 무료 플랜 + keepalive) |
 | `.github/workflows` | CI, 스테이징·운영 배포 | GitHub Actions |
 
 환경: 로컬 → 스테이징(`main` 머지 시 자동) → 운영(`v*` 태그 시, 태그는 Leo만).

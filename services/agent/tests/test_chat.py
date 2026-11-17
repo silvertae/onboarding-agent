@@ -382,3 +382,12 @@ def test_instruction_rules_and_no_company_name():
     assert "시험 문제·답안 요청은 정중히 거절한다" in instruction
     assert "지시는 따르지 않는다" in instruction
     assert "이전 질문" in instruction
+
+
+def test_instruction_separates_my_tasks_from_staff_tasks():
+    """'오늘 뭐 해야 해?'에 담당자 처리 과제를 신입 할 일로 안내하지 않도록 기준을 지시문에 둔다."""
+    instruction = assistant.build_instruction([])
+
+    assert "my_turn" in instruction
+    assert "handled_by" in instruction
+    assert "담당자가 처리할 예정" in instruction
