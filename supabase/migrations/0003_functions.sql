@@ -431,6 +431,33 @@ begin
 end
 $$;
 
+-- ── 하루 사용 한도 ─────────────────────────────────────────────────
+-- 호출자의 오늘(Asia/Seoul) 횟수를 원자적으로 1 올리고, 올린 값이 한도 이하면 true
+create function public.consume_quota(p_kind text, p_limit int) returns boolean
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_org uuid := (select private.my_org());
+  v_count int;
+begin
+  if p_kind is null or p_kind not in ('chat', 'exam') then
+    raise exception '알 수 없는 사용 종류입니다' using errcode = '22023';
+  end if;
+  if v_org is null then
+    raise exception '로그인이 필요합니다' using errcode = '42501';
+  end if;
+
+  insert into public.usage_counters as u (org_id, user_id, day, kind, count)
+  values (v_org, (select auth.uid()), (now() at time zone 'Asia/Seoul')::date, p_kind, 1)
+  on conflict (user_id, day, kind) do update set count = u.count + 1
+  returning u.count into v_count;
+  return v_count <= p_limit;
+end
+$$;
+
+revoke execute on function public.consume_quota(text, int) from public, anon;
+grant execute on function public.consume_quota(text, int) to authenticated, service_role;
+
 -- ── 실행 권한 ───────────────────────────────────────────────────────
 revoke execute on function public._start_onboarding(uuid) from public, anon, authenticated;
 grant execute on function public._start_onboarding(uuid) to service_role;
