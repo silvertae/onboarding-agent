@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 무엇 | 회사 계정 발급 이후 신입 온보딩을 한 타임라인으로 묶은 웹 서비스와, 지식 답변·시험 출제 에이전트 |
-| 현재 | 19개 중 10개 완료 — 0단계는 Task 6(배포)만 남음, 1단계 신입·담당자 화면(A·B) 완료, 어시스턴트·시험 출제·관리자(C·D·E) 대기 |
+| 현재 | 19개 중 18개 완료 — 모든 화면·에이전트 기능 머지, 스테이징 가동 중. Task 19(리허설 완료, 운영 릴리스 대기)만 남음 |
 | 데이터 | 화면은 회사 CI(Blueward), 사람·계정·업무 데이터는 전부 가상. 실명·민감정보 없음 |
 
 사내 AI Agent 경진대회 출품작입니다. 공개 URL로 배포해 심사위원이 한 달 동안 역할별 계정으로 직접 써 보는 것을 목표로 합니다.
@@ -37,7 +37,15 @@
 
 ## 진행 상황
 
-상태: ✅ 완료(머지) · 🔍 PR 리뷰 중 · 🔨 작업 중 · ⏳ 대기 (기준: 2026-11-17, `main` `da32d35`)
+상태: ✅ 완료(머지) · 🔍 PR 리뷰 중 · 🔨 작업 중 · ⏳ 대기 (기준: 2026-11-17, `main` `0b466f9`)
+
+### 환경
+
+| 환경 | 주소 | 상태 |
+|---|---|---|
+| 스테이징 | 웹 https://blueward-onboarding-stg-web.web.app · 에이전트 `agent-staging` (Cloud Run, 서울) | ✅ `main` 머지마다 자동 배포, smoke 6단계 통과 |
+| PR 미리보기 | PR마다 `…--pr-<번호>-….web.app` (스테이징 DB·에이전트 사용) | ✅ CI가 PR에 주소 댓글 |
+| 운영 | — | ⏳ 운영 GCP·Supabase Pro·OpenAI 준비 후 `v*` 태그로 배포 ([docs/deploy.md](docs/deploy.md)) |
 
 ### 0단계: 공통 기반과 배포 경로 (순차)
 
@@ -48,7 +56,8 @@
 | 3 | 데모 조직 데이터(Blueward), 데모 초기화, 계정 부트스트랩 | ✅ | [#6](https://github.com/silvertae/onboarding-agent/pull/6) |
 | 4 | 웹 공통 골격 (로그인, 역할별 접근, 공통 훅) | ✅ | [#3](https://github.com/silvertae/onboarding-agent/pull/3) |
 | 5 | 에이전트 서비스 기반 (인증, DB 클라이언트, 한도, CORS) | ✅ | [#7](https://github.com/silvertae/onboarding-agent/pull/7) |
-| 6 | 배포 경로 (CI, 스테이징, 운영) | 🔨 | [#4](https://github.com/silvertae/onboarding-agent/pull/4) — 클라우드 설정값 입력 대기 |
+| 6 | 배포 경로 (CI, 스테이징·운영 워크플로, 환경별 GCP 프로젝트) | ✅ 스테이징 · ⏳ 운영 첫 배포 | [#4](https://github.com/silvertae/onboarding-agent/pull/4), [#10](https://github.com/silvertae/onboarding-agent/pull/10) |
+| S0 | 병렬 작업 전 공통 의존성(ADK·LiteLLM)·UI 컴포넌트 | ✅ | [#11](https://github.com/silvertae/onboarding-agent/pull/11) |
 
 ### 1단계: 도메인별 병렬
 
@@ -59,39 +68,40 @@
 | 9 | B 담당자 화면 | 부서 업무함 (S9) | ✅ | [#9](https://github.com/silvertae/onboarding-agent/pull/9) |
 | 10 | B 담당자 화면 | 팀 신입 현황과 신입 상세 (S5, S6) | ✅ | [#9](https://github.com/silvertae/onboarding-agent/pull/9) |
 | 11 | B 담당자 화면 | 지식·미답변 관리 (S10) | ✅ | [#9](https://github.com/silvertae/onboarding-agent/pull/9) |
-| 12 | C 어시스턴트 | 어시스턴트 도구와 `/chat` | ⏳ | |
-| 13 | C 어시스턴트 | 채팅 패널 (S4) | ⏳ | |
-| 14 | D 시험 출제 | 시험 출제 에이전트와 API | ⏳ | |
-| 15 | D 시험 출제 | 시험 목록과 편집기 (S7) | ⏳ | |
-| 16 | D 시험 출제 | 시험 인쇄 뷰 (S8) | ⏳ | |
-| 17 | E 관리자 | 사용자 등록 API | ⏳ | |
-| 18 | E 관리자 | 사용자 관리 화면 (S11) | ⏳ | |
+| 12 | C 어시스턴트 | 어시스턴트 도구와 `/chat` (`gpt-6.1-terra`) | ✅ | [#15](https://github.com/silvertae/onboarding-agent/pull/15) |
+| 13 | C 어시스턴트 | 채팅 패널 (S4) | ✅ | [#17](https://github.com/silvertae/onboarding-agent/pull/17) |
+| 14 | D 시험 출제 | 시험 출제 에이전트와 API | ✅ | [#13](https://github.com/silvertae/onboarding-agent/pull/13) |
+| 15 | D 시험 출제 | 시험 목록과 편집기 (S7) | ✅ | [#16](https://github.com/silvertae/onboarding-agent/pull/16) |
+| 16 | D 시험 출제 | 시험 인쇄 뷰 (S8) | ✅ | [#18](https://github.com/silvertae/onboarding-agent/pull/18) |
+| 17 | E 관리자 | 사용자 등록 API | ✅ | [#12](https://github.com/silvertae/onboarding-agent/pull/12) |
+| 18 | E 관리자 | 사용자 관리 화면 (S11) | ✅ | [#14](https://github.com/silvertae/onboarding-agent/pull/14), [#19](https://github.com/silvertae/onboarding-agent/pull/19) |
 
 ### 2단계: 통합과 운영 반영
 
-| Task | 내용 | 상태 |
-|---|---|---|
-| 19 | 통합, 스테이징 리허설, 운영 릴리스 | ⏳ |
+| Task | 내용 | 상태 | PR |
+|---|---|---|---|
+| 19 | 통합 테스트·스테이징 리허설·실패 조건 점검 | ✅ 스테이징 리허설 0~5단계 통과 ([시연 스크립트](docs/demo-script.md)) | [#21](https://github.com/silvertae/onboarding-agent/pull/21) |
+| 19 | 운영 릴리스(`v1.0.0`)·운영 리허설·운영 점검 | ⏳ 운영 환경 준비 대기 | |
 
 ### 다음 작업 (우선순위)
 
-1. Task 6 배포 경로 마무리: 스테이징 설정값 입력 → CI 통과 → 스테이징 배포
-2. 부트스트랩 개선: 배포 때 기본 계정 비밀번호가 바뀌지 않았으면 다시 설정하지 않기(재설정 시 기존 로그인 세션이 끊김)
-3. Task 12 어시스턴트 `/chat` → Task 13 채팅 패널
-4. Task 17·18 사용자 등록 API·화면
-5. Task 14 → 15 → 16 시험 출제·편집·인쇄
-6. Task 19 통합·리허설·운영 릴리스
+1. 리허설에서 나온 수정 머지: 시험 지시문 회사명·마크다운 코드 표시 제거([#22](https://github.com/silvertae/onboarding-agent/pull/22)), 운영 Supabase 필수 설정 문서([#23](https://github.com/silvertae/onboarding-agent/pull/23))
+2. GitHub 보호 설정: `main` 보호(최신 `main` 반영 필수 포함), `v*` 태그 규칙 ([docs/deploy.md](docs/deploy.md) 6)
+3. 운영 환경 준비(Leo): 운영 GCP 프로젝트, Supabase Pro, OpenAI 운영 키, GitHub `production` 환경 → `.env.production`·`.firebaserc` 운영 값 PR
+4. `v1.0.0` 태그 → 운영 배포 → 운영 리허설 → 데모 초기화 → 운영 점검 기록
+5. 부트스트랩 개선: 배포 때 기본 계정 비밀번호가 바뀌지 않았으면 다시 설정하지 않기(재설정 시 기존 로그인 세션이 끊김)
+6. 실제 도입 단계: `service_role` 테이블 권한을 마이그레이션에 명시(지금은 Supabase 기본 설정에 의존)
 
-### 로컬에서 볼 수 있는 화면
+### 화면
 
-| 역할 (로컬 계정) | 화면 |
+| 역할 | 화면 |
 |---|---|
-| 신입 `newhire@demo.test` | S2 타임라인, S3 과제 상세 |
-| 경영지원 `hr@` · `ga@` · `acc@demo.test` | S9 부서 업무함, S10 지식 관리(회사 공통) |
-| 교육 담당자 `trainer@demo.test` | S5 팀 신입 현황, S6 신입 상세, S10 지식 관리(AI팀) |
-| 관리자 `admin@demo.test` | S11 자리표시(Task 18 전) |
+| 신입 | S2 타임라인, S3 과제 상세, S4 채팅 |
+| 경영지원 (인사·총무·회계) | S9 부서 업무함, S10 지식 관리(회사 공통) |
+| 교육 담당자 | S5 팀 신입 현황, S6 신입 상세, S7 시험 편집기, S8 시험지·답안지 인쇄, S10 지식 관리(AI팀) |
+| 관리자 | S11 사용자 관리(계정 등록, 데모 데이터 초기화) |
 
-채팅(S4), 시험 출제·인쇄(S7·S8), 사용자 관리(S11)는 아직 없습니다. 로컬 비밀번호는 `demo1234`입니다.
+로컬 계정은 같은 메일에 비밀번호 `demo1234`입니다. 스테이징·운영 비밀번호는 별도로 전달합니다.
 
 ## 로컬 실행
 
@@ -119,3 +129,6 @@ npm run test:web && npm run test:agent # 테스트
 | [CLAUDE.md](CLAUDE.md) | 구현 에이전트(Claude Code) 작업 규칙과 명령어 |
 | [AGENTS.md](AGENTS.md) | PR 리뷰 에이전트(Codex) 리뷰 기준 |
 | [SECURITY.md](SECURITY.md) | 보안 제보 방법, 신뢰 경계, 보안 검토 기준 |
+| [배포 안내](docs/deploy.md) | 환경, Leo가 먼저 할 일, 배포 흐름, 되돌리기, 운영 점검 |
+| [시연 스크립트](docs/demo-script.md) | 시연 흐름 단계별 기대 결과, 리허설·실패 조건 점검 기록 |
+| [심사위원 안내](docs/judge-guide.md) | 접속 주소, 역할별 계정, 5분 체험 순서, 사용 한도 |
