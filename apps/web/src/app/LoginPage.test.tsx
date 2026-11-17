@@ -45,6 +45,13 @@ describe('LoginPage', () => {
     expect(screen.getByTestId('demo-accounts').querySelectorAll('button')).toHaveLength(5)
   })
 
+  it('회사 로고와 푸터 회사명을 보여 준다', () => {
+    vi.stubEnv('DEV', false)
+    renderLogin()
+    expect(screen.getByRole('img', { name: 'Blueward' })).toBeInTheDocument()
+    expect(screen.getByText('© Blueward · 사내 AI Agent 경진대회 출품 데모')).toBeInTheDocument()
+  })
+
   it('로그인에 실패하면 안내 문구를 보여 준다', async () => {
     vi.stubEnv('DEV', false)
     signInWithPassword.mockResolvedValue({

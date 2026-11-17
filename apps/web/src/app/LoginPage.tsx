@@ -1,5 +1,6 @@
 import { CalendarDays, Check, Info, MessageSquare, TriangleAlert } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import logoUrl from '@/assets/blueward-logo.png'
 import { Navigate } from 'react-router'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -51,7 +52,7 @@ export function LoginPage() {
     <div className="flex min-h-svh flex-col bg-background">
       <div className="flex flex-1 flex-wrap items-stretch">
         <section className="flex min-w-0 flex-[1_1_480px] flex-col justify-between gap-12 border-r border-border bg-card px-6 py-16 sm:px-[clamp(24px,6vw,96px)]">
-          <span className="text-[15px] font-semibold">온보딩 에이전트</span>
+          <img src={logoUrl} alt="Blueward" className="h-8 w-auto self-start" />
           <div className="flex max-w-[520px] flex-col gap-5">
             <DemoChip className="self-start" />
             <h1 className="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl sm:leading-[54px]">
@@ -127,7 +128,7 @@ export function LoginPage() {
         </section>
       </div>
       <footer className="flex flex-wrap justify-between gap-2 border-t border-border px-8 py-4 text-xs text-muted-foreground">
-        <span>사내 AI Agent 경진대회 출품 데모</span>
+        <span>© Blueward · 사내 AI Agent 경진대회 출품 데모</span>
         <span>모든 인물·조직·데이터는 가상입니다.</span>
       </footer>
     </div>
