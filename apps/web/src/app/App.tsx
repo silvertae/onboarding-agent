@@ -2,6 +2,10 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { HomePage } from '@/features/newhire/HomePage'
 import { TaskDetailPage } from '@/features/newhire/TaskDetailPage'
+import { HireDetailPage } from '@/features/staff/HireDetailPage'
+import { KnowledgePage } from '@/features/staff/KnowledgePage'
+import { OpsInboxPage } from '@/features/staff/OpsInboxPage'
+import { TeamOverviewPage } from '@/features/staff/TeamOverviewPage'
 import { isAuthError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import { AuthProvider, useAuth } from './AuthProvider'
@@ -49,17 +53,17 @@ export function AppRoutes() {
           <Route path="/me/tasks/:id" element={<TaskDetailPage />} />
         </Route>
         <Route element={<RoleGuard allow={['team_trainer']} />}>
-          <Route path="/team" element={<Placeholder title="팀 신입 현황" />} />
-          <Route path="/team/hires/:id" element={<Placeholder title="신입 상세" />} />
+          <Route path="/team" element={<TeamOverviewPage />} />
+          <Route path="/team/hires/:id" element={<HireDetailPage />} />
           <Route path="/team/exams" element={<Placeholder title="시험 출제" />} />
           <Route path="/team/exams/:id" element={<Placeholder title="시험 편집" />} />
           <Route path="/team/exams/:id/print" element={<Placeholder title="시험 인쇄" />} />
         </Route>
         <Route element={<RoleGuard allow={['ops_staff']} />}>
-          <Route path="/ops" element={<Placeholder title="부서 업무함" />} />
+          <Route path="/ops" element={<OpsInboxPage />} />
         </Route>
         <Route element={<RoleGuard allow={['team_trainer', 'ops_staff']} />}>
-          <Route path="/knowledge" element={<Placeholder title="지식 관리" />} />
+          <Route path="/knowledge" element={<KnowledgePage />} />
         </Route>
         <Route element={<RoleGuard allow={['admin']} />}>
           <Route path="/admin/users" element={<Placeholder title="사용자 관리" />} />
