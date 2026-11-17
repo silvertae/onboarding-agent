@@ -2,9 +2,10 @@ import { AlertCircle, ChevronRight, Lock } from 'lucide-react'
 import { Link } from 'react-router'
 import { OwnerBadge } from '@/components/OwnerBadge'
 import { StatusBadge } from '@/components/StatusBadge'
-import { blockedBy, type TaskView } from '@/lib/tasks'
+import type { TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
 import { formatDateTime, formatDay } from './format'
+import { lockedHint } from './locked'
 
 type Props = {
   task: TaskView
@@ -12,13 +13,6 @@ type Props = {
   teamName: string | null
   // "지금 할 일" 묶음에서는 보완 요청을 강조하고 사유를 보여 준다.
   highlight?: boolean
-}
-
-// 잠긴 과제: "근태·결재 시스템 가입 완료 후 열림"
-function lockedHint(task: TaskView, all: TaskView[]): string | null {
-  if (task.status !== 'blocked') return null
-  const titles = blockedBy(task, all).map((t) => t.template.title)
-  return titles.length ? `${titles.join(', ')} 완료 후 열림` : null
 }
 
 function Meta({ task, all, highlight }: Pick<Props, 'task' | 'all' | 'highlight'>) {
