@@ -62,12 +62,14 @@ export function useMyTasks(): UseQueryResult<TaskView[]> {
 // RLS가 허용하는 과제 전부(담당자 화면용). newHireId로 한 신입만 좁힐 수 있다.
 export function useVisibleTasks(filter?: { newHireId?: string }): UseQueryResult<TaskView[]> {
   const { session } = useAuth()
+  const userId = session?.user.id
   const newHireId = filter?.newHireId
-  useTaskRealtime(Boolean(session), newHireId ? `new_hire_id=eq.${newHireId}` : undefined)
+  useTaskRealtime(Boolean(userId), newHireId ? `new_hire_id=eq.${newHireId}` : undefined)
 
   return useQuery({
-    queryKey: [...TASKS_KEY, 'visible', newHireId ?? null],
-    enabled: Boolean(session),
+    // 결과가 RLS(보는 사람)에 따라 달라지므로 키에 사용자 id를 넣는다.
+    queryKey: [...TASKS_KEY, 'visible', userId, newHireId ?? null],
+    enabled: Boolean(userId),
     queryFn: async () => {
       let query = supabase.from('task_instances').select(TASK_SELECT)
       if (newHireId) query = query.eq('new_hire_id', newHireId)

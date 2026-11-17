@@ -1,6 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Tables } from '@/lib/database.types'
 import { DbError, isAuthError, supabase } from '@/lib/supabase'
 
@@ -23,14 +23,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
 
+  // 직전 세션의 사용자 id. undefined = 아직 첫 이벤트 전.
+  const lastUserId = useRef<string | null | undefined>(undefined)
+
   useEffect(() => {
     // 콜백은 동기로 둔다(auth-js 문서: async 콜백은 토큰 갱신 중 교착 위험). 구독 즉시 INITIAL_SESSION이 온다.
     const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+      const nextUserId = next?.user.id ?? null
+      // 로그아웃 경로(직접, agentFetch 401, 쿼리 401)와 관계없이 사용자가 바뀌면 이전 사용자의 캐시를 버린다.
+      if (lastUserId.current !== undefined && lastUserId.current !== nextUserId) queryClient.clear()
+      lastUserId.current = nextUserId
       setSession(next)
       setSessionReady(true)
     })
     return () => data.subscription.unsubscribe()
-  }, [])
+  }, [queryClient])
 
   const userId = session?.user.id ?? null
 
@@ -52,10 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [userId])
 
+  // 캐시 정리는 onAuthStateChange가 맡는다.
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
-    queryClient.clear()
-  }, [queryClient])
+  }, [])
 
   const value = useMemo<AuthValue>(() => {
     const profileReady = !userId || loadedFor === userId
