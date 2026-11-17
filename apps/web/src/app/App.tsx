@@ -30,16 +30,6 @@ const queryClient = new QueryClient({
   },
 })
 
-// 기능 페이지는 각 Task에서 이 자리를 교체한다.
-function Placeholder({ title }: { title: string }) {
-  return (
-    <main className="mx-auto max-w-[1376px] p-8">
-      <h1 className="text-2xl font-semibold">{title}</h1>
-      <p className="mt-2 text-muted-foreground">준비 중</p>
-    </main>
-  )
-}
-
 function HomeRedirect() {
   const { session, profile, loading } = useAuth()
   if (loading) return <FullPageMessage><p role="status">불러오는 중…</p></FullPageMessage>
