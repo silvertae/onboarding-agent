@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react'
 import { Link, NavLink, Outlet } from 'react-router'
 import logoUrl from '@/assets/blueward-logo.png'
 import { Button } from '@/components/ui/button'
+import { ChatPanel } from '@/features/chat/ChatPanel'
 import type { Enums } from '@/lib/database.types'
 import { OWNER_LABEL, ROLE_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/utils'
@@ -97,7 +98,7 @@ export function Layout() {
   return (
     <div className="min-h-svh bg-background">
       <AppHeader />
-      <Outlet />
+      <ChatPanel><Outlet /></ChatPanel>
     </div>
   )
 }
