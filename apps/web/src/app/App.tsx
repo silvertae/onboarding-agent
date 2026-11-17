@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { UsersPage } from '@/features/admin/UsersPage'
 import { ExamEditorPage } from '@/features/exam/ExamEditorPage'
 import { ExamListPage } from '@/features/exam/ExamListPage'
+import { ExamPrintPage } from '@/features/exam/ExamPrintPage'
 import { HomePage } from '@/features/newhire/HomePage'
 import { TaskDetailPage } from '@/features/newhire/TaskDetailPage'
 import { HireDetailPage } from '@/features/staff/HireDetailPage'
@@ -60,7 +61,7 @@ export function AppRoutes() {
           <Route path="/team/hires/:id" element={<HireDetailPage />} />
           <Route path="/team/exams" element={<ExamListPage />} />
           <Route path="/team/exams/:id" element={<ExamEditorPage />} />
-          <Route path="/team/exams/:id/print" element={<Placeholder title="시험 인쇄" />} />
+          <Route path="/team/exams/:id/print" element={<ExamPrintPage />} />
         </Route>
         <Route element={<RoleGuard allow={['ops_staff']} />}>
           <Route path="/ops" element={<OpsInboxPage />} />
