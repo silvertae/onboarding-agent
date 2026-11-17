@@ -8,10 +8,13 @@
 | | 로컬 | 스테이징 | 운영 |
 |---|---|---|---|
 | 용도 | 개발·테스트 | `main` 최신, PR 미리보기의 백엔드 | 심사위원 접속 |
+| GCP 프로젝트 | — | 스테이징 전용 프로젝트 | 운영 전용 프로젝트 |
 | DB·인증 | Supabase CLI | Supabase 무료 프로젝트(별도 조직) | Supabase Pro 프로젝트, 서울(`ap-northeast-2`) |
 | 에이전트 | `localhost:8000` | Cloud Run `agent-staging`, 최소 0 | Cloud Run `agent-prod`, 최소 1 |
 | 웹 | `localhost:5173` | Firebase Hosting 대상 `staging` + PR 미리보기 채널 | Firebase Hosting 대상 `prod` |
 | 배포 계기 | — | `main` 푸시 | `v*` 태그(Leo) |
+
+**환경마다 GCP 프로젝트를 나눈다.** 운영 프로젝트(운영 웹·에이전트·비밀값)에는 운영 배포 작업만 들어갈 수 있다. PR 미리보기와 스테이징 배포가 쓰는 계정은 스테이징 프로젝트 안에서만 권한이 있다. 실제 도입 단계에서도 이 구조를 그대로 쓴다.
 
 Cloud Run 공통(`scripts/deploy-agent.sh`): 리전 `asia-northeast3`, 메모리 1Gi, 동시성 20, 최대 인스턴스 3, 요청 제한 시간 300초, 인증 없이 호출 허용(인증은 서비스가 Supabase 토큰으로 직접 한다), 런타임 서비스 계정 `agent-runtime`.
 
@@ -19,65 +22,68 @@ Cloud Run 공통(`scripts/deploy-agent.sh`): 리전 `asia-northeast3`, 메모리
 
 | 파일 | 하는 일 |
 |---|---|
-| `.github/workflows/ci.yml` | PR: 웹 테스트·빌드 / 배포 스크립트 검사 / 로컬 Supabase로 pgTAP·에이전트 pytest / 스테이징 설정 웹을 미리보기 채널(`pr-<번호>`, 7일)에 배포하고 PR에 주소 댓글 |
+| `.github/workflows/ci.yml` | PR: 웹 테스트·빌드 / 배포 스크립트 검사 / 로컬 Supabase로 pgTAP·에이전트 pytest / 스테이징 설정 웹 빌드(인증 없음) → 미리보기 채널(`pr-<번호>`, 7일)에 배포하고 PR에 주소 댓글 |
 | `.github/workflows/deploy-staging.yml` | `main` 푸시: 설정 확인 → DB 마이그레이션 → 계정 부트스트랩 → 에이전트 → 웹 → `smoke.sh` |
 | `.github/workflows/deploy-prod.yml` | `v*` 태그: 태그 커밋이 `main`에 있는지 확인한 뒤 위와 같은 순서를 운영 대상으로 |
 | `scripts/deploy-agent.sh <staging\|prod> <git_sha>` | Cloud Run 배포. 비밀값은 Secret Manager 참조로만 연결 |
 | `scripts/smoke.sh <web> <agent> <supabase> <anon_key>` | 배포 후 6단계 점검. `DEMO_PASSWORD` 필요, `EXPECT_VERSION`으로 커밋 확인 |
 | `scripts/tests/*` | 위 두 스크립트를 가짜 서버·가짜 gcloud로 검사(CI `배포 스크립트 검사`) |
-| `firebase.json`, `.firebaserc` | 호스팅 대상 `staging`·`prod`, SPA 리라이트, `X-Robots-Tag: noindex`, `/assets/**` 장기 캐시, 페이지는 `no-cache` |
-| `apps/web/.env.staging`, `.env.production` | 웹 빌드용 공개 값(`VITE_*`)만. `REPLACE_ME`가 남아 있으면 배포가 멈춘다 |
+| `firebase.json`, `.firebaserc` | 호스팅 대상 `staging`(스테이징 프로젝트)·`prod`(운영 프로젝트), SPA 리라이트, `X-Robots-Tag: noindex`, `/assets/**` 장기 캐시, 페이지는 `no-cache` |
+| `apps/web/.env.staging`, `.env.production` | 웹 빌드용 공개 값(`VITE_*`)만. 설정값에 `REPLACE_ME`가 남아 있으면 배포가 멈춘다 |
 
 ## Leo가 먼저 할 일
 
-에이전트가 대신 할 수 없는 일이다. 아래 명령의 `<...>`는 Leo가 정하는 값으로 바꾼다. 비밀값을 명령 인자로 쓰지 않도록, 값이 필요한 곳은 입력 프롬프트로 받는다.
-
-공통으로 쓰는 셸 변수:
+에이전트가 대신 할 수 없는 일이다. 아래 명령의 `<...>`는 Leo가 정하는 값으로 바꾼다. 비밀값을 명령 인자로 쓰지 않도록, 값이 필요한 곳은 입력 프롬프트로 받는다. 같은 셸(macOS 기본 zsh 또는 bash)에서 순서대로 실행한다(앞에서 만든 변수·함수를 뒤에서 쓴다).
 
 ```bash
-export PROJECT_ID=<GCP 프로젝트 ID>
+export STAGING_PROJECT=<스테이징 GCP 프로젝트 ID>
+export PROD_PROJECT=<운영 GCP 프로젝트 ID>
+export STAGING_SITE=<스테이징 Hosting 사이트 ID>   # 예: ${STAGING_PROJECT}-web
+export PROD_SITE=<운영 Hosting 사이트 ID>          # 예: ${PROD_PROJECT}-web
 export REGION=asia-northeast3
-export REPO=<GitHub 소유자>/<저장소>            # 예: 이 저장소의 owner/name
-export STAGING_SITE=<스테이징 Hosting 사이트 ID>  # 예: ${PROJECT_ID}-staging
-export PROD_SITE=<운영 Hosting 사이트 ID>         # 예: ${PROJECT_ID}-prod
+export REPO=<GitHub 소유자>/<저장소>               # 이 저장소의 owner/name
 ```
 
-### 1. GCP 프로젝트, 결제, API, 예산 알림
+### 1. GCP 프로젝트 2개, 결제, API, 예산 알림
 
 ```bash
-gcloud projects create "$PROJECT_ID"
 gcloud billing accounts list                                   # 결제 계정 ID 확인
-gcloud billing projects link "$PROJECT_ID" --billing-account=<결제 계정 ID>
-gcloud config set project "$PROJECT_ID"
+export BILLING=<결제 계정 ID>
 
-gcloud services enable \
-  run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com \
-  secretmanager.googleapis.com compute.googleapis.com \
-  iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com \
-  firebase.googleapis.com firebasehosting.googleapis.com \
-  cloudresourcemanager.googleapis.com serviceusage.googleapis.com billingbudgets.googleapis.com
+for P in "$STAGING_PROJECT" "$PROD_PROJECT"; do
+  gcloud projects create "$P"
+  gcloud billing projects link "$P" --billing-account="$BILLING"
+  gcloud services enable --project "$P" \
+    run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com \
+    secretmanager.googleapis.com compute.googleapis.com \
+    iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com \
+    firebase.googleapis.com firebasehosting.googleapis.com \
+    cloudresourcemanager.googleapis.com serviceusage.googleapis.com billingbudgets.googleapis.com
+  # --source 배포가 쓰는 저장소를 미리 만든다(CI에서 생성 확인 프롬프트가 뜨지 않게)
+  gcloud artifacts repositories create cloud-run-source-deploy --project "$P" \
+    --repository-format=docker --location="$REGION"
+done
 
-# --source 배포가 쓰는 저장소를 미리 만든다(CI에서 생성 확인 프롬프트가 뜨지 않게)
-gcloud artifacts repositories create cloud-run-source-deploy \
-  --repository-format=docker --location="$REGION"
-
-# 예산 알림(금액·통화는 결제 계정 통화에 맞춘다)
-gcloud billing budgets create --billing-account=<결제 계정 ID> \
-  --display-name="onboarding-agent" --budget-amount=<금액><통화> \
-  --filter-projects="projects/$PROJECT_ID" \
+# 예산 알림은 프로젝트마다 따로(금액·통화는 결제 계정 통화에 맞춘다)
+gcloud billing budgets create --billing-account="$BILLING" --display-name="onboarding-agent-staging" \
+  --budget-amount=<금액><통화> --filter-projects="projects/$STAGING_PROJECT" \
+  --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0
+gcloud billing budgets create --billing-account="$BILLING" --display-name="onboarding-agent-prod" \
+  --budget-amount=<금액><통화> --filter-projects="projects/$PROD_PROJECT" \
   --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0
 ```
 
-### 2. Firebase와 Hosting 사이트 2개
+### 2. Firebase와 Hosting 사이트 (프로젝트마다 1개)
 
 ```bash
 npx firebase-tools@15.36.0 login
-npx firebase-tools@15.36.0 projects:addfirebase "$PROJECT_ID"
-npx firebase-tools@15.36.0 hosting:sites:create "$STAGING_SITE" --project "$PROJECT_ID"
-npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROJECT_ID"
+npx firebase-tools@15.36.0 projects:addfirebase "$STAGING_PROJECT"
+npx firebase-tools@15.36.0 projects:addfirebase "$PROD_PROJECT"
+npx firebase-tools@15.36.0 hosting:sites:create "$STAGING_SITE" --project "$STAGING_PROJECT"
+npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROD_PROJECT"
 ```
 
-웹 주소는 `https://$STAGING_SITE.web.app`, `https://$PROD_SITE.web.app`이 된다. `.firebaserc`의 `REPLACE_ME_GCP_PROJECT_ID`(두 곳), `REPLACE_ME_STAGING_SITE_ID`, `REPLACE_ME_PROD_SITE_ID`를 바꾸는 작업은 6에서 PR로 한다.
+웹 주소는 `https://$STAGING_SITE.web.app`, `https://$PROD_SITE.web.app`이 된다. `.firebaserc`의 `REPLACE_ME`는 6에서 PR로 채운다.
 
 ### 3. Supabase 프로젝트 2개
 
@@ -94,102 +100,111 @@ npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROJECT
 - **Project Settings → API Keys**에서 프로젝트 URL, anon 키(공개), service_role 키(비밀)를 확인. 로컬 CLI와 같은 JWT 형식(Legacy API keys)을 쓴다.
 - 운영 프로젝트는 **Database → Backups**가 켜져 있는지 확인.
 
-CI용 개인 액세스 토큰: **Account → Access Tokens**에서 하나 만든다(두 조직 모두 접근하는 Leo 계정 토큰). 값은 6에서 GitHub Secret으로만 넣는다.
+CI용 액세스 토큰(**Account → Access Tokens**)은 환경마다 따로 만들어 6에서 각 GitHub 환경의 비밀값으로만 넣는다. 프로젝트 범위를 고를 수 있으면 해당 프로젝트로 좁힌다. 저장소 공통 비밀값으로 두지 않는다(같은 저장소의 PR 작업에서도 읽힐 수 있다).
 
 ### 4. OpenAI 키와 Secret Manager
 
-1. platform.openai.com에서 이 서비스 전용 Project를 만들고 Project API 키를 발급한다.
-2. 같은 Project의 **Limits**에서 월 사용 한도를 정한다.
-3. Secret Manager에 저장한다(값은 화면에 보이지 않게 입력):
+1. platform.openai.com에서 스테이징용·운영용 Project를 따로 만들고 각각 Project API 키를 발급한다(사용량·한도를 환경별로 본다).
+2. 각 Project의 **Limits**에서 월 사용 한도를 정한다(스테이징은 낮게).
+3. 각 GCP 프로젝트의 Secret Manager에 저장한다(값은 화면에 보이지 않게 입력):
 
 ```bash
-put_secret() {   # 사용법: put_secret <이름>  → 값을 입력하고 Enter
+put_secret() {   # 사용법: put_secret <프로젝트> <비밀 이름>  → 값을 입력하고 Enter
   local value
-  read -rs -p "$1 값: " value; echo
-  printf '%s' "$value" | gcloud secrets create "$1" --replication-policy=automatic --data-file=-
+  printf '%s (%s) 값: ' "$2" "$1"; read -rs value; echo
+  printf '%s' "$value" | gcloud secrets create "$2" --project "$1" --replication-policy=automatic --data-file=-
   unset value
 }
-put_secret openai-api-key
-put_secret supabase-service-role-key-staging
-put_secret supabase-service-role-key-prod
+put_secret "$STAGING_PROJECT" openai-api-key                     # 스테이징용 OpenAI 키
+put_secret "$STAGING_PROJECT" supabase-service-role-key-staging
+put_secret "$PROD_PROJECT"    openai-api-key                     # 운영용 OpenAI 키
+put_secret "$PROD_PROJECT"    supabase-service-role-key-prod
 ```
 
-키를 바꿀 때는 `gcloud secrets versions add <이름> --data-file=-`로 새 버전을 넣는다(배포는 `:latest`를 참조하므로 다음 배포부터 반영된다).
+키를 바꿀 때는 `gcloud secrets versions add <이름> --project <프로젝트> --data-file=-`로 새 버전을 넣는다(배포는 `:latest`를 참조하므로 다음 배포부터 반영된다).
 
 ### 5. 서비스 계정과 Workload Identity Federation
 
+각 프로젝트에 런타임 계정·배포 계정·WIF를 만든다. **배포 계정은 해당 GitHub 환경(`staging` / `production`)에서 도는 작업만** 받을 수 있다. 운영 프로젝트의 WIF 제공자는 `production` 환경 토큰만 받아들인다.
+
 ```bash
-PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
-RUNTIME=agent-runtime@$PROJECT_ID.iam.gserviceaccount.com
-DEPLOYER=github-deployer@$PROJECT_ID.iam.gserviceaccount.com   # 스테이징·운영 배포 (환경 실행만)
-PREVIEW=github-preview@$PROJECT_ID.iam.gserviceaccount.com      # PR 미리보기 (Hosting만)
+# 사용법: setup_project <프로젝트 ID> <staging|prod> <GitHub 환경 이름>
+setup_project() {
+  local P="$1" ENV="$2" GH_ENV="$3" NUM CONDITION
+  NUM=$(gcloud projects describe "$P" --format='value(projectNumber)')
+  local RUNTIME="agent-runtime@$P.iam.gserviceaccount.com"
+  local DEPLOYER="github-deployer@$P.iam.gserviceaccount.com"
+  local POOL="principalSet://iam.googleapis.com/projects/$NUM/locations/global/workloadIdentityPools/github"
 
-gcloud iam service-accounts create agent-runtime --display-name="에이전트 런타임"
-gcloud iam service-accounts create github-deployer --display-name="GitHub Actions 배포"
-gcloud iam service-accounts create github-preview --display-name="GitHub Actions PR 미리보기"
+  gcloud iam service-accounts create agent-runtime   --project "$P" --display-name="에이전트 런타임"
+  gcloud iam service-accounts create github-deployer --project "$P" --display-name="GitHub Actions 배포"
 
-# 런타임: 비밀값 읽기만
-for s in openai-api-key supabase-service-role-key-staging supabase-service-role-key-prod; do
-  gcloud secrets add-iam-policy-binding "$s" \
-    --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor
-done
+  # 런타임: 이 프로젝트의 비밀값 읽기만
+  for s in openai-api-key "supabase-service-role-key-$ENV"; do
+    gcloud secrets add-iam-policy-binding "$s" --project "$P" \
+      --member="serviceAccount:$RUNTIME" --role=roles/secretmanager.secretAccessor
+  done
 
-# 배포 계정: 소스 배포, 공개 호출 설정, Hosting 배포
-for r in roles/run.sourceDeveloper roles/run.admin roles/serviceusage.serviceUsageConsumer \
-         roles/firebasehosting.admin roles/serviceusage.apiKeysViewer; do
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$DEPLOYER" --role="$r"
-done
-gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" \
-  --member="serviceAccount:$DEPLOYER" --role=roles/iam.serviceAccountUser
+  # 배포 계정: 소스 배포, 공개 호출 설정, Hosting 배포
+  for r in roles/run.sourceDeveloper roles/run.admin roles/serviceusage.serviceUsageConsumer \
+           roles/firebasehosting.admin roles/serviceusage.apiKeysViewer; do
+    gcloud projects add-iam-policy-binding "$P" --member="serviceAccount:$DEPLOYER" --role="$r"
+  done
+  gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" --project "$P" \
+    --member="serviceAccount:$DEPLOYER" --role=roles/iam.serviceAccountUser
 
-# 미리보기 계정: Hosting만 (Cloud Run·비밀값·DB 권한 없음)
+  # 소스 빌드에 쓰이는 기본 Compute 서비스 계정
+  gcloud projects add-iam-policy-binding "$P" \
+    --member="serviceAccount:$NUM-compute@developer.gserviceaccount.com" --role=roles/run.builder
+
+  # GitHub OIDC. environment 클레임은 환경을 선언한 작업에만 있으므로 없으면 'none'으로 매핑한다.
+  CONDITION="assertion.repository=='$REPO'"
+  if [ "$GH_ENV" = production ]; then
+    CONDITION="$CONDITION && has(assertion.environment) && assertion.environment=='production'"
+  fi
+  gcloud iam workload-identity-pools create github --project "$P" --location=global --display-name="GitHub Actions"
+  gcloud iam workload-identity-pools providers create-oidc github-repo --project "$P" \
+    --location=global --workload-identity-pool=github \
+    --issuer-uri="https://token.actions.githubusercontent.com" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref,attribute.environment=has(assertion.environment) ? assertion.environment : 'none'" \
+    --attribute-condition="$CONDITION"
+  gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER" --project "$P" \
+    --role=roles/iam.workloadIdentityUser --member="$POOL/attribute.environment/$GH_ENV"
+}
+
+setup_project "$STAGING_PROJECT" staging staging
+setup_project "$PROD_PROJECT"    prod    production
+
+# PR 미리보기 계정: 스테이징 프로젝트에만, Hosting 권한만 (Cloud Run·비밀값·DB 권한 없음).
+# 이 저장소의 모든 작업(PR 포함)이 쓸 수 있으므로 운영 프로젝트에는 만들지 않는다.
+STAGING_NUM=$(gcloud projects describe "$STAGING_PROJECT" --format='value(projectNumber)')
+PREVIEW=github-preview@$STAGING_PROJECT.iam.gserviceaccount.com
+gcloud iam service-accounts create github-preview --project "$STAGING_PROJECT" --display-name="GitHub Actions PR 미리보기"
 for r in roles/firebasehosting.admin roles/serviceusage.apiKeysViewer roles/serviceusage.serviceUsageConsumer; do
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$PREVIEW" --role="$r"
+  gcloud projects add-iam-policy-binding "$STAGING_PROJECT" --member="serviceAccount:$PREVIEW" --role="$r"
 done
+gcloud iam service-accounts add-iam-policy-binding "$PREVIEW" --project "$STAGING_PROJECT" \
+  --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/$STAGING_NUM/locations/global/workloadIdentityPools/github/attribute.repository/$REPO"
 
-# 소스 빌드에 쓰이는 기본 Compute 서비스 계정
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" --role=roles/run.builder
-
-# GitHub OIDC (이 저장소에서만)
-gcloud iam workload-identity-pools create github --location=global --display-name="GitHub Actions"
-gcloud iam workload-identity-pools providers create-oidc github-repo \
-  --location=global --workload-identity-pool=github \
-  --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref,attribute.environment=has(assertion.environment) ? assertion.environment : 'none'" \
-  --attribute-condition="assertion.repository=='$REPO'"
-# environment 클레임은 환경을 선언한 작업에만 있다. PR 미리보기처럼 없는 경우 'none'으로 매핑한다.
-POOL="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github"
-
-# 배포 계정은 GitHub Environment staging·production에서 도는 작업만 쓸 수 있다.
-# PR 작업은 환경이 없으므로 이 계정을 받지 못한다(환경별 실행 브랜치·태그 제한은 6에서).
-for e in staging production; do
-  gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER" --role=roles/iam.workloadIdentityUser \
-    --member="$POOL/attribute.environment/$e"
-done
-# 미리보기 계정은 이 저장소의 모든 작업(PR 포함)이 쓸 수 있다.
-gcloud iam service-accounts add-iam-policy-binding "$PREVIEW" --role=roles/iam.workloadIdentityUser \
-  --member="$POOL/attribute.repository/$REPO"
-
-# 6에서 GCP_WIF_PROVIDER로 쓸 값
-gcloud iam workload-identity-pools providers describe github-repo \
+# 6에서 쓸 WIF 제공자 이름
+gcloud iam workload-identity-pools providers describe github-repo --project "$STAGING_PROJECT" \
+  --location=global --workload-identity-pool=github --format='value(name)'
+gcloud iam workload-identity-pools providers describe github-repo --project "$PROD_PROJECT" \
   --location=global --workload-identity-pool=github --format='value(name)'
 ```
 
-### 6. GitHub 변수·비밀값, 공개 값 파일, `main` 보호
+### 6. GitHub 변수·비밀값, 공개 값 파일, 보호 규칙
 
-에이전트 주소는 배포 전에 정해진다: `https://agent-staging-$PROJECT_NUMBER.$REGION.run.app`, `https://agent-prod-$PROJECT_NUMBER.$REGION.run.app`.
+에이전트 주소는 배포 전에 정해진다: `https://agent-<staging|prod>-<프로젝트 번호>.$REGION.run.app`.
 
 ```bash
-# 저장소 공통
-gh variable set GCP_PROJECT_ID      --repo "$REPO" --body "$PROJECT_ID"
-gh variable set GCP_WIF_PROVIDER    --repo "$REPO" --body "<5의 마지막 명령 출력>"
-gh variable set GCP_DEPLOY_SERVICE_ACCOUNT  --repo "$REPO" --body "$DEPLOYER"
+# 저장소 공통: PR 미리보기용(스테이징 프로젝트)만. 그 밖의 GCP 값은 저장소 공통에 두지 않는다.
+gh variable set GCP_PREVIEW_PROJECT_ID      --repo "$REPO" --body "$STAGING_PROJECT"
+gh variable set GCP_PREVIEW_WIF_PROVIDER    --repo "$REPO" --body "<5의 스테이징 제공자 이름>"
 gh variable set GCP_PREVIEW_SERVICE_ACCOUNT --repo "$REPO" --body "$PREVIEW"
-gh secret   set SUPABASE_ACCESS_TOKEN --repo "$REPO"          # 프롬프트에 값 입력
 
 # 환경 만들기: staging은 main 브랜치에서만, production은 v* 태그에서만 실행되게 제한한다.
-# 이 제한이 있어야 PR 브랜치가 환경을 선언해 배포 계정을 받는 일을 막는다.
 for e in staging production; do
   echo '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' |
     gh api -X PUT "repos/$REPO/environments/$e" --input -
@@ -197,37 +212,53 @@ done
 gh api -X POST "repos/$REPO/environments/staging/deployment-branch-policies" -f name=main -f type=branch
 gh api -X POST "repos/$REPO/environments/production/deployment-branch-policies" -f name='v*' -f type=tag
 
-# 환경별 변수 (staging 예시. production도 같은 이름으로 운영 값을 넣는다)
-E=staging
-gh variable set SUPABASE_PROJECT_REF --repo "$REPO" --env $E --body "<프로젝트 ref>"
-gh variable set SUPABASE_URL         --repo "$REPO" --env $E --body "https://<프로젝트 ref>.supabase.co"
-gh variable set SUPABASE_ANON_KEY    --repo "$REPO" --env $E --body "<anon 키(공개 값)>"
-gh variable set AGENT_URL            --repo "$REPO" --env $E --body "https://agent-staging-$PROJECT_NUMBER.$REGION.run.app"
-gh variable set WEB_URL              --repo "$REPO" --env $E --body "https://$STAGING_SITE.web.app"
-gh variable set OPENAI_MODEL         --repo "$REPO" --env $E --body "<모델 이름>"
+# 환경별 변수·비밀값
+# 사용법: set_env <GitHub 환경> <GCP 프로젝트> <staging|prod> <Hosting 사이트>
+set_env() {
+  local E="$1" P="$2" ENV="$3" SITE="$4" NUM ref anon model
+  NUM=$(gcloud projects describe "$P" --format='value(projectNumber)')
+  gh variable set GCP_PROJECT_ID             --repo "$REPO" --env "$E" --body "$P"
+  gh variable set GCP_WIF_PROVIDER           --repo "$REPO" --env "$E" \
+    --body "projects/$NUM/locations/global/workloadIdentityPools/github/providers/github-repo"
+  gh variable set GCP_DEPLOY_SERVICE_ACCOUNT --repo "$REPO" --env "$E" --body "github-deployer@$P.iam.gserviceaccount.com"
+  gh variable set AGENT_URL                  --repo "$REPO" --env "$E" --body "https://agent-$ENV-$NUM.$REGION.run.app"
+  gh variable set WEB_URL                    --repo "$REPO" --env "$E" --body "https://$SITE.web.app"
+  echo "[$E] Supabase·모델 값을 입력하세요"
+  printf '  SUPABASE_PROJECT_REF: '; read -r ref
+  gh variable set SUPABASE_PROJECT_REF --repo "$REPO" --env "$E" --body "$ref"
+  gh variable set SUPABASE_URL         --repo "$REPO" --env "$E" --body "https://$ref.supabase.co"
+  printf '  SUPABASE_ANON_KEY(공개 값): '; read -r anon
+  gh variable set SUPABASE_ANON_KEY    --repo "$REPO" --env "$E" --body "$anon"
+  printf '  OPENAI_MODEL: '; read -r model
+  gh variable set OPENAI_MODEL         --repo "$REPO" --env "$E" --body "$model"
+  # 비밀값은 gh가 직접 프롬프트로 받는다. ADMIN_PASSWORD·DEMO_PASSWORD는 12자 이상
+  for s in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_SERVICE_ROLE_KEY ADMIN_PASSWORD DEMO_PASSWORD; do
+    gh secret set "$s" --repo "$REPO" --env "$E"
+  done
+}
+set_env staging    "$STAGING_PROJECT" staging "$STAGING_SITE"
+set_env production "$PROD_PROJECT"    prod    "$PROD_SITE"
+
 # 스테이징에만: PR 미리보기 채널 주소를 CORS에 허용
 gh variable set ALLOWED_ORIGIN_REGEX --repo "$REPO" --env staging \
   --body "^https://$STAGING_SITE--pr-[0-9]+-[a-z0-9]+\\.web\\.app\$"
 # (선택) 관리자 메일. 없으면 admin@demo.test
-# gh variable set ADMIN_EMAIL --repo "$REPO" --env $E --body "<관리자 메일>"
-
-# 환경별 비밀값 (각각 프롬프트에 입력. ADMIN_PASSWORD·DEMO_PASSWORD는 12자 이상)
-for s in SUPABASE_DB_PASSWORD SUPABASE_SERVICE_ROLE_KEY ADMIN_PASSWORD DEMO_PASSWORD; do
-  gh secret set "$s" --repo "$REPO" --env $E
-done
+# gh variable set ADMIN_EMAIL --repo "$REPO" --env <환경> --body "<관리자 메일>"
 ```
 
 | 이름 | 위치 | 종류 |
 |---|---|---|
-| `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT`, `GCP_PREVIEW_SERVICE_ACCOUNT` | 저장소 | 변수 |
-| `SUPABASE_ACCESS_TOKEN` | 저장소 | 비밀값 |
+| `GCP_PREVIEW_PROJECT_ID`, `GCP_PREVIEW_WIF_PROVIDER`, `GCP_PREVIEW_SERVICE_ACCOUNT` | 저장소 (스테이징 프로젝트 값) | 변수 |
+| `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT` | 환경 `staging`·`production` (각 환경의 프로젝트 값) | 변수 |
 | `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AGENT_URL`, `WEB_URL`, `OPENAI_MODEL`, (`ADMIN_EMAIL`) | 환경 `staging`·`production` | 변수 |
 | `ALLOWED_ORIGIN_REGEX` | 환경 `staging`만 | 변수 |
-| `SUPABASE_DB_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, `DEMO_PASSWORD` | 환경 `staging`·`production` | 비밀값 |
+| `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, `DEMO_PASSWORD` | 환경 `staging`·`production` | 비밀값 |
 
-공개 값 파일: `apps/web/.env.staging`, `apps/web/.env.production`의 `REPLACE_ME`를 위 변수와 **같은 값**(Supabase URL, anon 키, 에이전트 주소)으로, `.firebaserc`의 `REPLACE_ME`를 프로젝트 ID·사이트 ID로 바꾼다. 이 변경은 PR로 올린다(Claude Code에 값만 알려 주면 된다. anon 키는 공개 값이다). 배포 워크플로는 파일 값과 GitHub 변수가 다르면 멈춘다.
+공개 값 파일: 다음 값을 채워 PR로 올린다(Claude Code에 값만 알려 주면 된다. 모두 공개 값이다). 배포 워크플로는 파일 값과 GitHub 변수가 다르면 멈춘다.
+- `apps/web/.env.staging`, `apps/web/.env.production`: Supabase URL, anon 키, 에이전트 주소(위 변수와 **같은 값**).
+- `.firebaserc`: 스테이징·운영 프로젝트 ID와 각 사이트 ID. 대상 `staging`은 스테이징 프로젝트에, `prod`는 운영 프로젝트에만 연결한다.
 
-`main` 보호(PR 필수, CI 필수, 강제 푸시·삭제 금지)와 `v*` 태그 보호(관리자만 만들기·옮기기·지우기). 비공개 저장소에서 환경 실행 제한·브랜치 보호·규칙 세트는 GitHub 유료 플랜(Pro·Team)이어야 쓸 수 있다. **지원되지 않으면 PR 브랜치가 배포 계정을 받을 수 있으므로 알려 달라.**
+보호 규칙: `main` 보호(PR 필수, CI 필수, 강제 푸시·삭제 금지), `v*` 태그 보호(관리자만 만들기·옮기기·지우기), `production` 승인자. 비공개 저장소에서 환경 실행 제한·브랜치 보호·규칙 세트는 GitHub 유료 플랜(Pro·Team)이어야 쓸 수 있다. **지원되지 않으면 PR 브랜치가 환경을 선언해 배포 계정을 받을 수 있으므로 알려 달라.**
 
 ```bash
 gh api -X PUT "repos/$REPO/branches/main/protection" --input - <<'EOF'
@@ -243,9 +274,7 @@ gh api -X PUT "repos/$REPO/branches/main/protection" --input - <<'EOF'
   "allow_deletions": false
 }
 EOF
-```
 
-```bash
 # v* 태그는 저장소 관리자(Leo)만 만들고 옮기고 지울 수 있다
 gh api -X POST "repos/$REPO/rulesets" --input - <<'EOF'
 {
@@ -264,22 +293,28 @@ EOF
 ### 끝났는지 확인
 
 ```bash
-gcloud services list --enabled --project "$PROJECT_ID" | grep -E 'run|cloudbuild|secretmanager|firebasehosting'
-gcloud secrets list --project "$PROJECT_ID"                   # 이름 3개
-gh variable list --repo "$REPO"; gh variable list --repo "$REPO" --env staging; gh variable list --repo "$REPO" --env production
+for P in "$STAGING_PROJECT" "$PROD_PROJECT"; do
+  echo "== $P"
+  gcloud services list --enabled --project "$P" | grep -E 'run|cloudbuild|secretmanager|firebasehosting'
+  gcloud secrets list --project "$P"                           # 프로젝트마다 이름 2개
+  gcloud iam service-accounts list --project "$P"               # 운영에는 github-preview가 없어야 함
+done
+gh variable list --repo "$REPO"                                 # GCP_PREVIEW_* 3개만
+gh variable list --repo "$REPO" --env staging; gh variable list --repo "$REPO" --env production
+gh secret list --repo "$REPO"                                   # 비어 있어야 함
 gh secret list --repo "$REPO" --env staging; gh secret list --repo "$REPO" --env production
 grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging apps/web/.env.production .firebaserc   # 출력 없어야 함
 ```
 
 ## 배포 흐름
 
-1. 작업 브랜치 → PR. `ci`가 테스트하고, 스테이징 설정으로 빌드한 웹을 미리보기 채널 `pr-<번호>`에 올려 PR에 주소를 남긴다. 미리보기 웹은 스테이징 Supabase·스테이징 에이전트를 쓴다.
-2. CI 통과 → squash 머지 → `deploy-staging`이 스테이징에 반영하고 `smoke.sh`로 점검한다.
-3. 스테이징에서 확인되면 Leo가 `main`의 커밋에 태그(`git tag v0.1.0 && git push origin v0.1.0`) → `deploy-prod`가 운영에 같은 순서로 반영한다. `main`에 없는 커밋의 태그는 거부된다.
+1. 작업 브랜치 → PR. `ci`가 테스트하고, 스테이징 설정으로 빌드한 웹을 미리보기 채널 `pr-<번호>`(스테이징 프로젝트)에 올려 PR에 주소를 남긴다. 미리보기 웹은 스테이징 Supabase·스테이징 에이전트를 쓴다.
+2. CI 통과 → squash 머지 → `deploy-staging`이 스테이징 프로젝트에 반영하고 `smoke.sh`로 점검한다.
+3. 스테이징에서 확인되면 Leo가 `main`의 커밋에 태그(`git tag v0.1.0 && git push origin v0.1.0`) → `deploy-prod`가 운영 프로젝트에 같은 순서로 반영한다. `main`에 없는 커밋의 태그는 거부된다.
 
 각 단계는 실패하면 그 자리에서 멈춘다. DB 마이그레이션은 에이전트·웹보다 먼저 적용되며, 추가만 하므로 앞 버전 코드와도 동작한다.
 
-`smoke.sh` 점검 내용: 에이전트 `/health`의 version이 배포 커밋과 같음 → 웹 `/`·`/me` 200 → `newhire@demo.test` 로그인 → 신입 과제 31개 → 공개 가입 거부 → 토큰 없는 `/chat` 401. 로컬에서는 `EXPECT_VERSION`을 주지 않으면 `dev`를 기대한다.
+`smoke.sh` 점검 내용: 에이전트 `/health`의 version이 배포 커밋과 같음 → 웹 `/`·`/me` 200 → `newhire@demo.test` 로그인 → 신입 과제 31개 → 공개 가입 거부(`signup_disabled`) → 토큰 없는 `/chat` 401. 로컬에서는 `EXPECT_VERSION`을 주지 않으면 `dev`를 기대한다.
 
 ## 되돌리기
 
@@ -290,16 +325,16 @@ DB는 되돌리지 않는다(마이그레이션은 추가만). 코드만 이전 
 **에이전트만** (Cloud Run 이전 리비전으로 트래픽 전환, 수 초):
 
 ```bash
-gcloud run revisions list --service agent-prod --region "$REGION" --project "$PROJECT_ID"
-gcloud run services update-traffic agent-prod --region "$REGION" --project "$PROJECT_ID" \
+gcloud run revisions list --service agent-prod --region "$REGION" --project "$PROD_PROJECT"
+gcloud run services update-traffic agent-prod --region "$REGION" --project "$PROD_PROJECT" \
   --to-revisions <이전 리비전 이름>=100
-# 다시 최신으로: gcloud run services update-traffic agent-prod --region "$REGION" --to-latest
+# 다시 최신으로: gcloud run services update-traffic agent-prod --region "$REGION" --project "$PROD_PROJECT" --to-latest
 ```
 
-**웹만** (Firebase Hosting 이전 릴리스): Firebase 콘솔 → Hosting → 해당 사이트 → 릴리스 기록 → 이전 릴리스의 **롤백**. CLI로는
+**웹만** (Firebase Hosting 이전 릴리스): Firebase 콘솔 → 운영 프로젝트 → Hosting → 해당 사이트 → 릴리스 기록 → 이전 릴리스의 **롤백**. CLI로는
 
 ```bash
-npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_SITE:live" --project "$PROJECT_ID"
+npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_SITE:live" --project "$PROD_PROJECT"
 ```
 
 ## 운영 점검 항목
@@ -308,17 +343,17 @@ npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_
 
 | 항목 | 확인 방법 | 결과 |
 |---|---|---|
-| `agent-prod` 최소 인스턴스 1 | `gcloud run services describe agent-prod --region $REGION --format='value(spec.template.metadata.annotations)'` | |
-| `/health` 가동 시간 점검과 알림 | Cloud Monitoring 가동 시간 확인(`AGENT_URL/health`, 5분 간격) + 알림 채널 | |
-| GCP 예산 알림 | 결제 → 예산 및 알림 | |
-| OpenAI 월 한도 | OpenAI Project → Limits | |
+| `agent-prod` 최소 인스턴스 1 | `gcloud run services describe agent-prod --region $REGION --project $PROD_PROJECT --format='value(spec.template.metadata.annotations)'` | |
+| `/health` 가동 시간 점검과 알림 | 운영 프로젝트 Cloud Monitoring 가동 시간 확인(`AGENT_URL/health`, 5분 간격) + 알림 채널 | |
+| GCP 예산 알림(프로젝트별) | 결제 → 예산 및 알림 | |
+| OpenAI 월 한도(환경별) | OpenAI Project → Limits | |
 | Supabase 운영이 Pro, 백업 켜짐 | 대시보드 → Billing, Database → Backups | |
 | 공개 가입 꺼짐(두 환경) | `smoke.sh` 5단계 | |
-| 최소 인스턴스를 0으로 내릴 날짜 | 운영 시작 + 한 달: `gcloud run services update agent-prod --region $REGION --min-instances 0` | |
+| 최소 인스턴스를 0으로 내릴 날짜 | 운영 시작 + 한 달: `gcloud run services update agent-prod --region $REGION --project $PROD_PROJECT --min-instances 0` | |
 
 ## 확인이 필요한 부분 (첫 스테이징 배포에서 검증)
 
-- 미리보기 계정의 `firebasehosting.admin`은 프로젝트 단위 권한이라 운영 Hosting 사이트에도 쓸 수 있다(Hosting에는 사이트별 권한이 없다). PR 코드를 실행하는 빌드 작업과 인증하는 배포 작업을 나눠 두어서, 남는 위험은 워크플로 파일을 고칠 수 있는 저장소 쓰기 권한자(현재 Leo와 Claude Code)로 한정된다. 운영 웹을 완전히 떼려면 운영 Hosting을 별도 GCP 프로젝트로 옮겨야 한다.
 - Firebase CLI가 Workload Identity Federation 자격(서비스 계정 가장)을 그대로 받는지 공식 문서로 확인하지 못했다. `ci`의 미리보기 배포나 `deploy-staging`의 웹 배포가 인증 오류로 실패하면 멈추고 보고한다(키 파일로 우회하지 않는다).
 - 배포 계정 역할은 공식 문서 기준(`run.sourceDeveloper`, `serviceUsageConsumer`, 런타임 계정의 `serviceAccountUser`, `firebasehosting.admin`)에 공개 호출 설정용 `run.admin`을 더했다. 권한 오류가 나면 오류의 권한 이름을 보고 추가한다.
-- CI의 `pgTAP·에이전트 테스트`는 `supabase/`(Task 2)가 `main`에 있어야 통과한다. 계정 부트스트랩 단계는 Task 3에서 CI에 추가한다.
+- 미리보기 계정은 스테이징 프로젝트의 Hosting 전체(스테이징 라이브 사이트 포함)에 쓸 수 있다. 스테이징은 심사위원이 쓰지 않으므로 받아들인다.
+- CI의 `pgTAP·에이전트 테스트`는 `main`에 pgTAP 테스트(Task 2)가 있어야 통과한다(없으면 `no pgTAP tests found`). 계정 부트스트랩 단계는 Task 3에서 CI에 추가한다.

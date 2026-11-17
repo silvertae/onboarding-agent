@@ -1,11 +1,16 @@
 {
   "projects": {
-    "default": "REPLACE_ME_GCP_PROJECT_ID"
+    "staging": "REPLACE_ME_STAGING_GCP_PROJECT_ID",
+    "prod": "REPLACE_ME_PROD_GCP_PROJECT_ID"
   },
   "targets": {
-    "REPLACE_ME_GCP_PROJECT_ID": {
+    "REPLACE_ME_STAGING_GCP_PROJECT_ID": {
       "hosting": {
-        "staging": ["REPLACE_ME_STAGING_SITE_ID"],
+        "staging": ["REPLACE_ME_STAGING_SITE_ID"]
+      }
+    },
+    "REPLACE_ME_PROD_GCP_PROJECT_ID": {
+      "hosting": {
         "prod": ["REPLACE_ME_PROD_SITE_ID"]
       }
     }
