@@ -9,6 +9,6 @@
     "db:test": "supabase test db",
     "db:reset": "supabase db reset && npm run bootstrap",
     "bootstrap": "bash scripts/with-local-env.sh sh -c 'cd services/agent && uv run python scripts/bootstrap_accounts.py'",
-    "types": "supabase gen types typescript --local > apps/web/src/lib/database.types.ts"
+    "types": "supabase gen types typescript --local > apps/web/src/lib/database.types.ts && npx --yes oxfmt apps/web/src/lib/database.types.ts"
   }
 }
