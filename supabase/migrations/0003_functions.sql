@@ -56,10 +56,62 @@ begin
 end
 $$;
 
+-- 감사 필드 고정: 사용자 요청(auth.uid()가 있을 때)이면 작성자를 호출자로 덮어쓴다
+create function private.stamp_knowledge() returns trigger
+language plpgsql set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is not null then
+    new.updated_by := (select auth.uid());
+  end if;
+  return new;
+end
+$$;
+
+create function private.stamp_exam() returns trigger
+language plpgsql set search_path = ''
+as $$
+begin
+  if tg_op = 'UPDATE' then
+    new.created_by := old.created_by;
+  elsif (select auth.uid()) is not null then
+    new.created_by := (select auth.uid());
+  end if;
+  return new;
+end
+$$;
+
+-- 미답변은 항상 open으로 기록한다(해결은 resolve_unanswered로만)
+create function private.sanitize_unanswered() returns trigger
+language plpgsql set search_path = ''
+as $$
+begin
+  new.status := 'open';
+  new.resolved_knowledge_id := null;
+  new.created_at := now();
+  return new;
+end
+$$;
+
 revoke all on function private.is_handler(public.task_templates) from public;
 revoke all on function private.unlock_ready(uuid) from public;
 revoke all on function private.on_task_finished() from public;
 revoke all on function private.touch_updated_at() from public;
+revoke all on function private.stamp_knowledge() from public;
+revoke all on function private.stamp_exam() from public;
+revoke all on function private.sanitize_unanswered() from public;
+
+create trigger knowledge_items_stamp
+  before insert or update on public.knowledge_items
+  for each row execute function private.stamp_knowledge();
+
+create trigger exams_stamp
+  before insert or update on public.exams
+  for each row execute function private.stamp_exam();
+
+create trigger unanswered_questions_sanitize
+  before insert on public.unanswered_questions
+  for each row execute function private.sanitize_unanswered();
 
 create trigger task_instances_unlock
   after update of status on public.task_instances
@@ -180,14 +232,23 @@ declare
   v_i public.task_instances;
   v_t public.task_templates;
   v_reason text := btrim(coalesce(p_reason, ''), E' \t\r\n');
+  v_handler boolean;
 begin
   select * into v_i from public.task_instances where id = p_id for update;
   if not found then
     raise exception '과제를 찾을 수 없습니다' using errcode = 'P0002';
   end if;
   select * into v_t from public.task_templates where id = v_i.template_id;
-  if v_i.new_hire_id is distinct from (select auth.uid()) and not private.is_handler(v_t) then
+  v_handler := private.is_handler(v_t);
+  if v_i.new_hire_id is distinct from (select auth.uid()) and not v_handler then
     raise exception '해당 없음으로 바꿀 권한이 없습니다' using errcode = '42501';
+  end if;
+  -- 신입 본인은 담당자 처리 과제를 바꿀 수 없고, 할 차례(todo·rework)인 과제만 바꿀 수 있다
+  if not v_handler and v_t.completion_mode = 'staff_only' then
+    raise exception '담당자가 처리하는 과제입니다' using errcode = '42501';
+  end if;
+  if not v_handler and v_i.status not in ('todo', 'rework', 'na') then
+    raise exception '지금은 해당 없음으로 바꿀 수 없는 과제입니다' using errcode = '22023';
   end if;
   if not v_t.allow_na then
     raise exception '해당 없음을 선택할 수 없는 과제입니다' using errcode = '22023';

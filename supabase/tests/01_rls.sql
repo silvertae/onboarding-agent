@@ -1,7 +1,7 @@
 -- RLS·권한 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(29);
 
 -- ── 픽스처 (postgres 권한) ───────────────────────────────────────────
 -- 조직 O, 팀 T(우리 팀)·T2(다른 팀). 사람은 모두 가상.
@@ -80,6 +80,12 @@ select results_eq('select id from public.profiles', array['a1000000-0000-0000-00
 -- 직접 update는 권한이 없다(상태 변경은 RPC로만)
 select throws_ok($$update public.task_instances set status = 'done'$$, '42501', null,
   '신입A: task_instances 직접 update 불가');
+-- 신입은 미답변을 기록만 한다(조회 권한은 없다). 상태 위조는 아래 trainer 구간에서 확인
+select lives_ok(
+  $$insert into public.unanswered_questions (org_id, asked_by, team_id, question, status)
+    values ('a1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000101',
+            'a1000000-0000-0000-0000-0000000000a1', '해결된 척', 'resolved')$$,
+  '신입A: 본인 미답변 기록 가능');
 
 -- ── 총무(ga) ────────────────────────────────────────────────────────
 set local request.jwt.claim.sub = 'a1000000-0000-0000-0000-000000000301';
@@ -107,6 +113,25 @@ select results_eq($$select question from public.knowledge_items where scope = 't
   array['팀T 게시', '팀T 초안'], 'trainer: 우리 팀 지식은 초안까지, 다른 팀은 안 보인다');
 select results_eq('select count(*) from public.exam_questions', array[1::bigint],
   'trainer: 우리 팀 시험 문항이 보인다');
+select results_eq($$select status::text from public.unanswered_questions where question = '해결된 척'$$,
+  array['open'], 'trainer: 신입이 resolved로 넣은 미답변도 open으로 기록됐다');
+-- 감사 필드는 호출자로 고정된다(다른 사람으로 위조 불가)
+select results_eq(
+  $$insert into public.knowledge_items (org_id, scope, team_id, question, answer, status, updated_by)
+    values ('a1000000-0000-0000-0000-000000000001', 'team', 'a1000000-0000-0000-0000-0000000000a1',
+            '위조 시도', '답', 'draft', 'a1000000-0000-0000-0000-000000000301')
+    returning updated_by$$,
+  array['a1000000-0000-0000-0000-000000000201'::uuid], 'trainer: 지식 updated_by는 본인으로 고정');
+select results_eq(
+  $$insert into public.exams (org_id, team_id, title, topic, difficulty, created_by)
+    values ('a1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-0000000000a1',
+            '위조 시험', '주제', 'beginner', 'a1000000-0000-0000-0000-000000000301')
+    returning created_by$$,
+  array['a1000000-0000-0000-0000-000000000201'::uuid], 'trainer: 시험 created_by는 본인으로 고정');
+select results_eq(
+  $$update public.exams set created_by = 'a1000000-0000-0000-0000-000000000301'
+    where id = 'a1000000-0000-0000-0000-000000000601' returning created_by$$,
+  array['a1000000-0000-0000-0000-000000000201'::uuid], 'trainer: 시험 created_by는 수정해도 바뀌지 않는다');
 
 -- ── 관리자 ──────────────────────────────────────────────────────────
 set local request.jwt.claim.sub = 'a1000000-0000-0000-0000-000000000401';

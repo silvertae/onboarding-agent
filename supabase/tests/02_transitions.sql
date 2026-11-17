@@ -1,7 +1,7 @@
 -- 상태 전이 RPC 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(40);
 
 -- ── 픽스처 ──────────────────────────────────────────────────────────
 insert into public.orgs (id, name) values ('a2000000-0000-0000-0000-000000000001', '테스트 가상 조직');
@@ -15,6 +15,7 @@ insert into auth.users (id, email) values
   ('a2000000-0000-0000-0000-000000000201', 'trainer@tr.test'),
   ('a2000000-0000-0000-0000-000000000301', 'hr@tr.test'),
   ('a2000000-0000-0000-0000-000000000302', 'ga@tr.test'),
+  ('a2000000-0000-0000-0000-000000000303', 'acc@tr.test'),
   ('a2000000-0000-0000-0000-000000000401', 'admin@tr.test');
 
 insert into public.profiles (id, org_id, email, full_name, role, department, team_id, hire_date, needs_hq_access) values
@@ -23,6 +24,7 @@ insert into public.profiles (id, org_id, email, full_name, role, department, tea
   ('a2000000-0000-0000-0000-000000000201', 'a2000000-0000-0000-0000-000000000001', 'trainer@tr.test',  '교육',     'team_trainer', null, 'a2000000-0000-0000-0000-0000000000a1', null, true),
   ('a2000000-0000-0000-0000-000000000301', 'a2000000-0000-0000-0000-000000000001', 'hr@tr.test',       '인사',     'ops_staff',    'hr', null, null, true),
   ('a2000000-0000-0000-0000-000000000302', 'a2000000-0000-0000-0000-000000000001', 'ga@tr.test',       '총무',     'ops_staff',    'ga', null, null, true),
+  ('a2000000-0000-0000-0000-000000000303', 'a2000000-0000-0000-0000-000000000001', 'acc@tr.test',      '회계',     'ops_staff',    'accounting', null, null, true),
   ('a2000000-0000-0000-0000-000000000401', 'a2000000-0000-0000-0000-000000000001', 'admin@tr.test',    '관리',     'admin',        null, null, null, true);
 
 insert into public.task_templates
@@ -38,6 +40,8 @@ values
   ('a2000000-0000-0000-0000-000000000001', 'AS1',  '평가',    'week1', null, 'a2000000-0000-0000-0000-0000000000a1', 'assessment', 'staff_only', false, false, '{}', null, 5),
   ('a2000000-0000-0000-0000-000000000001', 'HQ1',  '본사',    'day1',  'ga',         null, 'ops', 'staff_only', false, true,  '{}',       null, 0),
   ('a2000000-0000-0000-0000-000000000001', 'M1',   '선행 둘', 'month1', 'hr',        null, 'ops', 'confirm',    false, false, '{P1,S1}',  null, 30),
+  ('a2000000-0000-0000-0000-000000000001', 'SN1',  '담당자 해당없음', 'month1', 'accounting', null, 'ops', 'staff_only', true, false, '{}', null, 30),
+  ('a2000000-0000-0000-0000-000000000001', 'BN1',  '잠긴 해당없음',   'month1', 'accounting', null, 'ops', 'confirm',    true, false, '{P2}', null, 30),
   -- 다른 팀 템플릿: 팀T 신입에게 만들어지지 않아야 한다
   ('a2000000-0000-0000-0000-000000000001', 'OT1',  '다른 팀', 'day1',  null, 'a2000000-0000-0000-0000-0000000000a2', 'read', 'self', false, false, '{}', null, 0);
 
@@ -62,7 +66,7 @@ select ok(not has_function_privilege('anon', 'public.submit_task(uuid, jsonb)', 
 -- ── start_onboarding ────────────────────────────────────────────────
 set local role authenticated;
 set local request.jwt.claim.sub = 'a2000000-0000-0000-0000-000000000301';  -- hr
-select is(public.start_onboarding('a2000000-0000-0000-0000-000000000101'), 9, 'ops가 start_onboarding → 9개 생성');
+select is(public.start_onboarding('a2000000-0000-0000-0000-000000000101'), 11, 'ops가 start_onboarding → 11개 생성');
 select is(public.start_onboarding('a2000000-0000-0000-0000-000000000101'), 0, '다시 호출 → 0개');
 
 set local request.jwt.claim.sub = 'a2000000-0000-0000-0000-000000000101';  -- 신입
@@ -109,6 +113,14 @@ select throws_ok(format('select public.mark_na(%L, %L)', pg_temp.iid('P2'), '사
 select throws_ok(format('select public.mark_na(%L, %L)', pg_temp.iid('N1'), ''), null, null,
   'mark_na 사유 공백 → 예외');
 select is((public.mark_na(pg_temp.iid('N1'), '해당 없음')).status::text, 'na', 'mark_na 정상 → na');
+select throws_ok(format('select public.mark_na(%L, %L)', pg_temp.iid('SN1'), '해당 없음'), null, null,
+  '신입이 staff_only 과제 mark_na → 예외(담당자만)');
+select throws_ok(format('select public.mark_na(%L, %L)', pg_temp.iid('BN1'), '해당 없음'), null, null,
+  '신입이 blocked 과제 mark_na → 예외');
+set local request.jwt.claim.sub = 'a2000000-0000-0000-0000-000000000303';  -- accounting
+select is((public.mark_na(pg_temp.iid('SN1'), '대상 아님')).status::text, 'na',
+  '담당자(accounting)는 staff_only 과제 mark_na 가능');
+set local request.jwt.claim.sub = 'a2000000-0000-0000-0000-000000000101';  -- 신입
 
 -- ── 보완 요청 ───────────────────────────────────────────────────────
 select is((public.submit_task(pg_temp.iid('M1'))).status::text, 'submitted', 'M1 submit → submitted');
