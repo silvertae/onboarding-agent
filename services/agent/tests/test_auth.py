@@ -101,3 +101,29 @@ def test_auth_server_unreachable_503_not_401(client, monkeypatch):
     monkeypatch.setattr(db.anon_client().auth, "get_user", unreachable)
     res = client.get("/_test/me", headers=bearer("any-token"))
     assert res.status_code == 503
+
+
+# 인증 서버가 돌려준 오류의 종류로 401과 503을 나눈다 (Codex P1)
+@pytest.mark.parametrize(
+    ("make_error", "expected"),
+    [
+        (lambda e: e.AuthApiError("Internal Server Error", 500, None), 503),
+        (lambda e: e.AuthApiError("Request rate limit reached", 429, "over_request_rate_limit"), 503),
+        (lambda e: e.AuthRetryableError("Bad Gateway", 502), 503),
+        (lambda e: e.AuthUnknownError("unexpected response", ValueError("not json")), 503),
+        (lambda e: e.AuthApiError("invalid JWT", 401, "bad_jwt"), 401),
+        (lambda e: e.AuthApiError("Session from session_id claim in JWT does not exist", 403, "session_not_found"), 401),
+        (lambda e: e.AuthApiError("User not found", 404, "user_not_found"), 401),
+    ],
+    ids=["500", "429", "retryable-502", "unknown", "401-bad-jwt", "403-session-gone", "404-user-gone"],
+)
+def test_auth_error_kind_decides_401_or_503(client, monkeypatch, make_error, expected):
+    from supabase_auth import errors
+
+    from app import db
+
+    def failing(_token):
+        raise make_error(errors)
+
+    monkeypatch.setattr(db.anon_client().auth, "get_user", failing)
+    assert client.get("/_test/me", headers=bearer("any-token")).status_code == expected

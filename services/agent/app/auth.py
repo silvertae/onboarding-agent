@@ -9,11 +9,26 @@ from dataclasses import dataclass
 
 from fastapi import Depends, Header, HTTPException
 from starlette.concurrency import run_in_threadpool
-from supabase_auth.errors import AuthApiError, AuthError
+from supabase_auth.errors import AuthError, AuthRetryableError, AuthUnknownError
 
 from app.db import anon_client, user_client
 
 UNAUTHORIZED = "로그인이 필요해요"
+AUTH_UNAVAILABLE = "인증 서버에 연결할 수 없어요"
+
+
+def _is_invalid_token(error: AuthError) -> bool:
+    """토큰 자체가 무효인 오류(만료·형식·로그아웃 세션·없는 사용자)만 True.
+
+    서버 장애(5xx)·요청 제한(429)·연결 실패·해석할 수 없는 응답은 False다. 이것을 401로 돌려주면
+    웹(agentFetch)이 정상 사용자를 로그아웃시키므로 503으로 구분한다.
+    """
+    if isinstance(error, (AuthRetryableError, AuthUnknownError)):
+        return False
+    status = getattr(error, "status", None)
+    if status is None:
+        return True  # 상태 코드가 없는 클라이언트 측 검증 오류(예: JWT 형식)
+    return 400 <= status < 500 and status != 429
 
 
 @dataclass(frozen=True)
@@ -36,11 +51,12 @@ def _bearer_token(authorization: str | None) -> str:
 def _load_user(token: str) -> CurrentUser:
     try:
         user = anon_client().auth.get_user(token)
-    except (AuthApiError, AuthError):
-        # 만료·형식 오류·로그아웃한 세션
-        raise HTTPException(status_code=401, detail=UNAUTHORIZED) from None
+    except AuthError as error:
+        if _is_invalid_token(error):
+            raise HTTPException(status_code=401, detail=UNAUTHORIZED) from None
+        raise HTTPException(status_code=503, detail=AUTH_UNAVAILABLE) from None
     except Exception:
-        raise HTTPException(status_code=503, detail="인증 서버에 연결할 수 없어요") from None
+        raise HTTPException(status_code=503, detail=AUTH_UNAVAILABLE) from None
     if user is None or user.user is None:
         raise HTTPException(status_code=401, detail=UNAUTHORIZED)
 
