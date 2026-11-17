@@ -17,10 +17,16 @@ as $$
   )
 $$;
 
--- 선행 과제가 모두 done|na인 blocked 인스턴스를 todo로 연다
+-- 선행 과제가 모두 done|na인 blocked 인스턴스를 todo로 연다.
+-- 같은 신입의 잠금 해제는 트랜잭션 잠금으로 직렬화한다: 선행 과제 두 개가 동시에 끝나도
+-- 뒤에 오는 트랜잭션이 앞 트랜잭션의 커밋을 본 뒤 판단하므로 후속 과제가 잠긴 채 남지 않는다.
 create function private.unlock_ready(p_new_hire uuid) returns void
-language sql set search_path = ''
+language plpgsql set search_path = ''
 as $$
+begin
+  perform pg_advisory_xact_lock(hashtextextended('task_unlock:' || p_new_hire::text, 0));
+
+  -- 잠금을 얻은 뒤의 새 스냅샷에서 선행 완료 여부를 본다(READ COMMITTED)
   update public.task_instances i
      set status = 'todo'
     from public.task_templates t
@@ -35,7 +41,8 @@ as $$
           and pt.org_id = t.org_id
           and pt.code = any (t.prerequisite_codes)
           and pi.status not in ('done', 'na')
-     )
+     );
+end
 $$;
 
 create function private.on_task_finished() returns trigger
@@ -404,11 +411,17 @@ begin
   if btrim(coalesce(p_question, '')) = '' or btrim(coalesce(p_answer, '')) = '' then
     raise exception '질문과 답변을 입력해 주세요' using errcode = '22023';
   end if;
-  if v_u.status = 'resolved' and v_u.resolved_knowledge_id is not null then
+  -- 이미 해결된 질문: 호출자가 관리할 수 있는 범위의 지식일 때만 그대로 돌려준다(연타 대비).
+  -- security definer라 RLS가 적용되지 않으므로 범위를 직접 확인한다.
+  if v_u.status = 'resolved' then
     select * into v_k from public.knowledge_items where id = v_u.resolved_knowledge_id;
-    if found then
+    if found and (
+      (v_role = 'team_trainer' and v_k.scope = 'team' and v_k.team_id = (select private.my_team()))
+      or (v_role = 'ops_staff' and v_k.scope = 'company')
+    ) then
       return v_k;
     end if;
+    raise exception '이미 해결된 질문입니다' using errcode = '22023';
   end if;
 
   insert into public.knowledge_items (org_id, scope, team_id, question, answer, category, status, updated_by)

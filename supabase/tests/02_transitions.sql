@@ -1,7 +1,7 @@
 -- 상태 전이 RPC 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(42);
 
 -- ── 픽스처 ──────────────────────────────────────────────────────────
 insert into public.orgs (id, name) values ('a2000000-0000-0000-0000-000000000001', '테스트 가상 조직');
@@ -164,6 +164,11 @@ select results_eq(
   'trainer resolve_unanswered → team 범위 게시 지식');
 select is((select status::text from public.unanswered_questions where id = 'a2000000-0000-0000-0000-000000000701'),
   'resolved', '미답변 status = resolved');
+select is((public.resolve_unanswered('a2000000-0000-0000-0000-000000000701', '동호회 가입비는?', '다른 답', '복지')).answer,
+  '가상 값: 월 1만 원', '같은 trainer 재호출 → 새로 만들지 않고 기존 지식 반환');
+set local request.jwt.claim.sub = 'a2000000-0000-0000-0000-000000000301';  -- hr(ops)
+select throws_ok($$select public.resolve_unanswered('a2000000-0000-0000-0000-000000000701', 'q', 'a', 'c')$$,
+  null, null, '팀 지식으로 해결된 미답변을 ops가 다시 호출 → 예외(팀 지식 노출 금지)');
 
 -- ── 본사 출입 대상 아님 ─────────────────────────────────────────────
 select is(pg_temp.st('HQ1', 'a2000000-0000-0000-0000-000000000102'), 'na',
