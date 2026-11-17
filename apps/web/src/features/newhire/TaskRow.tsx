@@ -1,0 +1,77 @@
+import { AlertCircle, ChevronRight, Lock } from 'lucide-react'
+import { Link } from 'react-router'
+import { OwnerBadge } from '@/components/OwnerBadge'
+import { StatusBadge } from '@/components/StatusBadge'
+import type { TaskView } from '@/lib/tasks'
+import { cn } from '@/lib/utils'
+import { formatDateTime, formatDay } from './format'
+import { lockedHint } from './locked'
+
+type Props = {
+  task: TaskView
+  all: TaskView[]
+  teamName: string | null
+  // "지금 할 일" 묶음에서는 보완 요청을 강조하고 사유를 보여 준다.
+  highlight?: boolean
+}
+
+function Meta({ task, all, highlight }: Pick<Props, 'task' | 'all' | 'highlight'>) {
+  const locked = lockedHint(task, all)
+  if (locked) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Lock className="size-3.5" aria-hidden />
+        {locked}
+      </span>
+    )
+  }
+  if (task.status === 'na' && task.na_reason) return <span>사유: {task.na_reason}</span>
+
+  const parts: string[] = []
+  if (task.template.kind === 'assessment' && task.scheduled_at) {
+    parts.push([formatDateTime(task.scheduled_at), task.location].filter(Boolean).join(' · '))
+  } else if (task.due_date && task.status !== 'done') {
+    parts.push(`기한 ${formatDay(task.due_date)}`)
+  }
+  return (
+    <>
+      {parts.map((p) => (
+        <span key={p}>{p}</span>
+      ))}
+      {highlight && task.status === 'rework' && task.rework_reason && (
+        <span className="text-[#a1261c]">사유: {task.rework_reason}</span>
+      )}
+    </>
+  )
+}
+
+export function TaskRow({ task, all, teamName, highlight }: Props) {
+  const rework = highlight && task.status === 'rework'
+  return (
+    <Link
+      to={`/me/tasks/${task.id}`}
+      className={cn(
+        'flex items-start gap-3 border-t border-border px-4 py-3.5 text-foreground no-underline first:border-t-0 hover:bg-[#fafafc] sm:items-center sm:px-6',
+        rework && 'bg-[#fff8f7] hover:bg-[#fff1ef]',
+        task.status === 'blocked' && 'text-[var(--text-secondary)]',
+      )}
+    >
+      {highlight && (
+        <span className="hidden w-5 shrink-0 sm:block" aria-hidden>
+          {rework && <AlertCircle className="size-5 text-[#a1261c]" />}
+        </span>
+      )}
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span data-task-title className="text-[15px] font-medium">
+          {task.template.title}
+        </span>
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <OwnerBadge department={task.template.department} teamName={teamName} />
+          <Meta task={task} all={all} highlight={highlight} />
+        </span>
+      </div>
+      <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
+      <ChevronRight className="hidden size-4 shrink-0 text-[#aeaeb2] sm:block" aria-hidden />
+    </Link>
+  )
+}
