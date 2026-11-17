@@ -156,8 +156,9 @@ gcloud iam workload-identity-pools create github --location=global --display-nam
 gcloud iam workload-identity-pools providers create-oidc github-repo \
   --location=global --workload-identity-pool=github \
   --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref,attribute.environment=assertion.environment" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref,attribute.environment=has(assertion.environment) ? assertion.environment : 'none'" \
   --attribute-condition="assertion.repository=='$REPO'"
+# environment 클레임은 환경을 선언한 작업에만 있다. PR 미리보기처럼 없는 경우 'none'으로 매핑한다.
 POOL="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github"
 
 # 배포 계정은 GitHub Environment staging·production에서 도는 작업만 쓸 수 있다.
@@ -298,7 +299,7 @@ gcloud run services update-traffic agent-prod --region "$REGION" --project "$PRO
 **웹만** (Firebase Hosting 이전 릴리스): Firebase 콘솔 → Hosting → 해당 사이트 → 릴리스 기록 → 이전 릴리스의 **롤백**. CLI로는
 
 ```bash
-npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE:<이전 버전 ID>" "$PROD_SITE:live" --project "$PROJECT_ID"
+npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_SITE:live" --project "$PROJECT_ID"
 ```
 
 ## 운영 점검 항목
