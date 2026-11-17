@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S5 팀 신입 현황</title>
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#06479a}a:hover{color:#04336f}
+</style>
+
+<div style="min-height: 980px; background: #f5f5f7">
+  <header class="topbar">
+    <div class="topbar-in">
+      <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
+      <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
+      <nav class="nav" aria-label="주 메뉴"><a class="on" href="#">팀 신입 현황</a><a href="S7-exam-editor.html">시험 출제</a><a href="S10-knowledge.html">지식 관리</a></nav>
+      <div class="user">
+        <span class="avatar">서준</span>
+        <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">박서준</b><span class="caption">AI팀</span></div>
+        <span class="role">교육 담당자</span>
+        <button class="icon-btn" type="button" aria-label="로그아웃"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page" style="display: flex; flex-direction: column; gap: 24px">
+    <div class="between">
+      <div style="display: flex; flex-direction: column; gap: 4px"><h1>AI팀 신입 현황</h1><p class="secondary">팀 과제 기준 진행률이에요. 경영지원 과제는 각 부서가 관리합니다.</p></div>
+    </div>
+
+    <a href="S10-knowledge.html" class="card" style="display: flex; align-items: center; gap: 16px; padding: 18px 24px; text-decoration: none; color: inherit; border-color: #f0d9a8; background: #fffbf2">
+      <span style="width: 40px; height: 40px; border-radius: 12px; background: #fdf2dc; color: #7a4f00; display: grid; place-items: center"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><b style="font-size: 15px">미답변 질문 2건</b><span class="secondary" style="font-size: 13px">에이전트가 답하지 못한 우리 팀 질문이에요. 답을 등록하면 다음부터 바로 답해요.</span></div>
+      <span class="btn btn-outline btn-sm">답 등록하기</span>
+    </a>
+
+    <section class="grid-3">
+      <a href="S6-hire-detail.html" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px; text-decoration: none; color: inherit">
+        <div class="row" style="gap: 12px"><span class="avatar" style="width: 44px; height: 44px; font-size: 14px">하늘</span><div style="flex: 1; display: flex; flex-direction: column"><b style="font-size: 16px">김하늘</b><span class="caption">사원 · 입사 11월 14일 · 4일째</span></div><span class="st st-submitted">확인 대기 1</span></div>
+        <div class="col" style="gap: 8px"><div class="between"><span class="caption">팀 과제 진행률</span><b>3 / 8 · 38%</b></div><div class="bar"><span style="width: 38%"></span></div></div>
+        <hr class="sep">
+        <div class="col" style="gap: 8px; font-size: 13px">
+          <span class="caption">예정된 평가</span>
+          <div class="between"><span>간단 코딩테스트</span><span class="secondary">11/20 (금) 14:00</span></div>
+          <div class="between"><span class="muted">JS 기본기 테스트</span><span class="muted">일정 미정</span></div>
+        </div>
+      </a>
+      <a href="#" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px; text-decoration: none; color: inherit">
+        <div class="row" style="gap: 12px"><span class="avatar" style="width: 44px; height: 44px; font-size: 14px">도윤</span><div style="flex: 1; display: flex; flex-direction: column"><b style="font-size: 16px">이도윤</b><span class="caption">사원 · 입사 11월 3일 · 15일째</span></div><span class="st st-submitted">확인 대기 2</span></div>
+        <div class="col" style="gap: 8px"><div class="between"><span class="caption">팀 과제 진행률</span><b>6 / 8 · 75%</b></div><div class="bar"><span style="width: 75%"></span></div></div>
+        <hr class="sep">
+        <div class="col" style="gap: 8px; font-size: 13px">
+          <span class="caption">예정된 평가</span>
+          <div class="between"><span>간단 코딩테스트</span><span class="st st-done">통과</span></div>
+          <div class="between"><span>JS 기본기 테스트</span><span class="secondary">11/21 (토) 10:00</span></div>
+        </div>
+      </a>
+      <a href="#" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px; text-decoration: none; color: inherit">
+        <div class="row" style="gap: 12px"><span class="avatar" style="width: 44px; height: 44px; font-size: 14px">유나</span><div style="flex: 1; display: flex; flex-direction: column"><b style="font-size: 16px">최유나</b><span class="caption">인턴 · 입사 11월 24일 · D-7</span></div><span class="tag">입사 전</span></div>
+        <div class="col" style="gap: 8px"><div class="between"><span class="caption">팀 과제 진행률</span><b>0 / 8 · 0%</b></div><div class="bar"><span style="width: 0%"></span></div></div>
+        <hr class="sep">
+        <div class="col" style="gap: 8px; font-size: 13px">
+          <span class="caption">예정된 평가</span>
+          <div class="between"><span class="muted">간단 코딩테스트</span><span class="muted">일정 미정</span></div>
+          <div class="between"><span class="muted">JS 기본기 테스트</span><span class="muted">일정 미정</span></div>
+        </div>
+      </a>
+    </section>
+  </main>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S2 신입 홈</title>
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#06479a}a:hover{color:#04336f}
+</style>
+
+<div style="min-height: 1440px; background: #f5f5f7">
+  <header class="topbar">
+    <div class="topbar-in">
+      <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
+      <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
+      <nav class="nav" aria-label="주 메뉴"><a class="on" href="#">내 온보딩</a></nav>
+      <div class="user">
+        <span class="avatar">하늘</span>
+        <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">김하늘</b><span class="caption">AI팀</span></div>
+        <span class="role">신입</span>
+        <button class="icon-btn" type="button" aria-label="로그아웃"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="split">
+      <div class="split-main">
+        <section class="card card-pad" style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span class="caption">2026년 11월 17일 화요일 · 입사 4일째</span>
+            <h1>하늘 님, 첫 주를 보내고 있어요</h1>
+            <p class="secondary">오늘 할 일 3건, 보완 요청 1건이 있어요.</p>
+          </div>
+          <div style="flex: 0 1 320px; min-width: 240px; display: flex; flex-direction: column; gap: 8px">
+            <div class="between"><b style="font-size: 13px">전체 진행률</b><span style="font-family: &quot;SF Pro Display&quot;, -apple-system, sans-serif; font-size: 22px; font-weight: 600">43%</span></div>
+            <div class="bar"><span style="width: 43%"></span></div>
+            <span class="caption">완료 5 + 해당 없음 1 / 전체 14</span>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="now">
+          <div class="card-hd">
+            <div class="row"><h2 id="now" style="font-size: 18px">지금 할 일</h2><span class="count">4</span></div>
+            <span class="caption row" style="gap: 6px"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1b6530"></span>담당자 처리 결과가 바로 반영돼요</span>
+          </div>
+          <a class="task" href="S3-task-detail.html" style="background: #fff8f7; border-left: 0">
+            <svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true" style="color: #a1261c"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+            <div class="task-main">
+              <span class="task-title">명함 영문 이름 입력</span>
+              <span class="task-meta"><span class="own">총무팀</span><span>기한 11월 18일 (수)</span><span style="color: #a1261c">사유: 영문 성·이름 순서를 여권과 같게 맞춰 주세요</span></span>
+            </div>
+            <span class="st st-rework">보완 요청</span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #aeaeb2"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+          <a class="task" href="#">
+            <span style="width: 20px"></span>
+            <div class="task-main">
+              <span class="task-title">BTP 개발 환경 세팅</span>
+              <span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 19일 (목)</span><span>체크리스트 2 / 4</span></span>
+            </div>
+            <span class="st st-todo">할 일</span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #aeaeb2"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+          <a class="task" href="#">
+            <span style="width: 20px"></span>
+            <div class="task-main">
+              <span class="task-title">법인카드·경비 처리 규정 읽기</span>
+              <span class="task-meta"><span class="own">회계팀</span><span>기한 11월 20일 (금)</span></span>
+            </div>
+            <span class="st st-todo">할 일</span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #aeaeb2"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+          <a class="task" href="#">
+            <span style="width: 20px"></span>
+            <div class="task-main">
+              <span class="task-title">간단 코딩테스트</span>
+              <span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 20일 (금) 14:00 · 7층 소회의실</span></span>
+            </div>
+            <span class="st st-todo">할 일</span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #aeaeb2"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+        </section>
+
+        <section class="card" aria-labelledby="all">
+          <div class="card-hd">
+            <h2 id="all" style="font-size: 18px">전체 과제</h2>
+            <div class="row" role="group" aria-label="담당 필터" style="gap: 8px">
+              <button class="chip on" type="button">전체</button>
+              <button class="chip" type="button">경영지원</button>
+              <button class="chip" type="button">AI팀</button>
+            </div>
+          </div>
+
+          <div class="stage"><h3>입사일</h3><span class="caption">11월 14일 · 5개 중 4개 완료</span></div>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">근로계약서 제출</span><span class="task-meta"><span class="own">인사팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">사원증 사진 제출</span><span class="task-meta"><span class="own">총무팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">지문 등록</span><span class="task-meta"><span class="own">총무팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">노트북 수령 및 초기 설정</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">복지포인트 등록</span><span class="task-meta"><span class="own">인사팀</span><span>11월 18일</span></span></div><span class="st st-todo">담당자 처리 예정</span></a>
+
+          <div class="stage"><h3>첫 주</h3><span class="caption">11월 17일 ~ 21일 · 6개 중 2개 완료</span></div>
+          <a class="task" href="S3-task-detail.html"><div class="task-main"><span class="task-title">명함 영문 이름 입력</span><span class="task-meta"><span class="own">총무팀</span><span>기한 11월 18일</span></span></div><span class="st st-rework">보완 요청</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">기술스택·경력 조사</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 17일 10:12 제출</span></span></div><span class="st st-submitted">확인 대기</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">BTP 개발 환경 세팅</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 19일</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">법인카드·경비 처리 규정 읽기</span><span class="task-meta"><span class="own">회계팀</span><span>기한 11월 20일</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">팀 소개·코드 컨벤션 읽기</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 17일</span></span></div><span class="st st-done">완료</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">본사 출입 등록</span><span class="task-meta"><span class="own">총무팀</span><span>사유: 판교 사무소 근무</span></span></div><span class="st st-na">해당 없음</span></a>
+
+          <div class="stage"><h3>첫 달</h3><span class="caption">~ 12월 12일 · 4개 중 0개 완료</span></div>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">간단 코딩테스트</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 20일 14:00</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task locked" href="#"><div class="task-main"><span class="task-title">SAPUI5 실습 과제</span><span class="task-meta"><span class="own own-ai">AI팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>BTP 개발 환경 세팅 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+          <a class="task locked" href="#"><div class="task-main"><span class="task-title">JS 기본기 테스트</span><span class="task-meta"><span class="own own-ai">AI팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>SAPUI5 실습 과제 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+          <a class="task locked" href="#"><div class="task-main"><span class="task-title">수습 중간 면담</span><span class="task-meta"><span class="own">인사팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>JS 기본기 테스트 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+        </section>
+      </div>
+
+      <aside class="split-side" aria-label="온보딩 에이전트 채팅">
+        <div class="chat" style="height: 1060px">
+          <div class="chat-hd">
+            <span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span>
+            <div style="display: flex; flex-direction: column; flex: 1; line-height: 1.25"><b>온보딩 에이전트</b><span class="caption">회사·AI팀 지식으로 답해요</span></div>
+            <button class="icon-btn" type="button" aria-label="새 대화"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+          </div>
+          <div class="chat-bd" style="flex: 1 1 auto; overflow: auto">
+            <span class="caption" style="align-self: center">오늘</span>
+            <div class="msg-u">오늘 뭐 해야 해?</div>
+            <div class="msg-a">
+              <span class="bubble">오늘 우선할 일은 3가지예요.<br><br>1. <b>명함 영문 이름</b> — 총무팀이 보완을 요청했어요. 여권과 같은 순서로 다시 제출해 주세요.<br>2. <b>BTP 개발 환경 세팅</b> — cf cli, mbt 설치가 남았어요.<br>3. <b>경비 처리 규정</b> — 금요일까지 읽으면 돼요.</span>
+              <div class="src"><span>관련 과제</span><a href="S3-task-detail.html">명함 영문 이름 입력</a><a href="#">BTP 개발 환경 세팅</a></div>
+            </div>
+            <div class="msg-u">노트북 경비 계정과목이 뭐야?</div>
+            <div class="msg-a">
+              <span class="bubble">업무용 노트북·모니터 같은 100만 원 미만 IT 소모품은 <b>소모품비(전산)</b>로 처리해요. 100만 원 이상이면 비품으로 자산 등록이 필요하니 회계팀에 먼저 알려 주세요.</span>
+              <div class="src"><span>근거</span><a href="#"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"></path></svg>경비 계정과목 안내 (회사 공통)</a></div>
+            </div>
+            <div class="msg-u">동호회 가입비 얼마야?</div>
+            <div class="msg-a">
+              <span class="bubble" style="background: #fff7e8; border-color: #f0d9a8">확인되지 않은 내용이에요. 담당자에게 전달했어요. 답이 등록되면 다시 물어봐 주세요.</span>
+            </div>
+          </div>
+          <div class="chat-ft">
+            <div class="row" style="flex-wrap: wrap; gap: 6px">
+              <button class="chip" type="button">오늘 뭐 해야 해?</button>
+              <button class="chip" type="button">회의실 예약 어떻게 해?</button>
+              <button class="chip" type="button">노트북 경비 계정과목이 뭐야?</button>
+            </div>
+            <div class="composer">
+              <label for="q2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label>
+              <textarea id="q2" rows="1" placeholder="궁금한 걸 물어보세요"></textarea>
+              <button class="send" type="button" aria-label="보내기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+            </div>
+            <span class="caption" style="text-align: right">0 / 1000</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

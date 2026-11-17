@@ -35,6 +35,11 @@
 - ADK·LiteLLM·OpenAI·Supabase 사용법은 설치된 버전의 공식 문서로 확인하고 쓴다. 기억에 의존하지 않는다. LiteLLM 경유 스트리밍·구조화 출력이 안 되면 멈추고 보고한다.
 - 화면 문구는 한국어. 상태 문구는 `docs/screens.md` 표를 따른다.
 
+## 디자인
+- 화면 시안과 토큰: @docs/design/onboarding-design/README.md
+- 화면 명세: @docs/design/spec.md
+- UI는 shadcn/ui로 구현하고, 색·라운드는 README의 토큰을 따른다.
+
 ## 데이터·비밀값
 
 - 실제 회사명, 실명, 주민번호·계좌·카드번호·지문 관련 필드나 값을 만들지 않는다. 파일 업로드 기능 없음.

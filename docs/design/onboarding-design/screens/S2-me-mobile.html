@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S2 신입 홈 모바일</title>
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#06479a}a:hover{color:#04336f}
+</style>
+
+<div style="width: 390px; height: 844px; background: #f5f5f7; position: relative; overflow: hidden; display: flex; flex-direction: column">
+  <header style="background: #ffffff; border-bottom: 1px solid #e3e3e8; padding: 12px 16px; display: flex; align-items: center; gap: 10px">
+    <img src="../assets/blueward-symbol.png" alt="Blueward" style="width: 24px; height: 24px; border-radius: 4px">
+    <b style="font-size: 15px; flex: 1">온보딩 에이전트</b>
+    <span class="role">신입</span>
+    <button class="icon-btn" type="button" aria-label="메뉴"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+  </header>
+  <div style="background: #fff7e8; color: #6b4500; font-size: 12px; padding: 6px 16px; border-bottom: 1px solid #f0d9a8">데모 환경 · 가상 데이터</div>
+
+  <main style="flex: 1; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+    <section class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <span class="caption">입사 4일째 · 11월 17일</span>
+      <h1 style="font-size: 22px; line-height: 28px">하늘 님, 첫 주예요</h1>
+      <div class="between"><span class="caption">완료 5 + 해당 없음 1 / 14</span><b style="font-size: 17px">43%</b></div>
+      <div class="bar"><span style="width: 43%"></span></div>
+    </section>
+
+    <div class="row" role="group" aria-label="담당 필터" style="gap: 6px">
+      <button class="chip on" type="button">전체</button>
+      <button class="chip" type="button">경영지원</button>
+      <button class="chip" type="button">AI팀</button>
+    </div>
+
+    <section class="card" style="overflow: hidden">
+      <div style="padding: 14px 16px; border-bottom: 1px solid #e3e3e8; display: flex; align-items: center; gap: 8px"><h2 style="font-size: 16px">지금 할 일</h2><span class="count">4</span></div>
+      <a class="task" href="S3-task-detail.html" style="padding: 14px 16px; background: #fff8f7; align-items: flex-start; flex-direction: column; gap: 8px">
+        <div class="between" style="width: 100%"><span class="task-title">명함 영문 이름 입력</span><span class="st st-rework">보완 요청</span></div>
+        <span class="task-meta"><span class="own">총무팀</span><span>기한 11/18</span></span>
+        <span style="font-size: 12px; color: #a1261c">사유: 영문 성·이름 순서를 여권과 같게 맞춰 주세요</span>
+      </a>
+      <a class="task" href="#" style="padding: 14px 16px; flex-direction: column; align-items: flex-start; gap: 8px">
+        <div class="between" style="width: 100%"><span class="task-title">BTP 개발 환경 세팅</span><span class="st st-todo">할 일</span></div>
+        <span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11/19 · 2 / 4</span></span>
+      </a>
+      <a class="task" href="#" style="padding: 14px 16px; flex-direction: column; align-items: flex-start; gap: 8px">
+        <div class="between" style="width: 100%"><span class="task-title">법인카드·경비 처리 규정 읽기</span><span class="st st-todo">할 일</span></div>
+        <span class="task-meta"><span class="own">회계팀</span><span>기한 11/20</span></span>
+      </a>
+      <a class="task" href="#" style="padding: 14px 16px; flex-direction: column; align-items: flex-start; gap: 8px">
+        <div class="between" style="width: 100%"><span class="task-title">간단 코딩테스트</span><span class="st st-todo">할 일</span></div>
+        <span class="task-meta"><span class="own own-ai">AI팀</span><span>11/20 14:00 · 7층 소회의실</span></span>
+      </a>
+    </section>
+
+    <section class="card" style="overflow: hidden">
+      <div class="stage" style="padding: 12px 16px"><h3>첫 주</h3><span class="caption">6개 중 2개 완료</span></div>
+      <a class="task" href="#" style="padding: 12px 16px"><div class="task-main"><span class="task-title" style="font-size: 14px">기술스택·경력 조사</span></div><span class="st st-submitted">확인 대기</span></a>
+      <a class="task" href="#" style="padding: 12px 16px"><div class="task-main"><span class="task-title" style="font-size: 14px">본사 출입 등록</span></div><span class="st st-na">해당 없음</span></a>
+    </section>
+  </main>
+
+  <a href="S4-chat-mobile.html" class="btn btn-primary" style="position: absolute; right: 16px; bottom: 24px; box-shadow: 0 8px 24px rgba(6, 71, 154, 0.35)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>에이전트에게 묻기</a>
+</div>
+
+</body>
+</html>

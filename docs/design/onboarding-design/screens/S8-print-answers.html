@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S8 답안지 인쇄</title>
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#06479a}a:hover{color:#04336f}
+@page{size:A4;margin:0}
+@media print{.no-print{display:none !important}}
+</style>
+
+<div style="width: 794px; height: 1123px; box-sizing: border-box; background: #ffffff; padding: 56px 64px; display: flex; flex-direction: column; gap: 16px; position: relative; color: #1d1d1f; font-size: 11pt">
+  <div class="no-print" style="position: absolute; top: 14px; right: 16px; display: flex; gap: 8px; align-items: center">
+    <span class="tabs"><a href="S8-print-paper.html" style="font-size: 13px; padding: 7px 14px; color: #515154; text-decoration: none">시험지</a><button type="button" class="on" aria-pressed="true">답안지</button></span>
+    <button class="btn btn-primary btn-sm" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"></path></svg>인쇄 / PDF로 저장</button>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1d1d1f; padding-bottom: 12px; margin-top: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <img src="../assets/blueward-logo.png" alt="Blueward" style="height: 16px; width: auto; align-self: flex-start">
+      <h1 style="font-size: 22px; line-height: 28px">JS 기본기 — 비동기·스코프 <span style="font-weight: 500; color: #a1261c">· 답안지</span></h1>
+      <span style="font-size: 10pt; color: #515154">채점자용 · 신입에게 배포하지 마세요</span>
+    </div>
+    <span style="font-size: 10pt; border: 1px solid #1d1d1f; padding: 3px 10px; border-radius: 4px">총 100점</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 14px 12px; align-content: start">
+    <b>1</b>
+    <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid #e3e3e8">
+      <div style="display: flex; justify-content: space-between"><b>출력 순서 예측 (setTimeout · Promise)</b><span>20점</span></div>
+      <div><span style="color: #515154">모범 답안</span>　<span class="mono">A → D → C → B</span></div>
+      <div style="color: #515154; font-size: 10pt">채점 기준 · 순서 정확 20점. 순서가 틀려도 마이크로태스크가 먼저 실행된다는 설명이 있으면 10점.</div>
+    </div>
+
+    <b>2</b>
+    <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid #e3e3e8">
+      <div style="display: flex; justify-content: space-between"><b>var 루프와 클로저</b><span>20점</span></div>
+      <div><span style="color: #515154">모범 답안</span>　<span class="mono">3, 3, 3</span> — var는 함수 스코프라 세 콜백이 같은 i를 참조한다.</div>
+      <div style="color: #515154; font-size: 10pt">채점 기준 · 출력 10점, 이유 10점. let으로 바꾸면 0, 1, 2가 된다는 설명도 이유로 인정.</div>
+    </div>
+
+    <b>3</b>
+    <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid #e3e3e8">
+      <div style="display: flex; justify-content: space-between"><b>then 체인 → async/await</b><span>20점</span></div>
+      <pre class="mono" style="margin: 0; background: #f5f5f7; border-radius: 6px; padding: 10px 14px; line-height: 1.55; font-size: 9.5pt">async function load(id) {
+  try {
+    const u = await fetchUser(id);
+    const orders = await fetchOrders(u.id);
+    render(orders);
+  } catch (e) {
+    showError(e);
+  }
+}</pre>
+      <div style="color: #515154; font-size: 10pt">채점 기준 · async 선언 5점, await 순서 10점, try/catch 5점.</div>
+    </div>
+
+    <b>4</b>
+    <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid #e3e3e8">
+      <div style="display: flex; justify-content: space-between"><b>const와 let</b><span>20점</span></div>
+      <div>둘 다 블록 스코프다. let은 재할당할 수 있고 const는 재할당할 수 없다. 단, const 객체의 속성은 바꿀 수 있다.</div>
+      <div style="color: #515154; font-size: 10pt">채점 기준 · 블록 스코프 8점, 재할당 차이 8점, 객체 속성 변경 가능 4점.</div>
+    </div>
+
+    <b>5</b>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; justify-content: space-between"><b>makeCounter 작성</b><span>20점</span></div>
+      <pre class="mono" style="margin: 0; background: #f5f5f7; border-radius: 6px; padding: 10px 14px; line-height: 1.55; font-size: 9.5pt">function makeCounter() {
+  let count = 0;
+  return () =&gt; ++count;
+}</pre>
+      <div style="color: #515154; font-size: 10pt">채점 기준 · 외부 변수 보존 10점, 함수 반환 10점. 문법 오류 한 군데당 2점 감점.</div>
+    </div>
+  </div>
+
+  <div style="margin-top: auto; display: flex; justify-content: space-between; font-size: 9pt; color: #6e6e73"><span>Blueward · 가상 데이터 데모 · AI가 만든 답안은 확정 전 검토가 필요합니다</span><span>1 / 1</span></div>
+</div>
+
+</body>
+</html>

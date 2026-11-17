@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S10 지식·미답변 관리</title>
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#06479a}a:hover{color:#04336f}
+</style>
+
+<div style="min-height: 1000px; background: #f5f5f7">
+  <header class="topbar">
+    <div class="topbar-in">
+      <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
+      <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
+      <nav class="nav" aria-label="주 메뉴"><a href="S5-team.html">팀 신입 현황</a><a href="S7-exam-editor.html">시험 출제</a><a class="on" href="#">지식 관리</a></nav>
+      <div class="user">
+        <span class="avatar">서준</span>
+        <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">박서준</b><span class="caption">AI팀</span></div>
+        <span class="role">교육 담당자</span>
+        <button class="icon-btn" type="button" aria-label="로그아웃"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page" style="display: flex; flex-direction: column; gap: 20px">
+    <div class="between">
+      <div style="display: flex; flex-direction: column; gap: 4px"><h1>지식 관리</h1><p class="secondary">AI팀 지식을 관리해요. 회사 공통 지식은 경영지원 담당자가 관리합니다.</p></div>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" class="on">미답변 질문 <span class="count">2</span></button>
+        <button type="button" role="tab" class="">지식 목록</button>
+      </div>
+    </div>
+
+    
+      <div class="split">
+        <section class="card split-main" style="gap: 0">
+          
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th>질문</th><th>물은 시각</th><th>물은 사람의 팀</th><th></th></tr></thead>
+                <tbody>
+                  <tr class="sel"><td><b>동호회 가입비 얼마야?</b></td><td class="muted">오늘 14:02</td><td>AI팀</td><td style="text-align: right"><button class="btn btn-primary btn-sm" type="button">답 등록</button></td></tr>
+                  <tr><td><b>야근 식대는 몇 시부터 신청할 수 있어?</b></td><td class="muted">어제 19:48</td><td>AI팀</td><td style="text-align: right"><button class="btn btn-outline btn-sm" type="button">답 등록</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          
+          
+        </section>
+
+        
+          <form class="split-side sheet" aria-label="지식 작성">
+            <div class="card-hd" style="padding: 18px 20px"><h2 style="font-size: 17px">지식 작성</h2><span class="caption">미답변에서 가져옴</span></div>
+            <div class="card-bd col" style="gap: 16px; padding: 20px">
+              <div class="field"><label class="label" for="kq">질문</label><input class="input" id="kq" value="동호회 가입비 얼마야?"></div>
+              <div class="field"><label class="label" for="ka">답변</label><textarea class="textarea" id="ka" style="min-height: 120px">사내 동호회 가입비는 동호회마다 월 1~2만 원이고, 회사가 1인당 월 2만 원까지 지원해요. 가입은 그룹웨어 › 동호회 게시판에서 신청합니다.</textarea></div>
+              <div class="grid-2" style="gap: 12px">
+                <div class="field"><label class="label" for="kc">분류</label><select class="select" id="kc"><option>복지·생활</option><option>개발 환경</option><option>경비·회계</option></select></div>
+                <div class="field"><label class="label" for="ks">범위</label><select class="select" id="ks"><option>AI팀</option></select></div>
+              </div>
+              <div class="alert alert-info" style="padding: 10px 14px; font-size: 13px">게시하면 이 미답변은 해결됨으로 바뀌고, 같은 질문에 바로 답해요.</div>
+            </div>
+            <div style="padding: 16px 20px; border-top: 1px solid #e3e3e8; display: flex; justify-content: flex-end; gap: 8px"><button class="btn btn-ghost btn-sm" type="button">초안 저장</button><button class="btn btn-primary btn-sm" type="submit">게시</button></div>
+          </form>
+        
+      </div>
+    
+
+    
+  </main>
+</div>
+
+</body>
+</html>
