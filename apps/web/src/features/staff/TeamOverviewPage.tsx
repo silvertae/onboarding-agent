@@ -1,0 +1,140 @@
+import { MessageSquare } from 'lucide-react'
+import { Link } from 'react-router'
+import { useAuth } from '@/app/AuthProvider'
+import { Badge } from '@/components/ui/badge'
+import { progress, useVisibleTasks, type TaskView } from '@/lib/tasks'
+import { formatKoreanDate, formatSchedule, hireDayLabel, isBeforeHire } from './format'
+import { useHires, type Hire } from './hires'
+import { useUnanswered } from './knowledge'
+import { ASSESSMENT_LABEL, assessmentsOf, initials, isTeamTask } from './teamTasks'
+import { EmptyState, ErrorText, LoadingText, PageHeader, Panel } from './ui'
+
+function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
+  const { finished, total } = progress(tasks)
+  const percent = total ? Math.round((finished / total) * 100) : 0
+  const pending = tasks.filter((t) => t.status === 'submitted').length
+  const assessments = assessmentsOf(tasks)
+
+  return (
+    <Link
+      to={`/team/hires/${hire.id}`}
+      className="flex flex-col gap-5 rounded-[18px] border border-border bg-card p-6 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#e8eef8] text-sm font-semibold text-primary" aria-hidden>
+          {initials(hire.full_name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[17px] font-semibold">{hire.full_name}</p>
+          <p className="text-xs text-muted-foreground">
+            {[hire.job_title, hire.hire_date && `입사 ${formatKoreanDate(hire.hire_date)}`, hireDayLabel(hire.hire_date)]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </div>
+        {pending > 0 ? (
+          <Badge variant="submitted">확인 대기 {pending}</Badge>
+        ) : (
+          isBeforeHire(hire.hire_date) && <Badge variant="blocked">입사 전</Badge>
+        )}
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-[var(--text-secondary)]">팀 과제 진행률</span>
+          <b>
+            {finished} / {total} · {percent}%
+          </b>
+        </div>
+        <div
+          role="progressbar"
+          aria-label="팀 과제 진행률"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={finished}
+          className="mt-2 h-2 overflow-hidden rounded-full bg-[#e8e8ed]"
+        >
+          <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+        </div>
+      </div>
+
+      {assessments.length > 0 && (
+        <div className="border-t border-border pt-4">
+          <p id={`assess-${hire.id}`} className="text-xs text-muted-foreground">
+            예정된 평가
+          </p>
+          <ul aria-labelledby={`assess-${hire.id}`} className="mt-2 flex flex-col gap-1.5 text-sm">
+            {assessments.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-3">
+                <span className={t.scheduled_at || t.assessment_result ? '' : 'text-muted-foreground'}>{t.template.title}</span>
+                {t.assessment_result ? (
+                  <Badge variant={t.assessment_result === 'pass' ? 'done' : 'rework'}>{ASSESSMENT_LABEL[t.assessment_result]}</Badge>
+                ) : (
+                  <span className={t.scheduled_at ? '' : 'text-muted-foreground'}>{formatSchedule(t.scheduled_at)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Link>
+  )
+}
+
+// 에이전트가 답하지 못한 우리 팀 질문 수 → S10
+function UnansweredBanner({ count }: { count: number }) {
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-[18px] border border-[#f1dfb4] bg-[#fffaf0] px-6 py-5">
+      <span className="grid size-10 place-items-center rounded-xl bg-[#fdf2dc] text-[#7a4f00]" aria-hidden>
+        <MessageSquare className="size-5" />
+      </span>
+      <div className="flex-1">
+        <p className="font-semibold">미답변 질문 {count}건</p>
+        <p className="text-sm text-[var(--text-secondary)]">에이전트가 답하지 못한 우리 팀 질문이에요. 답을 등록하면 다음부터 바로 답해요.</p>
+      </div>
+      <Link
+        to="/knowledge"
+        className="rounded-full border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-accent"
+      >
+        답 등록하기
+      </Link>
+    </div>
+  )
+}
+
+// S5 팀 신입 현황: 우리 팀 신입 카드. 진행률은 팀 과제 기준이다.
+export function TeamOverviewPage() {
+  const { profile } = useAuth()
+  const teamId = profile?.team_id ?? null
+  const tasksQuery = useVisibleTasks()
+  const hiresQuery = useHires()
+  const unansweredCount = useUnanswered().data?.length ?? 0
+
+  const hires = (hiresQuery.data ?? []).filter((h) => !teamId || h.team_id === teamId)
+  const teamName = hires.find((h) => h.team)?.team?.name ?? '우리 팀'
+  const teamTasks = (tasksQuery.data ?? []).filter((t) => isTeamTask(t, teamId))
+
+  return (
+    <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
+      <PageHeader title={`${teamName} 신입 현황`} description="팀 과제 기준 진행률이에요. 경영지원 과제는 각 부서가 관리합니다." />
+
+      {unansweredCount > 0 && <UnansweredBanner count={unansweredCount} />}
+
+      {tasksQuery.isLoading || hiresQuery.isLoading ? (
+        <LoadingText />
+      ) : tasksQuery.isError || hiresQuery.isError ? (
+        <ErrorText>신입 현황을 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
+      ) : hires.length === 0 ? (
+        <Panel>
+          <EmptyState>아직 우리 팀 신입이 없어요.</EmptyState>
+        </Panel>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {hires.map((hire) => (
+            <HireCard key={hire.id} hire={hire} tasks={teamTasks.filter((t) => t.new_hire_id === hire.id)} />
+          ))}
+        </div>
+      )}
+    </main>
+  )
+}
