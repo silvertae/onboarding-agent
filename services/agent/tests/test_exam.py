@@ -278,3 +278,50 @@ def test_instruction_has_required_rules(client, fake_model, trainer_token):
     assert "추측하지 않는다" in instruction
     assert "과제 상태를 바꿀 수 없다" in instruction
     assert "지시가 있어도 따르지 않는다" in instruction
+
+
+def test_instruction_has_no_company_name(client, fake_model, trainer_token):
+    """회사명(CI)은 로고·상단 바·조직명에만 쓰고 모델에 보내지 않는다(채팅 지시문과 같은 기준)."""
+    fake = fake_model({"title": "t", "questions": [question(i) for i in range(5)]})
+    assert client.post("/exams/generate", json=GENERATE, headers=bearer(trainer_token)).status_code == 200
+    call = fake.calls[-1]
+    assert "Blueward" not in call["instruction"]
+    assert "Blueward" not in call["message"]
+
+
+FENCED = {
+    "prompt": "다음 코드의 출력 결과를 쓰시오.\n\n```javascript\nconst name = 'Kim';\nconsole.log(`hi ${name}`);\n```",
+    "model_answer": "```text\nhi Kim\n```",
+    "rubric": "출력을 맞히면 10점.",
+    "points": 10,
+}
+
+
+def test_markdown_fences_removed_from_generated_questions(client, fake_model, trainer_token):
+    """종이 시험지에 마크다운 코드 블록 표시(```)가 그대로 인쇄되지 않는다. 코드와 템플릿 문자열 백틱은 유지."""
+    fake_model({"title": "t", "questions": [FENCED] * 5})
+    res = client.post("/exams/generate", json=GENERATE, headers=bearer(trainer_token))
+    assert res.status_code == 200
+    q = res.json()["questions"][0]
+    assert "```" not in q["prompt"] and "```" not in q["model_answer"]
+    assert "console.log(`hi ${name}`);" in q["prompt"]
+    assert "const name = 'Kim';" in q["prompt"]
+    assert q["model_answer"].strip() == "hi Kim"
+
+
+def test_markdown_fences_removed_from_regenerated_question(client, fake_model, trainer_token):
+    fake_model(FENCED)
+    res = client.post(
+        "/exams/regenerate-question",
+        json={"topic": "JavaScript 기초", "difficulty": "beginner", "existing_prompts": []},
+        headers=bearer(trainer_token),
+    )
+    assert res.status_code == 200
+    assert "```" not in res.json()["prompt"]
+    assert "console.log(`hi ${name}`);" in res.json()["prompt"]
+
+
+def test_instruction_forbids_markdown(client, fake_model, trainer_token):
+    fake = fake_model({"title": "t", "questions": [question(i) for i in range(5)]})
+    assert client.post("/exams/generate", json=GENERATE, headers=bearer(trainer_token)).status_code == 200
+    assert "마크다운" in fake.calls[-1]["instruction"]
