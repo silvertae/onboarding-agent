@@ -60,9 +60,18 @@
 
 ## 명령어
 
-Task 1에서 만든다. 만든 뒤 이 절을 실제 명령으로 채운다.
+루트에서 실행한다. 로컬 Supabase 값은 `scripts/with-local-env.sh`가 `supabase status`에서 받아 넘긴다(`.env` 파일 없음).
 
-- `npm run dev:web` / `npm run dev:agent`
-- `npm run test:web` / `npm run test:agent` / `npm run db:test`
-- `npm run db:reset` (로컬 DB 초기화 + 기본 계정 생성)
-- `npm run types` (Supabase 타입 생성)
+| 명령 | 하는 일 |
+|---|---|
+| `supabase start` / `supabase stop` | 로컬 Supabase(Docker) 켜기·끄기 |
+| `npm run dev:web` | 웹 개발 서버 `localhost:5173` |
+| `npm run dev:agent` | 에이전트 개발 서버 `localhost:8000` |
+| `npm run test:web` | Vitest (`apps/web`) |
+| `npm run test:agent` | pytest (`services/agent`, 일부 테스트는 로컬 Supabase 필요) |
+| `npm run db:test` | pgTAP (`supabase/tests`) |
+| `npm run db:reset` | 로컬 DB 초기화 + 기본 계정 6개 생성 |
+| `npm run types` | `apps/web/src/lib/database.types.ts` 생성 |
+| `docker build services/agent` | 에이전트 이미지 빌드 확인 |
+
+의존성 추가: 웹 `npm --prefix apps/web install <pkg>`, 에이전트 `cd services/agent && uv add <pkg>`.

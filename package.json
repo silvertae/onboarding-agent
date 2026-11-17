@@ -1,0 +1,14 @@
+{
+  "name": "onboarding-agent",
+  "private": true,
+  "scripts": {
+    "dev:web": "bash scripts/with-local-env.sh npm --prefix apps/web run dev",
+    "dev:agent": "bash scripts/with-local-env.sh sh -c 'cd services/agent && uv run uvicorn app.main:app --reload --port 8000'",
+    "test:web": "npm --prefix apps/web run test",
+    "test:agent": "cd services/agent && uv run pytest",
+    "db:test": "supabase test db",
+    "db:reset": "supabase db reset && npm run bootstrap",
+    "bootstrap": "bash scripts/with-local-env.sh sh -c 'cd services/agent && uv run python scripts/bootstrap_accounts.py'",
+    "types": "supabase gen types typescript --local > apps/web/src/lib/database.types.ts"
+  }
+}
