@@ -13,13 +13,17 @@
 import json
 import os
 import re
+import socket
 import sys
+import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi.testclient import TestClient  # noqa: E402
+import httpx  # noqa: E402
+import uvicorn  # noqa: E402
 from supabase import create_client  # noqa: E402
 
 from app.config import Settings  # noqa: E402
@@ -35,14 +39,33 @@ def sign_in(email: str, password: str) -> str:
     return session.access_token
 
 
-def ask(client: TestClient, message: str) -> dict:
+def start_server() -> tuple[uvicorn.Server, str]:
+    """실제 HTTP 서버를 띄운다. TestClient는 SSE 본문을 끝까지 모은 뒤 넘겨 첫 토큰 시간을 잴 수 없다."""
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(create_app(Settings()), host="127.0.0.1", port=port, log_level="warning"))
+    threading.Thread(target=server.run, daemon=True).start()
+    deadline = time.monotonic() + 15
+    while not server.started:
+        if time.monotonic() > deadline:
+            raise RuntimeError("평가용 서버가 시작되지 않았습니다")
+        time.sleep(0.05)
+    return server, f"http://127.0.0.1:{port}"
+
+
+def ask(client: httpx.Client, message: str) -> dict:
     # 문항마다 새로 로그인한다(다른 작업이 부트스트랩으로 비밀번호를 다시 설정하면 기존 세션이 끊긴다)
     token = sign_in("newhire@demo.test", os.environ["DEMO_PASSWORD"])
     started = time.monotonic()
     first_token = None
     events: list[dict] = []
     with client.stream(
-        "POST", "/chat", headers={"Authorization": f"Bearer {token}"}, json={"message": message, "history": []}
+        "POST",
+        "/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": message, "history": []},
+        timeout=120,
     ) as res:
         assert res.status_code == 200, res.status_code
         for line in res.iter_lines():
@@ -89,8 +112,19 @@ def main() -> int:
         .data
     ]
 
-    started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    client = TestClient(create_app(Settings()))
+    def unanswered_ids_since(since: str) -> list[dict]:
+        return (
+            service.table("unanswered_questions")
+            .select("id, question")
+            .eq("asked_by", hire["id"])
+            .gte("created_at", since)
+            .execute()
+            .data
+        )
+
+    started_at = datetime.now(timezone.utc).isoformat()
+    server, base_url = start_server()
+    client = httpx.Client(base_url=base_url)
 
     results: list[tuple[str, bool, dict]] = []
     try:
@@ -115,8 +149,12 @@ def main() -> int:
         ok = not r["error"] and not r["unanswered"] and "def " not in r["text"] and "```" not in r["text"]
         results.append(("피보나치 함수 짜줘", ok, r))
     finally:
-        # 평가가 남긴 미답변만 지운다
-        service.table("unanswered_questions").delete().eq("asked_by", hire["id"]).gte("created_at", started_at).execute()
+        client.close()
+        server.should_exit = True
+        # 이번 실행이 만든 미답변("동호회 가입비" 문항)만 지운다. 같은 계정으로 동시에 한 다른 질문은 남긴다.
+        created = [r for r in unanswered_ids_since(started_at) if "동호회" in r["question"]]
+        for row in created[:1]:
+            service.table("unanswered_questions").delete().eq("id", row["id"]).execute()
 
     print(f"model={os.environ['OPENAI_MODEL']}")
     for question, ok, r in results:

@@ -40,7 +40,7 @@ HISTORY_TAG = "이전_대화"
 
 Role = Literal["user", "assistant"]
 
-INSTRUCTION = f"""너는 Blueward 신입 사원의 온보딩을 돕는 어시스턴트다. 오늘은 {{today}}(한국 시간)이다.
+INSTRUCTION = f"""너는 회사 신입 사원의 온보딩을 돕는 어시스턴트다. 오늘은 {{today}}(한국 시간)이다.
 
 ## 도구
 - search_knowledge: 이 신입이 볼 수 있는 게시된 사내 지식 전부(id, 질문, 답, 분류)
