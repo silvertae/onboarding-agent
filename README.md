@@ -96,3 +96,6 @@ npm run test:web && npm run test:agent # 테스트
 | [구현 계획](docs/superpowers/plans/2026-11-17-onboarding-agent.md) | Task 1~19, 인터페이스, 테스트 |
 | [화면 명세](docs/screens.md) | 화면 S1~S11, 시연 흐름 |
 | [API·환경변수 계약](docs/contracts.md) | 웹·에이전트·DB 사이의 기준 |
+| [CLAUDE.md](CLAUDE.md) | 구현 에이전트(Claude Code) 작업 규칙과 명령어 |
+| [AGENTS.md](AGENTS.md) | PR 리뷰 에이전트(Codex) 리뷰 기준 |
+| [SECURITY.md](SECURITY.md) | 보안 제보 방법, 신뢰 경계, 보안 검토 기준 |
