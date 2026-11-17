@@ -69,16 +69,12 @@ jobs:
       - name: 에이전트 pytest
         run: bash scripts/with-local-env.sh npm run test:agent
 
-  preview:
-    name: 웹 미리보기 배포
+  preview-build:
+    name: 미리보기 웹 빌드
     needs: [web, scripts, backend]
-    # 같은 저장소의 PR만(포크 PR에는 GCP 인증을 주지 않는다)
+    # 같은 저장소의 PR만(포크 PR에는 미리보기를 만들지 않는다)
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -97,11 +93,39 @@ jobs:
       - run: npm --prefix apps/web ci
       - name: 스테이징 설정으로 빌드
         run: npm --prefix apps/web run build -- --mode staging
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-dist
+          path: apps/web/dist
+          retention-days: 1
+
+  # 클라우드 인증은 이 작업에서만 한다. PR 코드(npm 의존성·빌드)는 실행하지 않고 빌드 결과만 올린다.
+  # 미리보기 계정은 Firebase Hosting 권한만 있고, Cloud Run·DB·비밀값에는 닿지 않는다(docs/deploy.md 5).
+  preview:
+    name: 웹 미리보기 배포
+    needs: [preview-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            firebase.json
+            .firebaserc
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: apps/web/dist
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          service_account: ${{ vars.GCP_PREVIEW_SERVICE_ACCOUNT }}
           create_credentials_file: true
       - name: 미리보기 채널 배포
         id: channel
