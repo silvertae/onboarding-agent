@@ -26,8 +26,6 @@ vi.mock('@/lib/supabase', () => {
   }
   return {
     supabase: { auth, from: () => query },
-    DbError: class extends Error {},
-    isAuthError: () => false,
   }
 })
 

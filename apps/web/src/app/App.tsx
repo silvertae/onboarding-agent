@@ -1,6 +1,7 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
-import { isAuthError, supabase } from '@/lib/supabase'
+import { isAuthError } from '@/lib/errors'
+import { supabase } from '@/lib/supabase'
 import { AuthProvider, useAuth } from './AuthProvider'
 import { Layout } from './Layout'
 import { LoginPage } from './LoginPage'

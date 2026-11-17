@@ -2,7 +2,8 @@ import type { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Tables } from '@/lib/database.types'
-import { DbError, isAuthError, supabase } from '@/lib/supabase'
+import { DbError, isAuthError } from '@/lib/errors'
+import { supabase } from '@/lib/supabase'
 
 export type Profile = Tables<'profiles'>
 

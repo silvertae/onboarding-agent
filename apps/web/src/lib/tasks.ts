@@ -2,7 +2,8 @@ import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-q
 import { useEffect } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import type { Enums, Json, Tables } from './database.types'
-import { DbError, supabase } from './supabase'
+import { DbError, isAuthError } from './errors'
+import { supabase } from './supabase'
 
 export type TaskStatus = Enums<'task_status'>
 export type TaskStage = Enums<'task_stage'>
@@ -92,7 +93,12 @@ export function useTaskActions() {
 
   async function run(call: PromiseLike<{ error: { message: string; code?: string } | null; status: number }>) {
     const { error, status } = await call
-    if (error) throw new DbError(status, error.message, error.code)
+    if (error) {
+      const err = new DbError(status, error.message, error.code)
+      // useMutation을 거치지 않으므로 전역 MutationCache 처리 대신 여기서 로그아웃한다(SECURITY.md 웹: 401 → 로그아웃).
+      if (isAuthError(err)) await supabase.auth.signOut()
+      throw err
+    }
     await queryClient.invalidateQueries({ queryKey: TASKS_KEY })
   }
 
