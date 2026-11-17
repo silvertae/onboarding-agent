@@ -1,0 +1,84 @@
+import { render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
+import { vi } from 'vitest'
+import type { TaskView } from '@/lib/tasks'
+import { HIRES, makeTask, TEAM_ID } from './testFixtures'
+
+const { state } = vi.hoisted(() => ({ state: { tasks: [] as unknown[] } }))
+
+vi.mock('@/lib/supabase', () => ({ supabase: {} }))
+vi.mock('@/app/AuthProvider', () => ({
+  useAuth: () => ({
+    profile: { id: 'trainer', role: 'team_trainer', department: null, team_id: 'team-ai', full_name: '가상 서준' },
+    session: { user: { id: 'trainer' } },
+    loading: false,
+  }),
+}))
+vi.mock('@/lib/tasks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/tasks')>()),
+  useVisibleTasks: () => ({ data: state.tasks, isLoading: false, isError: false }),
+  useTaskActions: () => ({}),
+}))
+vi.mock('./hires', () => ({ useHires: () => ({ data: HIRES, isLoading: false, isError: false }) }))
+
+import { TeamOverviewPage } from './TeamOverviewPage'
+
+const team = (overrides: Parameters<typeof makeTask>[0]) =>
+  makeTask({ ...overrides, template: { department: null, team_id: TEAM_ID, ...overrides?.template } })
+
+const tasks: TaskView[] = [
+  team({ new_hire_id: 'h1', status: 'done' }),
+  team({ new_hire_id: 'h1', status: 'na' }),
+  team({ new_hire_id: 'h1', status: 'submitted' }),
+  team({ new_hire_id: 'h1', status: 'todo' }),
+  team({
+    new_hire_id: 'h1',
+    status: 'todo',
+    scheduled_at: '2026-11-25T01:00:00Z',
+    template: { title: 'JS 자습 후 기본기 테스트', kind: 'assessment', completion_mode: 'staff_only', sort_order: 400 },
+  }),
+  team({
+    new_hire_id: 'h1',
+    status: 'todo',
+    scheduled_at: '2026-11-20T05:00:00Z',
+    template: { title: '간단 코딩테스트', kind: 'assessment', completion_mode: 'staff_only', sort_order: 350 },
+  }),
+  // 경영지원 과제는 진행률·확인 대기에서 빠진다.
+  makeTask({ new_hire_id: 'h1', status: 'submitted', template: { department: 'ga', title: '명함 신청' } }),
+  team({ new_hire_id: 'h2', status: 'done', template: { title: '간단 코딩테스트', kind: 'assessment', completion_mode: 'staff_only' }, assessment_result: 'pass' }),
+]
+
+function renderPage() {
+  state.tasks = tasks
+  return render(
+    <MemoryRouter>
+      <TeamOverviewPage />
+    </MemoryRouter>,
+  )
+}
+
+describe('TeamOverviewPage (S5)', () => {
+  it('신입 카드에 팀 과제 진행률과 확인 대기 수를 보여 준다', () => {
+    renderPage()
+    const card = screen.getByRole('link', { name: /김하늘/ })
+    expect(within(card).getByText(/2 \/ 6/)).toBeInTheDocument()
+    expect(within(card).getByText('확인 대기 1')).toBeInTheDocument()
+    expect(card).not.toHaveTextContent('명함 신청')
+  })
+
+  it('예정된 평가를 가까운 일정 순으로 보여 준다', () => {
+    renderPage()
+    const card = screen.getByRole('link', { name: /김하늘/ })
+    const items = within(within(card).getByRole('list', { name: '예정된 평가' })).getAllByRole('listitem')
+    expect(items[0]).toHaveTextContent('간단 코딩테스트')
+    expect(items[0]).toHaveTextContent('11/20 (금) 14:00')
+    expect(items[1]).toHaveTextContent('JS 자습 후 기본기 테스트')
+  })
+
+  it('평가 결과가 있으면 결과를 보여 주고, 카드는 신입 상세로 연결된다', () => {
+    renderPage()
+    const card = screen.getByRole('link', { name: /정민서/ })
+    expect(within(card).getByText('통과')).toBeInTheDocument()
+    expect(card).toHaveAttribute('href', '/team/hires/h2')
+  })
+})

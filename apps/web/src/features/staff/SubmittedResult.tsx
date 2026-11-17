@@ -1,12 +1,9 @@
 import type { Json } from '@/lib/database.types'
 import type { TaskView } from '@/lib/tasks'
 import type { Hire } from './hires'
+import { isRecord } from './json'
 
 type Field = { key: string; label: string }
-
-function isRecord(value: Json | null | undefined): value is Record<string, Json> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function fieldsOf(task: TaskView): Field[] {
   const schema = task.template.form_schema

@@ -1,0 +1,140 @@
+import { useId, useState } from 'react'
+import { StatusBadge } from '@/components/StatusBadge'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import type { Enums } from '@/lib/database.types'
+import { useTaskActions, type TaskView } from '@/lib/tasks'
+import { cn } from '@/lib/utils'
+import { isoToLocalInput, localInputToIso } from './format'
+import { ASSESSMENT_LABEL } from './teamTasks'
+import { ErrorText, Panel, Textarea } from './ui'
+import { useGuardedAction } from './useGuardedAction'
+
+type Choice = 'none' | Enums<'assessment_result'>
+
+const CHOICES: { value: Choice; label: string }[] = [
+  { value: 'none', label: '미기록' },
+  { value: 'pass', label: ASSESSMENT_LABEL.pass },
+  { value: 'needs_followup', label: ASSESSMENT_LABEL.needs_followup },
+]
+
+// 평가 과제(간단 코딩테스트, JS 기본기 테스트)의 일정·장소·결과·메모 기록.
+// 결과를 고르지 않고 저장하면 일정만 저장되고(result=null), 결과를 고르면 과제가 완료된다(record_assessment).
+export function AssessmentCard({ task }: { task: TaskView }) {
+  const { recordAssessment } = useTaskActions()
+  const { busy, error, run } = useGuardedAction()
+  const id = useId()
+  const [scheduled, setScheduled] = useState(isoToLocalInput(task.scheduled_at))
+  const [location, setLocation] = useState(task.location ?? '')
+  const [choice, setChoice] = useState<Choice>(task.assessment_result ?? 'none')
+  const [note, setNote] = useState(task.assessment_note ?? '')
+  const [saved, setSaved] = useState(false)
+
+  // 선행 과제 대기·해당 없음이면 서버가 거절한다.
+  const locked = task.status === 'blocked' || task.status === 'na'
+  const disabled = locked || busy
+
+  async function save() {
+    setSaved(false)
+    const ok = await run(() =>
+      recordAssessment(task.id, {
+        result: choice === 'none' ? null : choice,
+        note: note.trim(),
+        scheduledAt: localInputToIso(scheduled),
+        location: location.trim() || undefined,
+      }),
+    )
+    setSaved(ok)
+  }
+
+  return (
+    <Panel aria-label={task.template.title}>
+      <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
+        <h2 className="text-[17px] font-semibold">{task.template.title}</h2>
+        {task.assessment_result ? (
+          <Badge variant={task.assessment_result === 'pass' ? 'done' : 'rework'}>{ASSESSMENT_LABEL[task.assessment_result]}</Badge>
+        ) : (
+          <StatusBadge status={task.status} />
+        )}
+      </div>
+
+      <div className="flex flex-col gap-4 px-6 py-5">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-at`} className="text-sm font-semibold">
+              일정
+            </label>
+            <Input id={`${id}-at`} type="datetime-local" value={scheduled} onChange={(e) => setScheduled(e.target.value)} disabled={disabled} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-loc`} className="text-sm font-semibold">
+              장소
+            </label>
+            <Input
+              id={`${id}-loc`}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="장소"
+              maxLength={100}
+              disabled={disabled}
+            />
+          </div>
+        </div>
+
+        <fieldset disabled={disabled} className="flex flex-col gap-1.5">
+          <legend className="mb-1.5 text-sm font-semibold">결과</legend>
+          <div role="radiogroup" aria-label="결과" className="grid grid-cols-3 rounded-xl bg-secondary p-1">
+            {CHOICES.map((c) => (
+              <label
+                key={c.value}
+                className={cn(
+                  'cursor-pointer rounded-lg px-3 py-1.5 text-center text-sm text-[var(--text-secondary)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+                  choice === c.value && 'bg-white font-semibold text-foreground shadow-sm',
+                )}
+              >
+                <input
+                  type="radio"
+                  name={`${id}-result`}
+                  value={c.value}
+                  checked={choice === c.value}
+                  onChange={() => setChoice(c.value)}
+                  className="sr-only"
+                />
+                {c.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`${id}-note`} className="text-sm font-semibold">
+            메모
+          </label>
+          <Textarea
+            id={`${id}-note`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="신입에게도 보여요"
+            maxLength={1000}
+            disabled={disabled}
+          />
+        </div>
+
+        {locked && <p className="text-sm text-muted-foreground">선행 과제가 끝나면 기록할 수 있어요.</p>}
+        {error && <ErrorText>{error}</ErrorText>}
+        {saved && (
+          <p role="status" className="text-sm text-[#1b6530]">
+            저장했어요.
+          </p>
+        )}
+
+        <div className="flex justify-end">
+          <Button type="button" size="lg" className="px-5" disabled={disabled} onClick={() => void save()}>
+            저장
+          </Button>
+        </div>
+      </div>
+    </Panel>
+  )
+}
