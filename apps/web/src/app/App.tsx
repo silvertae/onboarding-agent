@@ -1,6 +1,8 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { UsersPage } from '@/features/admin/UsersPage'
+import { ExamEditorPage } from '@/features/exam/ExamEditorPage'
+import { ExamListPage } from '@/features/exam/ExamListPage'
 import { HomePage } from '@/features/newhire/HomePage'
 import { TaskDetailPage } from '@/features/newhire/TaskDetailPage'
 import { HireDetailPage } from '@/features/staff/HireDetailPage'
@@ -56,8 +58,8 @@ export function AppRoutes() {
         <Route element={<RoleGuard allow={['team_trainer']} />}>
           <Route path="/team" element={<TeamOverviewPage />} />
           <Route path="/team/hires/:id" element={<HireDetailPage />} />
-          <Route path="/team/exams" element={<Placeholder title="시험 출제" />} />
-          <Route path="/team/exams/:id" element={<Placeholder title="시험 편집" />} />
+          <Route path="/team/exams" element={<ExamListPage />} />
+          <Route path="/team/exams/:id" element={<ExamEditorPage />} />
           <Route path="/team/exams/:id/print" element={<Placeholder title="시험 인쇄" />} />
         </Route>
         <Route element={<RoleGuard allow={['ops_staff']} />}>

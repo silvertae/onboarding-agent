@@ -1,0 +1,284 @@
+import { ArrowUp, BookOpen, CircleAlert, Clock, ListChecks, MessageSquare, RotateCw, X } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Link } from 'react-router'
+import { useAuth } from '@/app/AuthProvider'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import symbolUrl from './blueward-symbol.png'
+import { MAX_MESSAGE_LENGTH, useChatStream, type ChatMessage } from './useChatStream'
+
+const SUGGESTIONS = ['오늘 뭐 해야 해?', '회의실 예약 어떻게 해?', '노트북 경비 계정과목이 뭐야?']
+const HANDED_OVER = '담당자에게 전달했어요'
+const QUOTA_HINT = '내일 오전 0시에 다시 쓸 수 있어요. 급한 내용은 담당자에게 문의해 주세요.'
+
+type ChatAskEvent = CustomEvent<{ text?: string }>
+
+// 신입 화면(S2·S3) 오른쪽 채팅 패널(S4). 신입이 아니면 페이지만 그린다.
+// 데스크톱은 페이지 옆에 고정, 모바일은 "에이전트에게 묻기" 버튼으로 여는 전체 화면.
+export function ChatPanel({ children }: { children: ReactNode }) {
+  const { profile } = useAuth()
+  if (profile?.role !== 'new_hire') return <>{children}</>
+  return (
+    <div className="mx-auto flex max-w-[1376px] items-start lg:gap-2 lg:pr-8">
+      <div className="min-w-0 flex-1">{children}</div>
+      <ChatAside />
+    </div>
+  )
+}
+
+function ChatAside() {
+  const { messages, sending, send } = useChatStream()
+  const [input, setInput] = useState('')
+  const [open, setOpen] = useState(false) // 모바일 전체 화면 열림
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const counterId = useId()
+
+  const tooLong = input.length > MAX_MESSAGE_LENGTH
+  const canSend = !sending && input.trim().length > 0 && !tooLong
+
+  // S3의 "이 과제에 대해 물어보기" → 입력창을 채우고 패널을 연다(보내지는 않는다)
+  useEffect(() => {
+    function onAsk(event: Event) {
+      const text = (event as ChatAskEvent).detail?.text
+      if (!text) return
+      setInput(text)
+      setOpen(true)
+      inputRef.current?.focus()
+    }
+    window.addEventListener('chat:ask', onAsk)
+    return () => window.removeEventListener('chat:ask', onAsk)
+  }, [])
+
+  // 새 글자가 오면 맨 아래로
+  useEffect(() => {
+    const body = bodyRef.current
+    if (body) body.scrollTop = body.scrollHeight
+  }, [messages])
+
+  function submit(text: string) {
+    if (sending) return
+    if (text === input) setInput('')
+    void send(text)
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    // 한글 조합 중 Enter는 글자 확정이므로 보내지 않는다
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+    event.preventDefault()
+    if (canSend) submit(input)
+  }
+
+  const lastUserText = [...messages].reverse().find((m) => m.role === 'user')?.text
+
+  return (
+    <>
+      <aside
+        aria-label="온보딩 에이전트 채팅"
+        className={cn(
+          'fixed inset-0 z-40 flex-col bg-card lg:sticky lg:top-6 lg:z-auto lg:my-10 lg:flex lg:h-[calc(100svh-7rem)] lg:w-[400px] lg:shrink-0 lg:overflow-hidden lg:rounded-[18px] lg:border lg:border-border',
+          open ? 'flex' : 'hidden',
+        )}
+      >
+        <header className="flex items-center gap-2.5 border-b border-border px-4 py-3 lg:px-5 lg:py-4">
+          <img src={symbolUrl} alt="" className="size-8 shrink-0 rounded-[10px]" />
+          <div className="flex flex-1 flex-col leading-tight">
+            <b className="text-[15px]">온보딩 에이전트</b>
+            <span className="text-xs text-muted-foreground">회사·팀 지식으로 답해요</span>
+          </div>
+          <Button variant="ghost" size="icon" aria-label="채팅 닫기" className="lg:hidden" onClick={() => setOpen(false)}>
+            <X />
+          </Button>
+        </header>
+
+        <div ref={bodyRef} className="flex flex-1 flex-col gap-4 overflow-y-auto bg-[#fbfbfd] p-4 lg:p-5">
+          {messages.length === 0 && (
+            <p className="m-auto max-w-[280px] text-center text-sm text-muted-foreground">
+              온보딩에 대해 궁금한 걸 물어보세요. 등록된 사내 지식과 내 과제로 답해요.
+            </p>
+          )}
+          {messages.map((message, i) =>
+            message.role === 'user' ? (
+              <p
+                key={i}
+                className="max-w-[85%] self-end rounded-[18px_18px_4px_18px] bg-primary px-3.5 py-2.5 text-sm whitespace-pre-wrap text-primary-foreground"
+              >
+                {message.text}
+              </p>
+            ) : (
+              <AssistantMessage
+                key={i}
+                message={message}
+                pending={sending && i === messages.length - 1}
+                onRetry={lastUserText ? () => submit(lastUserText) : undefined}
+                onNavigate={() => setOpen(false)}
+              />
+            ),
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2.5 border-t border-border px-3 pt-3 pb-5 lg:px-4 lg:pb-3.5">
+          <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] lg:flex-wrap">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                disabled={sending}
+                onClick={() => submit(s)}
+                className="shrink-0 rounded-full border border-input bg-card px-3 py-1.5 text-[13px] hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <div
+            className={cn(
+              'flex items-end gap-2 rounded-[14px] border border-input bg-card py-1.5 pr-1.5 pl-3.5 focus-within:border-ring',
+              tooLong && 'border-[#c4372b] focus-within:border-[#c4372b]',
+            )}
+          >
+            <label htmlFor="chat-input" className="sr-only">
+              질문 입력
+            </label>
+            <textarea
+              id="chat-input"
+              ref={inputRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder={sending ? '답변이 끝나면 보낼 수 있어요' : '궁금한 걸 물어보세요'}
+              aria-describedby={counterId}
+              aria-invalid={tooLong || undefined}
+              className="field-sizing-content max-h-40 min-h-6 flex-1 resize-none bg-transparent py-2 text-sm outline-none"
+            />
+            <button
+              type="button"
+              aria-label="보내기"
+              disabled={!canSend}
+              onClick={() => submit(input)}
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-[var(--primary-hover)] disabled:bg-[#e8e8ed] disabled:text-[#8e8e93]"
+            >
+              <ArrowUp className="size-4" aria-hidden />
+            </button>
+          </div>
+          <span id={counterId} className={cn('text-right text-xs text-muted-foreground', tooLong && 'text-[#a1261c]')}>
+            {input.length.toLocaleString('ko-KR')} / {MAX_MESSAGE_LENGTH}
+            {tooLong && ` · ${MAX_MESSAGE_LENGTH}자까지 보낼 수 있어요`}
+          </span>
+        </div>
+      </aside>
+
+      {!open && (
+        <Button
+          className="fixed right-4 bottom-6 z-30 h-11 px-5 shadow-[0_8px_24px_rgba(6,71,154,0.35)] lg:hidden"
+          onClick={() => setOpen(true)}
+        >
+          <MessageSquare aria-hidden />
+          에이전트에게 묻기
+        </Button>
+      )}
+    </>
+  )
+}
+
+function AssistantMessage({
+  message,
+  pending,
+  onRetry,
+  onNavigate,
+}: {
+  message: ChatMessage
+  pending: boolean
+  onRetry?: () => void
+  onNavigate: () => void
+}) {
+  if (message.error) {
+    if (!message.retryable) {
+      return (
+        <div role="status" className="flex gap-2 rounded-xl border border-[#f0d9a8] bg-[#fff7e8] p-3 text-sm text-[#6b4500]">
+          <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <div className="flex flex-col gap-0.5">
+            <b>{message.error}</b>
+            {message.error === '오늘 사용 한도를 넘었어요' && <span>{QUOTA_HINT}</span>}
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div role="alert" className="flex flex-col gap-2.5 rounded-xl border border-[#f3c9c4] bg-[#fdf1ef] p-3 text-sm text-[#a1261c]">
+        <div className="flex gap-2">
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>{message.error}</span>
+        </div>
+        {onRetry && (
+          <Button variant="destructive" size="sm" className="self-start" onClick={onRetry}>
+            <RotateCw aria-hidden />
+            다시 시도
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  if (pending && !message.text) {
+    return (
+      <span
+        role="status"
+        aria-label="답변 중"
+        className="inline-flex gap-1 self-start rounded-[18px_18px_18px_4px] border border-border bg-card px-3.5 py-4"
+      >
+        <i className="size-1.5 animate-pulse rounded-full bg-[#aeaeb2]" />
+        <i className="size-1.5 animate-pulse rounded-full bg-[#c7c7cc] [animation-delay:150ms]" />
+        <i className="size-1.5 animate-pulse rounded-full bg-[#d8d8dc] [animation-delay:300ms]" />
+      </span>
+    )
+  }
+
+  const { knowledge = [], tasks = [] } = message.sources ?? {}
+  return (
+    <div className="flex max-w-[92%] flex-col gap-2 self-start">
+      <p
+        className={cn(
+          'rounded-[18px_18px_18px_4px] border border-border bg-card px-3.5 py-3 text-sm whitespace-pre-wrap',
+          message.unanswered && 'border-[#f0d9a8] bg-[#fff7e8]',
+        )}
+      >
+        {message.text}
+        {pending && <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-primary align-[-2px]" aria-hidden />}
+      </p>
+      {message.unanswered && (
+        <span className="text-xs text-muted-foreground">
+          {message.text.includes(HANDED_OVER) ? '' : `${HANDED_OVER}. `}답이 등록되면 같은 질문에 답할 수 있어요.
+        </span>
+      )}
+      {knowledge.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <span>근거</span>
+          {knowledge.map((k) => (
+            <span key={k.id} className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-0.5 text-foreground">
+              <BookOpen className="size-3" aria-hidden />
+              {k.question}
+            </span>
+          ))}
+        </div>
+      )}
+      {tasks.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <span>관련 과제</span>
+          {tasks.map((t) => (
+            <Link
+              key={t.id}
+              to={`/me/tasks/${t.id}`}
+              onClick={onNavigate}
+              className="inline-flex items-center gap-1 rounded-md bg-background px-2 py-0.5 text-primary hover:underline"
+            >
+              <ListChecks className="size-3" aria-hidden />
+              {t.title}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
