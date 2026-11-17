@@ -1,5 +1,7 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { HomePage } from '@/features/newhire/HomePage'
+import { TaskDetailPage } from '@/features/newhire/TaskDetailPage'
 import { isAuthError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import { AuthProvider, useAuth } from './AuthProvider'
@@ -43,8 +45,8 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<Layout />}>
         <Route element={<RoleGuard allow={['new_hire']} />}>
-          <Route path="/me" element={<Placeholder title="내 온보딩" />} />
-          <Route path="/me/tasks/:id" element={<Placeholder title="과제 상세" />} />
+          <Route path="/me" element={<HomePage />} />
+          <Route path="/me/tasks/:id" element={<TaskDetailPage />} />
         </Route>
         <Route element={<RoleGuard allow={['team_trainer']} />}>
           <Route path="/team" element={<Placeholder title="팀 신입 현황" />} />
