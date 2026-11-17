@@ -87,3 +87,17 @@ def test_user_client_respects_rls(service, newhire_token, trainer_token):
         assert len(trainer_rows) == 1
     finally:
         service.table("exams").delete().eq("id", exam["id"]).execute()
+
+
+def test_auth_server_unreachable_503_not_401(client, monkeypatch):
+    """인증 서버 장애를 로그아웃(401)으로 오인하지 않는다 — 웹이 사용자를 로그인 화면으로 보내지 않게."""
+    import httpx
+
+    from app import db
+
+    def unreachable(_token):
+        raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(db.anon_client().auth, "get_user", unreachable)
+    res = client.get("/_test/me", headers=bearer("any-token"))
+    assert res.status_code == 503
