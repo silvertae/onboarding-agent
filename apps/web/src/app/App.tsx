@@ -1,5 +1,6 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { UsersPage } from '@/features/admin/UsersPage'
 import { ExamEditorPage } from '@/features/exam/ExamEditorPage'
 import { ExamListPage } from '@/features/exam/ExamListPage'
 import { HomePage } from '@/features/newhire/HomePage'
@@ -68,7 +69,7 @@ export function AppRoutes() {
           <Route path="/knowledge" element={<KnowledgePage />} />
         </Route>
         <Route element={<RoleGuard allow={['admin']} />}>
-          <Route path="/admin/users" element={<Placeholder title="사용자 관리" />} />
+          <Route path="/admin/users" element={<UsersPage />} />
         </Route>
       </Route>
       <Route path="*" element={<HomeRedirect />} />
