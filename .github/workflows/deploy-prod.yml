@@ -1,0 +1,112 @@
+# v* 태그(Leo만 만든다) → 운영: 스테이징과 같은 순서(DB → 부트스트랩 → 에이전트 → 웹 → smoke.sh)를 운영 대상으로.
+# 값은 GitHub Environment "production"의 변수·비밀값에서 받는다(docs/deploy.md).
+name: deploy-prod
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: 운영 배포
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      AGENT_URL: ${{ vars.AGENT_URL }}
+      WEB_URL: ${{ vars.WEB_URL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 태그가 main에 머지된 커밋인지 확인
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::태그 커밋 $GITHUB_SHA가 main에 없습니다. main에 머지된 커밋에만 태그를 붙이세요."
+            exit 1
+          fi
+
+      - name: 배포 설정 확인
+        run: |
+          fail=0
+          if grep -n REPLACE_ME apps/web/.env.production .firebaserc; then
+            echo "::error::apps/web/.env.production 또는 .firebaserc에 REPLACE_ME가 남아 있습니다."; fail=1
+          fi
+          for v in GCP_PROJECT_ID SUPABASE_PROJECT_REF SUPABASE_URL SUPABASE_ANON_KEY AGENT_URL WEB_URL; do
+            [ -n "${!v}" ] || { echo "::error::GitHub 변수 $v가 비어 있습니다."; fail=1; }
+          done
+          file_value() { sed -n "s/^$1=//p" apps/web/.env.production; }
+          [ "$(file_value VITE_SUPABASE_URL)" = "$SUPABASE_URL" ] || { echo "::error::.env.production의 VITE_SUPABASE_URL이 변수 SUPABASE_URL과 다릅니다."; fail=1; }
+          [ "$(file_value VITE_AGENT_URL)" = "$AGENT_URL" ] || { echo "::error::.env.production의 VITE_AGENT_URL이 변수 AGENT_URL과 다릅니다."; fail=1; }
+          exit "$fail"
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.2.0
+      - name: DB 마이그레이션
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --remote="$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --yes
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: services/agent/uv.lock
+      - name: 계정 부트스트랩
+        working-directory: services/agent
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL || 'admin@demo.test' }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+        run: |
+          uv sync --locked --no-dev
+          uv run --no-sync python scripts/bootstrap_accounts.py
+
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: 에이전트 배포 (agent-prod, 최소 인스턴스 1)
+        env:
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        run: bash scripts/deploy-agent.sh prod "$GITHUB_SHA"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: 웹 빌드 (mode production)
+        run: |
+          npm --prefix apps/web ci
+          npm --prefix apps/web run build
+      - name: 웹 배포 (hosting:prod)
+        run: |
+          npx --yes firebase-tools@15.36.0 deploy --only hosting:prod \
+            --project "$GCP_PROJECT_ID" -m "prod $GITHUB_REF_NAME $GITHUB_SHA" --non-interactive
+
+      - name: 배포 점검 (smoke.sh)
+        env:
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+        run: |
+          EXPECT_VERSION="$GITHUB_SHA" \
+            bash scripts/smoke.sh "$WEB_URL" "$AGENT_URL" "$SUPABASE_URL" "$SUPABASE_ANON_KEY"

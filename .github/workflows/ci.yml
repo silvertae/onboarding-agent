@@ -1,0 +1,128 @@
+# PR 검사: 웹 테스트·빌드 → 로컬 Supabase에서 pgTAP·에이전트 pytest → 스테이징 설정 웹을 미리보기 채널에 배포.
+# 외부 PR 코드가 비밀값에 닿지 않도록 pull_request(pull_request_target 아님)만 쓴다.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: 웹 테스트·빌드
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm --prefix apps/web ci
+      - run: npm run test:web
+      - run: npm --prefix apps/web run build
+
+  scripts:
+    name: 배포 스크립트 검사
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: smoke.sh 판정 로직 (가짜 서버)
+        run: bash scripts/tests/smoke_test.sh
+      - name: deploy-agent.sh 인자 (가짜 gcloud)
+        run: bash scripts/tests/deploy_agent_test.sh
+      - name: shellcheck
+        run: shellcheck scripts/*.sh scripts/tests/*.sh
+
+  backend:
+    name: pgTAP·에이전트 테스트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.2.0
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: services/agent/uv.lock
+      - name: 에이전트 의존성
+        working-directory: services/agent
+        run: uv sync --locked
+      - name: 로컬 Supabase 시작
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,edge-runtime,supavisor
+      - name: pgTAP
+        run: npm run db:test
+      # 계정 부트스트랩(`npm run bootstrap`)은 스크립트가 생기는 Task 3 PR에서 이 자리에 추가한다.
+      - name: 에이전트 pytest
+        run: bash scripts/with-local-env.sh npm run test:agent
+
+  preview:
+    name: 웹 미리보기 배포
+    needs: [web, scripts, backend]
+    # 같은 저장소의 PR만(포크 PR에는 GCP 인증을 주지 않는다)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: 설정 자리표시 확인
+        run: |
+          if grep -n REPLACE_ME apps/web/.env.staging .firebaserc; then
+            echo "::error::apps/web/.env.staging 또는 .firebaserc에 REPLACE_ME가 남아 있습니다. docs/deploy.md '먼저 할 일' 6을 확인하세요."
+            exit 1
+          fi
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm --prefix apps/web ci
+      - name: 스테이징 설정으로 빌드
+        run: npm --prefix apps/web run build -- --mode staging
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: 미리보기 채널 배포
+        id: channel
+        env:
+          CHANNEL: pr-${{ github.event.pull_request.number }}
+          PROJECT: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          npx --yes firebase-tools@15.36.0 hosting:channel:deploy "$CHANNEL" \
+            --only staging --expires 7d --project "$PROJECT" --json > channel.json
+          url="$(jq -r '.result.staging.url // empty' channel.json)"
+          if [ -z "$url" ]; then
+            jq '{status, error}' channel.json
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: PR에 주소 남기기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          URL: ${{ steps.channel.outputs.url }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          body="웹 미리보기(스테이징 DB·에이전트 사용, 7일 유지): $URL"$'\n\n'"커밋: $SHA"
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "$body" --edit-last --create-if-none
