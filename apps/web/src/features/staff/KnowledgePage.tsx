@@ -34,7 +34,7 @@ function initialValues(editing: Editing): KnowledgeValues {
   return { question: '', answer: '', category: '' }
 }
 
-const th = 'px-4 py-3 font-semibold'
+const th = 'px-4 py-3 font-semibold whitespace-nowrap'
 
 // S10 지식·미답변 관리. 범위는 역할로 고정: 교육 담당자 = 우리 팀 지식, 경영지원 = 회사 공통 지식.
 export function KnowledgePage() {
@@ -203,12 +203,12 @@ export function KnowledgePage() {
                         <td className="max-w-80 px-4 py-3 text-[var(--text-secondary)]">
                           <p className="line-clamp-2">{k.answer}</p>
                         </td>
-                        <td className="px-4 py-3">{k.category || '—'}</td>
-                        <td className="px-4 py-3">{k.scope === 'company' ? '회사 공통' : scopeLabel}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{k.category || '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{k.scope === 'company' ? '회사 공통' : scopeLabel}</td>
                         <td className="px-4 py-3">
                           <Badge variant={k.status === 'published' ? 'done' : 'blocked'}>{STATUS_TEXT[k.status]}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-[var(--text-secondary)]">{formatMonthDay(k.updated_at.slice(0, 10))}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-[var(--text-secondary)]">{formatMonthDay(k.updated_at.slice(0, 10))}</td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1.5">
                             <Button

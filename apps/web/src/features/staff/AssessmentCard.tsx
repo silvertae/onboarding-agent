@@ -55,7 +55,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
         {task.assessment_result ? (
           <Badge variant={task.assessment_result === 'pass' ? 'done' : 'rework'}>{ASSESSMENT_LABEL[task.assessment_result]}</Badge>
         ) : (
-          <StatusBadge status={task.status} />
+          <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
         )}
       </div>
 
