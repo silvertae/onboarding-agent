@@ -63,13 +63,16 @@ export function AssessmentCard({ task }: { task: TaskView }) {
 
   // record_assessment는 비운 일정·장소를 무시하고 기존 값을 유지한다(coalesce). 지운 것처럼 보이지 않게 저장을 막는다.
   const clearsSaved = (base.scheduled !== '' && scheduled === '') || (base.location.trim() !== '' && location.trim() === '')
+  // 결과도 같다: 기록된 결과는 미기록으로 되돌릴 수 없다(coalesce로 기존 결과·완료 상태 유지).
+  const resultRecorded = base.choice !== 'none'
+  const unrecords = resultRecorded && choice === 'none'
 
   // 선행 과제 대기·해당 없음이면 서버가 거절한다.
   const locked = task.status === 'blocked' || task.status === 'na'
   const disabled = locked || busy
 
   async function save() {
-    if (clearsSaved) return
+    if (clearsSaved || unrecords) return
     setSaved(false)
     const ok = await run(() =>
       recordAssessment(task.id, {
@@ -123,7 +126,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
               <label
                 key={c.value}
                 className={cn(
-                  'cursor-pointer rounded-lg px-3 py-1.5 text-center text-sm text-[var(--text-secondary)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
+                  'cursor-pointer rounded-lg px-3 py-1.5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-40 text-center text-sm text-[var(--text-secondary)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
                   choice === c.value && 'bg-white font-semibold text-foreground shadow-sm',
                 )}
               >
@@ -133,6 +136,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
                   value={c.value}
                   checked={choice === c.value}
                   onChange={() => set('choice', c.value)}
+                  disabled={c.value === 'none' && resultRecorded}
                   className="sr-only"
                 />
                 {c.label}
@@ -157,6 +161,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
 
         {locked && <p className="text-sm text-muted-foreground">선행 과제가 끝나면 기록할 수 있어요.</p>}
         {clearsSaved && <p className="text-sm text-destructive">저장된 일정·장소는 지울 수 없어요. 새 값으로 바꿔 주세요.</p>}
+        {resultRecorded && <p className="text-xs text-muted-foreground">기록된 결과는 미기록으로 되돌릴 수 없어요. 통과 / 보충 필요 사이에서만 바꿀 수 있어요.</p>}
         {error && <ErrorText>{error}</ErrorText>}
         {saved && (
           <p role="status" className="text-sm text-[#1b6530]">
@@ -165,7 +170,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
         )}
 
         <div className="flex justify-end">
-          <Button type="button" size="lg" className="px-5" disabled={disabled || clearsSaved} onClick={() => void save()}>
+          <Button type="button" size="lg" className="px-5" disabled={disabled || clearsSaved || unrecords} onClick={() => void save()}>
             저장
           </Button>
         </div>

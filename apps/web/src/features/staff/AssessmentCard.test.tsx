@@ -67,4 +67,16 @@ describe('AssessmentCard', () => {
     expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
     expect(screen.queryByText(/지울 수 없어요/)).not.toBeInTheDocument()
   })
+
+  it('저장된 결과가 있으면 "미기록"으로 되돌릴 수 없다(서버가 기존 결과를 유지하므로)', () => {
+    render(<AssessmentCard task={base} />)
+    expect(screen.getByRole('radio', { name: '미기록' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: '통과' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: '보충 필요' })).toBeEnabled()
+  })
+
+  it('결과가 없으면 "미기록"을 고를 수 있다', () => {
+    render(<AssessmentCard task={{ ...base, assessment_result: null }} />)
+    expect(screen.getByRole('radio', { name: '미기록' })).toBeEnabled()
+  })
 })
