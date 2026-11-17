@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { vi } from 'vitest'
 
@@ -10,6 +11,9 @@ vi.mock('./AuthProvider', () => ({
     signOut: vi.fn(),
   }),
 }))
+
+// 채팅 패널은 features/chat 테스트가 검증한다. 여기서는 페이지만 그리게 한다.
+vi.mock('@/features/chat/ChatPanel', () => ({ ChatPanel: ({ children }: { children: ReactNode }) => children }))
 
 import { Layout } from './Layout'
 
