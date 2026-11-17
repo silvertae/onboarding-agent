@@ -1,134 +1,69 @@
 # 온보딩 에이전트
 
-| 항목 | 내용 |
+신입 한 명의 온보딩을 하나의 타임라인으로 묶고, 문서에 없는 질문과 반복 설명은 AI 에이전트가 받되, 업무 상태는 사람과 규칙이 지키는 웹 서비스다.
+
+인사·총무·회계 안내와 팀 교육이 따로 전달되고, 담당자는 같은 설명을 반복한다. 이 문제를 풀기 위해 역할 4개(신입·교육 담당자·경영지원·관리자)가 한 서비스에서 과제를 주고받고, 에이전트가 지식 답변과 시험 초안을 맡는다. 차별점은 세 가지다. 근거를 표시하고 모르면 담당자에게 넘기는 에이전트, 업무 상태는 정해진 규칙으로만 바뀌는 구조, 그리고 공개 URL로 실제 운영한다는 점이다. 사내 AI Agent 경진대회 출품작이며, 화면은 회사 CI(Blueward)를 쓰고 사람·계정·과제·지식 데이터는 모두 가상이다. 심사위원 접속 안내는 [심사위원 안내](docs/judge-guide.md)에 있다.
+
+![신입 화면: 입사일·첫 주·첫 달 타임라인과 오른쪽 에이전트 채팅](docs/images/newhire-timeline-chat.png)
+
+<p>
+  <img src="docs/images/ops-review.png" width="49%" alt="총무팀 업무함: 신입이 제출한 과제를 확인하거나 보완 요청">
+  <img src="docs/images/exam-editor.png" width="49%" alt="시험 편집기: AI 초안 문항·모범 답안·채점 기준을 검토하고 고친다">
+</p>
+
+위: 신입 타임라인과 채팅(근거 표시). 아래 왼쪽: 경영지원 업무함에서 제출 확인·보완 요청. 아래 오른쪽: 교육 담당자의 시험 초안 편집. 모두 스테이징 화면이며 데이터는 가상이다.
+
+## 주요 기능
+
+| 역할 | 기능 |
 |---|---|
-| 무엇 | 회사 계정 발급 이후 신입 온보딩을 한 타임라인으로 묶은 웹 서비스와, 지식 답변·시험 출제 에이전트 |
-| 현재 | 19개 중 18개 완료 — 모든 화면·에이전트 기능 머지, 스테이징 가동 중. Task 19(리허설 완료, 운영 릴리스 대기)만 남음 |
-| 데이터 | 화면은 회사 CI(Blueward), 사람·계정·업무 데이터는 전부 가상. 실명·민감정보 없음 |
+| 신입 | 입사일·첫 주·첫 달 타임라인에서 경영지원 과제 21개와 팀 과제 10개를 처리한다. 선행 과제가 끝나면 다음 과제가 열리며, 담당자 처리 결과는 새로고침 없이 반영된다. 오른쪽 채팅에서 에이전트에게 묻는다 |
+| 경영지원 (인사·총무·회계) | 부서 업무함에서 제출된 과제를 확인하거나 사유와 함께 보완을 요청하고, 담당자 처리 과제를 완료한다 |
+| 교육 담당자 | 팀 신입의 진행과 평가 일정을 보고 결과를 기록한다. 미답변 질문에 답을 등록하고, AI 초안으로 시험지와 답안지를 만든다 |
+| 관리자 | 계정을 등록하면(신입은 입사일 기준) 온보딩 과제 31개가 바로 만들어진다. 시연용 데이터를 초기 상태로 되돌린다 |
 
-사내 AI Agent 경진대회 출품작입니다. 공개 URL로 배포해 심사위원이 한 달 동안 역할별 계정으로 직접 써 보는 것을 목표로 합니다.
+### 온보딩 어시스턴트 (신입용 채팅)
 
-## 프로그램 개요
+<img src="docs/images/chat-answer.gif" width="300" align="right" alt="채팅: 질문하면 답이 이어서 나오고 근거 지식이 표시된다">
 
-### 누가 무엇을 하나
+신입 화면 오른쪽 채팅에서 질문을 입력하면 답이 실시간으로 이어서 나오고, 아래에 근거(사용한 지식·과제)가 붙는다. 응답은 게시된 사내 지식과 신입 본인의 과제만 근거로 삼는다. 근거가 없으면 지어내지 않고 "확인되지 않은 내용이에요. 담당자에게 전달했어요."라고 답하며 미답변으로 기록한다.
 
-| 역할 | 하는 일 |
+담당자가 그 미답변에 답을 등록하면 다음 질문부터 바로 답한다. 예를 들어 신입이 "동호회 가입비 얼마야?"라고 처음 물었을 때는 담당자에게 넘기고, 교육 담당자가 답을 등록한 뒤 같은 질문을 하면 등록된 답과 근거를 보여 준다. 문서로 정리되지 않았던 지식이 질문을 통해 쌓인다.
+
+"오늘 할 일"은 신입이 직접 할 과제만 안내하고, 담당자가 처리할 과제는 구분해서 말한다. 과제 완료 같은 처리 요청은 직접 할 수 없다고 안내하고 해당 과제 화면으로 연결한다. 코드 작성이나 시험 답안 요청은 거절한다. 오른쪽 화면은 첫 응답까지의 대기 시간을 줄여서 편집했다.
+<br clear="right">
+
+### 시험 출제 도우미 (교육 담당자용)
+
+주제·난이도·문항 수를 넣으면 문제, 모범 답안, 채점 기준, 배점 초안을 받는다. 신입이 제출한 기술스택 조사 결과를 참고할 수 있다. 문항 하나만 다시 만들거나 직접 고친 뒤 순서를 바꿔 저장하며, AI 초안에는 확정 전 검토가 필요하다는 표시를 남긴다. 시험지(답 없음)와 답안지(모범 답안·채점 기준)를 따로 인쇄하거나 PDF로 저장할 수 있고, 신입은 시험 문제와 답안을 볼 수 없다.
+
+## 믿고 쓸 수 있게 한 장치
+
+과제를 완료하거나 보완을 요청하는 일은 화면에서 사람이 누르고, 정해진 규칙에 따라서만 처리된다. 에이전트에게는 업무 상태를 바꾸는 기능이 없으므로 AI가 잘못 판단해도 진행 상황이 망가지지 않는다.
+
+누가 무엇을 볼 수 있는지는 역할로 정해진다. 신입은 본인 과제만, 경영지원 담당자는 자기 부서 과제만 본다. 시험 문제와 답안은 교육 담당자만 볼 수 있다. 계정은 관리자만 만들 수 있고 공개 가입은 막혀 있다.
+
+AI 사용 비용에는 상한을 둔다. 로그인한 사용자만 에이전트를 쓸 수 있고, 사용자당 하루 채팅 50회, 시험 생성 10회까지로 제한한다. AI 서비스와 클라우드에는 월 사용 한도와 예산 알림을 건다. 채팅 내용은 저장하지 않는다.
+
+심사위원이 쓰는 운영 환경은 개발 중인 환경과 분리돼 있다. 확인을 마친 버전만 승인을 거쳐 운영에 올라가고, 올라갈 때마다 로그인·권한·화면을 자동으로 점검한다. 공개 기간(한 달) 동안 첫 접속이 느려지지 않도록 서비스를 계속 켜 둔다.
+
+## 만든 방식
+
+기획·결정·머지는 사람이 맡고, 구현과 리뷰는 AI 에이전트가 나눠 처리했다. Claude Code가 공통 기반을 먼저 만든 뒤 신입·담당자·채팅·시험·관리자 기능을 여러 세션이 나눠 병렬로 개발했고, 기능마다 테스트를 먼저 작성했다. 모든 변경은 Codex의 코드 리뷰를 통과해야 반영됐다. 공개 전에는 시연 흐름 전체와 실패 상황(접근 차단, 권한, 장애 시 동작)을 실제 화면에서 점검했고, 결과는 [시연 스크립트](docs/demo-script.md)에 정리했다.
+
+## 확장 계획
+
+| 방향 | 방법 |
 |---|---|
-| 신입 | 입사일 / 첫 주 / 첫 달 타임라인에서 경영지원 과제 21개와 AI팀 과제 10개를 처리하고, 에이전트에게 질문합니다 |
-| 교육 담당자 | 팀 신입의 진행을 확인하고 평가를 기록하며, AI 초안으로 시험지·답안지를 만듭니다 |
-| 경영지원 담당자 (인사·총무·회계) | 자기 부서 과제를 확인하거나 보완을 요청하고, 담당자 처리 과제를 완료합니다 |
-| 관리자 | 가상 계정을 등록하고(신입이면 온보딩 자동 시작), 데모 데이터를 초기화합니다 |
+| 회사 계정 로그인 | Microsoft 계정(Azure)으로 로그인 |
+| Teams에서 묻기 | Teams 봇이 같은 에이전트를 호출 |
+| 여러 조직 | 조직별로 데이터를 나눠 계열사·다른 부서로 확대 |
+| 입사 전·퇴사 절차 | 같은 과제 구조로 단계를 추가 |
 
-### 핵심 원칙
-
-- **업무 상태는 DB가 관리합니다.** 과제 상태(`blocked → todo → submitted → rework → done`, 별도로 `na`)는 Postgres RPC로만 바뀝니다. 선행 과제가 끝나면 다음 과제가 자동으로 열립니다.
-- **에이전트는 조회·답변·초안만 합니다.** 사용자의 토큰으로 데이터를 읽으므로 RLS가 그대로 적용되며, 과제 상태를 바꾸지 않습니다. 등록된 지식에 없는 질문은 지어내지 않고 미답변으로 기록합니다.
-- **비밀값은 서버에만 둡니다.** OpenAI 키와 Supabase 관리자 키는 브라우저 코드와 저장소에 들어가지 않습니다.
-
-### 구성
-
-| 폴더 | 기술 | 배포 |
-|---|---|---|
-| `apps/web` | React 19 + Vite + TypeScript, Tailwind v4 + shadcn/ui, supabase-js, TanStack Query | Firebase Hosting |
-| `services/agent` | Python 3.12 + FastAPI + Google ADK (LiteLLM으로 OpenAI) | Cloud Run (`asia-northeast3`) |
-| `supabase` | 스키마, RLS, RPC, 가상 조직 데이터 | Supabase (스테이징·운영 모두 무료 플랜, 일시 정지 방지 `keepalive`) |
-
-환경: 로컬 → 스테이징(`main` 머지 시 자동 배포) → 운영(`v*` 태그 시 배포).
-
-## 진행 상황
-
-상태: ✅ 완료(머지) · 🔍 PR 리뷰 중 · 🔨 작업 중 · ⏳ 대기 (기준: 2026-11-17, `main` `0b466f9`)
-
-### 환경
-
-| 환경 | 주소 | 상태 |
-|---|---|---|
-| 스테이징 | 웹 https://blueward-onboarding-stg-web.web.app · 에이전트 `agent-staging` (Cloud Run, 서울) | ✅ `main` 머지마다 자동 배포, smoke 6단계 통과 |
-| PR 미리보기 | PR마다 `…--pr-<번호>-….web.app` (스테이징 DB·에이전트 사용) | ✅ CI가 PR에 주소 댓글 |
-| 운영 | — | ⏳ 운영 GCP·Supabase(무료)·OpenAI 준비 후 `v*` 태그로 배포 ([docs/deploy.md](docs/deploy.md)) |
-
-### 0단계: 공통 기반과 배포 경로 (순차)
-
-| Task | 내용 | 상태 | PR |
-|---|---|---|---|
-| 1 | 저장소 골격, 계약 문서, 에이전트 `/health` | ✅ | [#1](https://github.com/silvertae/onboarding-agent/pull/1) |
-| 2 | 스키마, RLS, 상태 전이 함수, 사용 한도 | ✅ | [#2](https://github.com/silvertae/onboarding-agent/pull/2) |
-| 3 | 데모 조직 데이터(Blueward), 데모 초기화, 계정 부트스트랩 | ✅ | [#6](https://github.com/silvertae/onboarding-agent/pull/6) |
-| 4 | 웹 공통 골격 (로그인, 역할별 접근, 공통 훅) | ✅ | [#3](https://github.com/silvertae/onboarding-agent/pull/3) |
-| 5 | 에이전트 서비스 기반 (인증, DB 클라이언트, 한도, CORS) | ✅ | [#7](https://github.com/silvertae/onboarding-agent/pull/7) |
-| 6 | 배포 경로 (CI, 스테이징·운영 워크플로, 환경별 GCP 프로젝트) | ✅ 스테이징 · ⏳ 운영 첫 배포 | [#4](https://github.com/silvertae/onboarding-agent/pull/4), [#10](https://github.com/silvertae/onboarding-agent/pull/10) |
-| S0 | 병렬 작업 전 공통 의존성(ADK·LiteLLM)·UI 컴포넌트 | ✅ | [#11](https://github.com/silvertae/onboarding-agent/pull/11) |
-
-### 1단계: 도메인별 병렬
-
-| Task | 도메인 | 내용 | 상태 | PR |
-|---|---|---|---|---|
-| 7 | A 신입 화면 | 신입 홈 타임라인 (S2) | ✅ | [#8](https://github.com/silvertae/onboarding-agent/pull/8) |
-| 8 | A 신입 화면 | 과제 상세 (S3) | ✅ | [#8](https://github.com/silvertae/onboarding-agent/pull/8) |
-| 9 | B 담당자 화면 | 부서 업무함 (S9) | ✅ | [#9](https://github.com/silvertae/onboarding-agent/pull/9) |
-| 10 | B 담당자 화면 | 팀 신입 현황과 신입 상세 (S5, S6) | ✅ | [#9](https://github.com/silvertae/onboarding-agent/pull/9) |
-| 11 | B 담당자 화면 | 지식·미답변 관리 (S10) | ✅ | [#9](https://github.com/silvertae/onboarding-agent/pull/9) |
-| 12 | C 어시스턴트 | 어시스턴트 도구와 `/chat` (`gpt-6.1-terra`) | ✅ | [#15](https://github.com/silvertae/onboarding-agent/pull/15) |
-| 13 | C 어시스턴트 | 채팅 패널 (S4) | ✅ | [#17](https://github.com/silvertae/onboarding-agent/pull/17) |
-| 14 | D 시험 출제 | 시험 출제 에이전트와 API | ✅ | [#13](https://github.com/silvertae/onboarding-agent/pull/13) |
-| 15 | D 시험 출제 | 시험 목록과 편집기 (S7) | ✅ | [#16](https://github.com/silvertae/onboarding-agent/pull/16) |
-| 16 | D 시험 출제 | 시험 인쇄 뷰 (S8) | ✅ | [#18](https://github.com/silvertae/onboarding-agent/pull/18) |
-| 17 | E 관리자 | 사용자 등록 API | ✅ | [#12](https://github.com/silvertae/onboarding-agent/pull/12) |
-| 18 | E 관리자 | 사용자 관리 화면 (S11) | ✅ | [#14](https://github.com/silvertae/onboarding-agent/pull/14), [#19](https://github.com/silvertae/onboarding-agent/pull/19) |
-
-### 2단계: 통합과 운영 반영
-
-| Task | 내용 | 상태 | PR |
-|---|---|---|---|
-| 19 | 통합 테스트·스테이징 리허설·실패 조건 점검 | ✅ 스테이징 리허설 0~5단계 통과 ([시연 스크립트](docs/demo-script.md)) | [#21](https://github.com/silvertae/onboarding-agent/pull/21) |
-| 19 | 운영 릴리스(`v1.0.0`)·운영 리허설·운영 점검 | ⏳ 운영 환경 준비 대기 | |
-
-### 다음 작업 (우선순위)
-
-1. 리허설에서 나온 수정 머지: 시험 지시문 회사명·마크다운 코드 표시 제거([#22](https://github.com/silvertae/onboarding-agent/pull/22)), 운영 Supabase 필수 설정 문서([#23](https://github.com/silvertae/onboarding-agent/pull/23))
-2. GitHub 보호 설정: `main` 보호(최신 `main` 반영 필수 포함), `v*` 태그 규칙 ([docs/deploy.md](docs/deploy.md) 6)
-3. 운영 환경 준비(Leo): 운영 GCP 프로젝트, Supabase 운영 프로젝트(무료 플랜), OpenAI 운영 키, GitHub `production`·`keepalive` 환경 → `.env.production`·`.firebaserc` 운영 값 PR
-4. `v1.0.0` 태그 → 운영 배포 → 운영 리허설 → 데모 초기화 → 운영 점검 기록
-5. 부트스트랩 개선: 배포 때 기본 계정 비밀번호가 바뀌지 않았으면 다시 설정하지 않기(재설정 시 기존 로그인 세션이 끊김)
-6. 실제 도입 단계: `service_role` 테이블 권한을 마이그레이션에 명시(지금은 Supabase 기본 설정에 의존)
-
-### 화면
-
-| 역할 | 화면 |
-|---|---|
-| 신입 | S2 타임라인, S3 과제 상세, S4 채팅 |
-| 경영지원 (인사·총무·회계) | S9 부서 업무함, S10 지식 관리(회사 공통) |
-| 교육 담당자 | S5 팀 신입 현황, S6 신입 상세, S7 시험 편집기, S8 시험지·답안지 인쇄, S10 지식 관리(AI팀) |
-| 관리자 | S11 사용자 관리(계정 등록, 데모 데이터 초기화) |
-
-로컬 계정은 같은 메일에 비밀번호 `demo1234`입니다. 스테이징·운영 비밀번호는 별도로 전달합니다.
-
-## 로컬 실행
-
-필요한 도구: Node 22+, uv, Docker, Supabase CLI.
-
-```bash
-npm --prefix apps/web install          # 웹 의존성
-(cd services/agent && uv sync)         # 에이전트 의존성
-supabase start && npm run db:reset    # 로컬 Supabase + 기본 계정 6개(로컬 비밀번호 demo1234)
-npm run dev:web                        # http://localhost:5173
-npm run dev:agent                      # http://localhost:8000/health
-npm run test:web && npm run test:agent # 테스트
-```
-
-`.env` 파일은 쓰지 않습니다. 로컬 Supabase 값은 `scripts/with-local-env.sh`가 `supabase status`에서 받아 넘깁니다. 명령어 전체는 [CLAUDE.md](CLAUDE.md#명령어)를 참고하십시오.
-
-## 문서
+## 더 보기
 
 | 문서 | 내용 |
 |---|---|
-| [설계](docs/superpowers/specs/2026-11-17-onboarding-agent-design.md) | 목표, 비목표, 실패 조건, 결정된 구조 |
-| [구현 계획](docs/superpowers/plans/2026-11-17-onboarding-agent.md) | Task 1~19, 인터페이스, 테스트 |
-| [화면 명세](docs/screens.md) | 화면 S1~S11, 시연 흐름 |
-| [API·환경변수 계약](docs/contracts.md) | 웹·에이전트·DB 사이의 기준 |
-| [CLAUDE.md](CLAUDE.md) | 구현 에이전트(Claude Code) 작업 규칙과 명령어 |
-| [AGENTS.md](AGENTS.md) | PR 리뷰 에이전트(Codex) 리뷰 기준 |
-| [SECURITY.md](SECURITY.md) | 보안 제보 방법, 신뢰 경계, 보안 검토 기준 |
-| [배포 안내](docs/deploy.md) | 환경, Leo가 먼저 할 일, 배포 흐름, 되돌리기, 운영 점검 |
-| [시연 스크립트](docs/demo-script.md) | 시연 흐름 단계별 기대 결과, 리허설·실패 조건 점검 기록 |
-| [심사위원 안내](docs/judge-guide.md) | 접속 주소, 역할별 계정, 5분 체험 순서, 사용 한도 |
+| [심사위원 안내](docs/judge-guide.md) | 접속, 역할별 계정, 5분 체험 순서, 사용 한도 |
+| [시연 스크립트](docs/demo-script.md) | 시연 흐름과 기대 결과, 점검 기록 |
+| [구조와 개발 안내](docs/architecture.md) | 아키텍처, 데이터 모델, 보안·권한, 배포, 기술 스택, 로컬 실행 (개발자용) |
