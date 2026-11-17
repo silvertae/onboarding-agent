@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.chat_routes import router as chat_router
 from app.config import Settings, get_settings
+from app.exam_routes import router as exam_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -25,6 +26,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"ok": True, "version": settings.git_sha}
 
     app.include_router(chat_router)
+    app.include_router(exam_router)
 
     return app
 
