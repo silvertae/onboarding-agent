@@ -253,3 +253,54 @@ def test_password_not_logged(client, admin_token, created, caplog, monkeypatch):
     assert caplog.records, "로그가 캡처되지 않으면 이 테스트는 의미가 없다"
     assert body["password"] not in caplog.text
     assert failing["password"] not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "make_body",
+    [
+        lambda e: ops_body(e, password="short7!"),               # 필드 검증 실패
+        lambda e: ops_body(e, department=None),                  # 모델 검증 실패(요청 전체가 input이 된다)
+        lambda e: {**new_hire_body(e), "hire_date": "not-a-date"},
+    ],
+    ids=["field", "model", "type"],
+)
+def test_validation_error_hides_password(client, admin_token, created, make_body):
+    """422 응답 본문에 비밀번호가 들어가지 않는다 (Codex P0, SECURITY.md)."""
+    email = unique_email("v")
+    created.append(email)
+    body = make_body(email)
+
+    res = client.post("/admin/users", json=body, headers=bearer(admin_token))
+
+    assert res.status_code == 422
+    assert body["password"] not in res.text
+    detail = res.json()["detail"]
+    assert isinstance(detail, list) and detail
+    assert all("input" not in d and "ctx" not in d for d in detail)
+    assert all(d["loc"][0] == "body" for d in detail)
+
+
+def test_rollback_retries_auth_delete(client, admin_token, service, created, monkeypatch):
+    """롤백 삭제가 일시적으로 실패해도 다시 시도해 인증 계정을 남기지 않는다 (Codex P1)."""
+    from app import admin_routes
+
+    monkeypatch.setattr(admin_routes, "_insert_profile", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))
+    monkeypatch.setattr(admin_routes, "DELETE_RETRY_DELAYS", (0, 0, 0))
+    real_delete_user = admin_routes._delete_auth_user_once
+    calls = {"n": 0}
+
+    def flaky_delete(admin, user_id):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise RuntimeError("인증 서버 일시 장애(테스트)")
+        real_delete_user(admin, user_id)
+
+    monkeypatch.setattr(admin_routes, "_delete_auth_user_once", flaky_delete)
+    email = unique_email("retry")
+    created.append(email)
+
+    res = client.post("/admin/users", json=new_hire_body(email), headers=bearer(admin_token))
+
+    assert res.status_code == 500
+    assert calls["n"] == 3
+    assert auth_user_id(service, email) is None

@@ -6,12 +6,15 @@ POST /admin/users 처리 순서:
   3. profiles 삽입(org_id는 호출자 조직, is_seed = false)
   4. new_hire면 _start_onboarding
 3·4가 실패하면 2에서 만든 인증 계정을 지우고 500을 돌려준다(프로필·과제는 cascade로 함께 지워진다).
-비밀번호와 요청 본문은 로그에 남기지 않는다.
+비밀번호와 요청 본문은 로그에도, 오류 응답에도 남기지 않는다.
 """
 
 import logging
+import time
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import ValidationError
 from supabase import Client
 from supabase_auth.errors import AuthApiError
 
@@ -26,6 +29,22 @@ router = APIRouter(prefix="/admin")
 DUPLICATE_EMAIL = "이미 등록된 메일이에요"
 UNKNOWN_TEAM = "팀을 찾을 수 없어요"
 CREATE_FAILED = "계정을 만들지 못했어요"
+
+# 롤백 삭제가 일시 장애로 실패하면 이 간격(초)으로 다시 시도한다
+DELETE_RETRY_DELAYS: tuple[float, ...] = (0, 0.5, 1.5)
+
+
+def _parse_request(payload: Any) -> CreateUserRequest:
+    """요청 본문 검증. FastAPI 기본 422는 detail[].input에 입력값(비밀번호 포함)을 그대로 돌려주므로
+    여기서 직접 검증하고 입력값·context를 뺀 오류만 돌려준다."""
+    try:
+        return CreateUserRequest.model_validate(payload)
+    except ValidationError as error:
+        detail = [
+            {"type": e["type"], "loc": ["body", *e["loc"]], "msg": e["msg"]}
+            for e in error.errors(include_url=False, include_context=False, include_input=False)
+        ]
+        raise HTTPException(status_code=422, detail=detail) from None
 
 
 def _team_in_org(user: CurrentUser, team_id: str) -> bool:
@@ -67,9 +86,30 @@ def _start_onboarding(admin: Client, user_id: str) -> None:
     admin.rpc("_start_onboarding", {"p_new_hire": user_id}).execute()
 
 
+def _delete_auth_user_once(admin: Client, user_id: str) -> None:
+    admin.auth.admin.delete_user(user_id)
+
+
+def _delete_auth_user(admin: Client, user_id: str) -> None:
+    """반쪽 계정을 남기지 않도록 삭제를 몇 번 다시 시도한다. 끝내 실패하면 수동 정리를 위해 id를 남긴다."""
+    for attempt, delay in enumerate(DELETE_RETRY_DELAYS, start=1):
+        if delay:
+            time.sleep(delay)
+        try:
+            _delete_auth_user_once(admin, user_id)
+            return
+        except Exception as error:  # noqa: BLE001
+            logger.warning("auth user cleanup attempt %d failed for %s: %s", attempt, user_id, type(error).__name__)
+    logger.error("ORPHAN_AUTH_USER %s: cleanup failed; delete it in Supabase Auth", user_id)
+
+
 @router.post("/users", status_code=201, response_model=CreateUserResponse)
-def create_user(req: CreateUserRequest, user: CurrentUser = Depends(require_role("admin"))) -> dict:
+def create_user(
+    payload: Annotated[Any, Body()],
+    user: CurrentUser = Depends(require_role("admin")),
+) -> dict:
     # 동기 함수: FastAPI가 스레드에서 실행하므로 supabase-py 동기 호출이 이벤트 루프를 막지 않는다
+    req = _parse_request(payload)
     if req.team_id is not None and not _team_in_org(user, str(req.team_id)):
         raise HTTPException(status_code=422, detail=UNKNOWN_TEAM)
 
@@ -98,10 +138,7 @@ def create_user(req: CreateUserRequest, user: CurrentUser = Depends(require_role
             _start_onboarding(admin, new_id)
     except Exception as error:  # noqa: BLE001 - 반쪽 계정을 남기지 않는다(Review Focus 5)
         logger.error("user setup failed after auth create (%s); deleting auth user %s", type(error).__name__, new_id)
-        try:
-            admin.auth.admin.delete_user(new_id)
-        except Exception as cleanup_error:  # noqa: BLE001
-            logger.error("auth user cleanup failed for %s: %s", new_id, type(cleanup_error).__name__)
+        _delete_auth_user(admin, new_id)
         raise HTTPException(status_code=500, detail=CREATE_FAILED) from None
 
     logger.info("admin %s created user %s (%s)", user.id, new_id, req.role)
