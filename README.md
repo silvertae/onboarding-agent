@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 무엇 | 회사 계정 발급 이후 신입 온보딩을 한 타임라인으로 묶은 웹 서비스와, 지식 답변·시험 출제 에이전트 |
-| 현재 | 0단계 진행 중 — Task 1 PR 리뷰 중 (전체 19개 중 0개 완료) |
+| 현재 | 0단계 진행 중 — Task 3 PR 리뷰 중, Task 6 작업 중 (전체 19개 중 3개 완료) |
 | 데이터 | 화면은 회사 CI(Blueward), 사람·계정·업무 데이터는 전부 가상. 실명·민감정보 없음 |
 
 사내 AI Agent 경진대회 출품작입니다. 공개 URL로 배포해 심사위원이 한 달 동안 역할별 계정으로 직접 써 보는 것을 목표로 합니다.
@@ -44,11 +44,11 @@
 | Task | 내용 | 상태 | PR |
 |---|---|---|---|
 | 1 | 저장소 골격, 계약 문서, 에이전트 `/health` | ✅ | [#1](https://github.com/silvertae/onboarding-agent/pull/1) |
-| 2 | 스키마, RLS, 상태 전이 함수, 사용 한도 | 🔍 | |
-| 3 | 가상 조직 데이터, 데모 초기화, 계정 부트스트랩 | ⏳ | |
-| 4 | 웹 공통 골격 (로그인, 역할별 접근, 공통 훅) | 🔨 | |
+| 2 | 스키마, RLS, 상태 전이 함수, 사용 한도 | ✅ | [#2](https://github.com/silvertae/onboarding-agent/pull/2) |
+| 3 | 데모 조직 데이터(Blueward), 데모 초기화, 계정 부트스트랩 | 🔍 | |
+| 4 | 웹 공통 골격 (로그인, 역할별 접근, 공통 훅) | ✅ | [#3](https://github.com/silvertae/onboarding-agent/pull/3) |
 | 5 | 에이전트 서비스 기반 (인증, DB 클라이언트, 한도, CORS) | ⏳ | |
-| 6 | 배포 경로 (CI, 스테이징, 운영) | 🔨 | |
+| 6 | 배포 경로 (CI, 스테이징, 운영) | 🔨 | [#4](https://github.com/silvertae/onboarding-agent/pull/4) |
 
 ### 1단계: 도메인별 병렬
 
@@ -80,7 +80,7 @@
 ```bash
 npm --prefix apps/web install          # 웹 의존성
 (cd services/agent && uv sync)         # 에이전트 의존성
-supabase start                         # 로컬 Supabase (Task 2부터)
+supabase start && npm run db:reset    # 로컬 Supabase + 기본 계정 6개(로컬 비밀번호 demo1234)
 npm run dev:web                        # http://localhost:5173
 npm run dev:agent                      # http://localhost:8000/health
 npm run test:web && npm run test:agent # 테스트

@@ -694,6 +694,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      reset_demo: { Args: Record<PropertyKey, never>; Returns: undefined };
       resolve_unanswered: {
         Args: { p_answer: string; p_category: string; p_id: string; p_question: string };
         Returns: {
@@ -715,6 +716,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      seed_demo_knowledge: { Args: { p_org: string }; Returns: number };
       start_onboarding: { Args: { p_new_hire: string }; Returns: number };
       submit_task: {
         Args: { p_id: string; p_result?: Json };
