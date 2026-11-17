@@ -20,11 +20,15 @@ $$;
 -- 선행 과제가 모두 done|na인 blocked 인스턴스를 todo로 연다.
 -- 같은 신입의 잠금 해제는 트랜잭션 잠금으로 직렬화한다: 선행 과제 두 개가 동시에 끝나도
 -- 뒤에 오는 트랜잭션이 앞 트랜잭션의 커밋을 본 뒤 판단하므로 후속 과제가 잠긴 채 남지 않는다.
+create function private.hire_lock_key(p_new_hire uuid) returns bigint
+language sql immutable set search_path = ''
+as $$ select hashtextextended('task_unlock:' || p_new_hire::text, 0) $$;
+
 create function private.unlock_ready(p_new_hire uuid) returns void
 language plpgsql set search_path = ''
 as $$
 begin
-  perform pg_advisory_xact_lock(hashtextextended('task_unlock:' || p_new_hire::text, 0));
+  perform pg_advisory_xact_lock(private.hire_lock_key(p_new_hire));
 
   -- 잠금을 얻은 뒤의 새 스냅샷에서 선행 완료 여부를 본다(READ COMMITTED)
   update public.task_instances i
@@ -42,6 +46,21 @@ begin
           and pt.code = any (t.prerequisite_codes)
           and pi.status not in ('done', 'na')
      );
+end
+$$;
+
+-- 과제의 신입별 잠금을 잡는다. 상태 변경 RPC는 행을 잠그기 전에 반드시 이것부터 호출한다.
+-- (행 → 신입별 잠금 순서와 신입별 잠금 → 행 순서가 섞이면 교착된다)
+create function private.lock_hire_of_task(p_task uuid) returns void
+language plpgsql set search_path = ''
+as $$
+declare
+  v_hire uuid;
+begin
+  select new_hire_id into v_hire from public.task_instances where id = p_task;
+  if found then
+    perform pg_advisory_xact_lock(private.hire_lock_key(v_hire));
+  end if;
 end
 $$;
 
@@ -101,6 +120,8 @@ end
 $$;
 
 revoke all on function private.is_handler(public.task_templates) from public;
+revoke all on function private.hire_lock_key(uuid) from public;
+revoke all on function private.lock_hire_of_task(uuid) from public;
 revoke all on function private.unlock_ready(uuid) from public;
 revoke all on function private.on_task_finished() from public;
 revoke all on function private.touch_updated_at() from public;
@@ -147,6 +168,7 @@ begin
   if not found or v_hire.role <> 'new_hire' then
     raise exception '신입 계정이 아닙니다' using errcode = '22023';
   end if;
+  perform pg_advisory_xact_lock(private.hire_lock_key(v_hire.id));
 
   insert into public.task_instances (org_id, template_id, new_hire_id, status, due_date, na_reason)
   select t.org_id,
@@ -196,6 +218,7 @@ declare
   v_i public.task_instances;
   v_t public.task_templates;
 begin
+  perform private.lock_hire_of_task(p_id);  -- 행 잠금보다 먼저 신입별 잠금(잠금 순서 통일)
   select * into v_i from public.task_instances where id = p_id for update;
   if not found or v_i.new_hire_id is distinct from (select auth.uid()) then
     raise exception '본인 과제만 제출할 수 있습니다' using errcode = '42501';
@@ -241,6 +264,7 @@ declare
   v_reason text := btrim(coalesce(p_reason, ''), E' \t\r\n');
   v_handler boolean;
 begin
+  perform private.lock_hire_of_task(p_id);  -- 행 잠금보다 먼저 신입별 잠금(잠금 순서 통일)
   select * into v_i from public.task_instances where id = p_id for update;
   if not found then
     raise exception '과제를 찾을 수 없습니다' using errcode = 'P0002';
@@ -285,6 +309,7 @@ declare
   v_i public.task_instances;
   v_t public.task_templates;
 begin
+  perform private.lock_hire_of_task(p_id);  -- 행 잠금보다 먼저 신입별 잠금(잠금 순서 통일)
   select * into v_i from public.task_instances where id = p_id for update;
   if not found then
     raise exception '과제를 찾을 수 없습니다' using errcode = 'P0002';
@@ -318,6 +343,7 @@ declare
   v_t public.task_templates;
   v_reason text := btrim(coalesce(p_reason, ''), E' \t\r\n');
 begin
+  perform private.lock_hire_of_task(p_id);  -- 행 잠금보다 먼저 신입별 잠금(잠금 순서 통일)
   select * into v_i from public.task_instances where id = p_id for update;
   if not found then
     raise exception '과제를 찾을 수 없습니다' using errcode = 'P0002';
@@ -357,6 +383,7 @@ declare
   v_i public.task_instances;
   v_t public.task_templates;
 begin
+  perform private.lock_hire_of_task(p_id);  -- 행 잠금보다 먼저 신입별 잠금(잠금 순서 통일)
   select * into v_i from public.task_instances where id = p_id for update;
   if not found then
     raise exception '과제를 찾을 수 없습니다' using errcode = 'P0002';

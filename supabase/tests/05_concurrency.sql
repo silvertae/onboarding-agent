@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 create extension if not exists dblink with schema extensions;
-select plan(3);
+select plan(5);
 
 select extensions.dblink_connect('c0', format('host=%s port=5432 dbname=postgres user=postgres password=postgres',
                                                host(inet_server_addr())));
@@ -27,16 +27,22 @@ select extensions.dblink_exec('c0', $fx$
     ('a5000000-0000-0000-0000-0000000000a1', 'a5000000-0000-0000-0000-000000000001', '팀T');
   insert into auth.users (id, email) values
     ('a5000000-0000-0000-0000-000000000101', 'new@cc.test'),
-    ('a5000000-0000-0000-0000-000000000301', 'hr@cc.test');
+    ('a5000000-0000-0000-0000-000000000301', 'hr@cc.test'),
+    ('a5000000-0000-0000-0000-000000000302', 'acc@cc.test');
   insert into public.profiles (id, org_id, email, full_name, role, department, team_id, hire_date) values
     ('a5000000-0000-0000-0000-000000000101', 'a5000000-0000-0000-0000-000000000001', 'new@cc.test', '신입', 'new_hire',
      null, 'a5000000-0000-0000-0000-0000000000a1', current_date),
     ('a5000000-0000-0000-0000-000000000301', 'a5000000-0000-0000-0000-000000000001', 'hr@cc.test', '인사', 'ops_staff',
-     'hr', null, null);
+     'hr', null, null),
+    ('a5000000-0000-0000-0000-000000000302', 'a5000000-0000-0000-0000-000000000001', 'acc@cc.test', '회계', 'ops_staff',
+     'accounting', null, null);
   insert into public.task_templates (org_id, code, title, stage, department, kind, completion_mode, prerequisite_codes) values
     ('a5000000-0000-0000-0000-000000000001', 'P1', '선행1', 'day1', 'hr', 'ops', 'confirm', '{}'),
     ('a5000000-0000-0000-0000-000000000001', 'S1', '셀프',  'day1', 'ga', 'ops', 'self',    '{}'),
-    ('a5000000-0000-0000-0000-000000000001', 'M1', '선행 둘', 'week1', 'hr', 'ops', 'confirm', '{P1,S1}');
+    ('a5000000-0000-0000-0000-000000000001', 'M1', '선행 둘', 'week1', 'hr', 'ops', 'confirm', '{P1,S1}'),
+    ('a5000000-0000-0000-0000-000000000001', 'P2', '선행2', 'day1', 'hr', 'ops', 'confirm', '{}');
+  insert into public.task_templates (org_id, code, title, stage, department, kind, completion_mode, allow_na, prerequisite_codes) values
+    ('a5000000-0000-0000-0000-000000000001', 'BN1', '잠긴 해당없음', 'week1', 'accounting', 'ops', 'confirm', true, '{P2}');
   select public._start_onboarding('a5000000-0000-0000-0000-000000000101');
   update public.task_instances i set status = 'submitted'
     from public.task_templates t
@@ -68,6 +74,38 @@ select is((select status from extensions.dblink_get_result('c2') as r(status tex
 -- 비동기 결과는 빈 결과가 나올 때까지 읽어야 연결이 비워진다
 select count(*) from extensions.dblink_get_result('c2') as r(status text);
 select extensions.dblink_exec('c2', 'commit');
+
+-- ── 잠금 순서: 신입별 잠금을 먼저 얻은 뒤에 과제 행을 잠근다 ──────
+-- 행을 먼저 잠그고 트리거에서 신입별 잠금을 기다리면, 신입별 잠금을 쥔 채 그 행을 열려는
+-- 다른 트랜잭션(unlock_ready)과 교착된다. c2가 신입별 잠금을 쥔 동안 c1의 mark_na는
+-- 행을 잠그지 않은 채 기다려야 한다.
+select extensions.dblink_exec('c2', 'begin');
+select extensions.dblink_exec('c2',
+  $$do $d$ begin perform pg_advisory_xact_lock(private.hire_lock_key('a5000000-0000-0000-0000-000000000101')); end $d$ $$);
+
+select extensions.dblink_exec('c1', 'begin');
+select extensions.dblink_exec('c1', $$set local role authenticated$$);
+select extensions.dblink_exec('c1', $$set local request.jwt.claim.sub = 'a5000000-0000-0000-0000-000000000302'$$);
+select extensions.dblink_send_query('c1', $$
+  select (public.mark_na(i.id, '대상 아님')).status::text from public.task_instances i
+    join public.task_templates t on t.id = i.template_id
+   where t.org_id = 'a5000000-0000-0000-0000-000000000001' and t.code = 'BN1'$$);
+select pg_sleep(0.5);
+
+select lives_ok(
+  $$select extensions.dblink_exec('c0', $q$
+      do $d$ begin
+        perform 1 from public.task_instances i join public.task_templates t on t.id = i.template_id
+         where t.org_id = 'a5000000-0000-0000-0000-000000000001' and t.code = 'BN1'
+           for update of i nowait;
+      end $d$ $q$)$$,
+  'mark_na가 신입별 잠금을 기다리는 동안 과제 행을 잠그지 않는다');
+
+select extensions.dblink_exec('c2', 'commit');
+select is((select status from extensions.dblink_get_result('c1') as r(status text)), 'na',
+  '신입별 잠금이 풀린 뒤 mark_na 완료 → na');
+select count(*) from extensions.dblink_get_result('c1') as r(status text);
+select extensions.dblink_exec('c1', 'commit');
 
 -- ── 결과 확인과 정리 ────────────────────────────────────────────────
 select is(
