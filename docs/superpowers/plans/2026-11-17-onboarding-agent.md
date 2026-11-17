@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 회사 CI(회사명 Blueward, 로고, 테마 색상)는 화면 브랜딩과 시드 조직명에만 쓴다. 사람 이름·계정·과제·지식 내용은 가상이며, 실명·주민번호·계좌·카드번호·지문 관련 필드나 값, 실제 내부 업무 문서는 넣지 않는다. 파일 업로드 기능 없음. 경영지원 원본 문서는 저장소에 넣지 않는다. 회사 CI 자산·토큰은 `docs/design/onboarding-design/`.
+- 회사 CI(회사명 Blueward, 로고, 테마 색상)는 화면 브랜딩과 시드 조직명에만 쓴다. 사람 이름·계정·과제·지식 내용은 가상이며, 실명·주민번호·계좌·카드번호·지문 관련 필드나 값, 실제 내부 업무 문서는 넣지 않는다. 파일 업로드는 담당자의 과제 서식(docx·xlsx·pdf, 10MB 이하)만 허용한다(2026-11-18 추가, `docs/contracts.md` "과제 서식 저장소"). 경영지원 원본 문서는 저장소에 넣지 않는다. 회사 CI 자산·토큰은 `docs/design/onboarding-design/`.
 - 모든 테이블에 `org_id uuid not null`. 모든 테이블 RLS 활성화. 마이그레이션마다 필요한 `grant`(테이블은 `authenticated`, 함수는 호출 가능한 역할)를 명시한다. `anon` 역할에는 아무 권한도 주지 않는다.
 - 과제 상태 변경은 Task 2의 RPC 함수로만 한다. 웹에서 `task_instances`를 직접 update하지 않는다. 에이전트 도구는 과제 상태를 바꾸지 않는다.
 - 상태 값: `blocked | todo | submitted | rework | done | na`. 역할: `new_hire | team_trainer | ops_staff | admin`. 부서: `hr | ga | accounting`.

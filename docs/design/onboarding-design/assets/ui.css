@@ -166,6 +166,37 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 /* Side sheet */
 .sheet{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden}
 
+/* Form files (S3 작성할 서식, S12 과제 서식) */
+.files{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+.file{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.file:last-child{border-bottom:0}
+.file-ic{width:40px;height:40px;border-radius:10px;background:var(--canvas);color:var(--secondary);display:grid;place-items:center;flex:none}
+.file-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.file-name{display:flex;align-items:center;min-width:0;font-size:15px;font-weight:500}
+.file-name .base{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-name .ext{flex:none}
+.file-meta{font-size:12px;color:var(--muted)}
+.file-err{font-size:12px;color:#a1261c}
+.file.busy .file-name{color:var(--secondary)}
+.file-actions{display:flex;gap:2px;flex:none}
+.seed{font-size:11px;font-weight:600;line-height:16px;padding:1px 7px;border-radius:6px;background:#f2f6fc;color:var(--brand-ci);border:1px solid #c6d6ec;margin-left:8px;flex:none}
+.icon-btn.danger:hover{background:#fdf0ef;color:#b3261e}
+.drop{border:1.5px dashed var(--border-strong);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;background:#fbfbfd}
+.drop.over{border-color:var(--primary);background:#f2f6fc}
+.drop-ic{width:36px;height:36px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--primary)}
+.warn-line{display:flex;gap:6px;align-items:flex-start;font-size:12px;line-height:17px;color:#6b4500;text-align:left}
+.tpl{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);color:var(--foreground);text-decoration:none;font-size:14px}
+.tpl:last-child{border-bottom:0}
+.tpl:hover{background:#fafafc;text-decoration:none}
+.tpl[aria-current]{background:#eef3fa;font-weight:600}
+.tpl .n{font-size:12px;font-weight:400;color:var(--secondary);display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.tpl .n.none{color:#aeaeb2}
+.btn-destructive{background:#fbe9e8;color:#b3261e}
+.btn-destructive:hover{background:#f7d9d7}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+
 /* Footer note */
 .foot{max-width:1376px;margin:0 auto;padding:8px 32px 32px;font-size:12px;color:var(--muted)}
 
