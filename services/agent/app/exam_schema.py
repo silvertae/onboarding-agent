@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field, StringConstraints
 
 NonEmpty = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Difficulty = Literal["beginner", "intermediate"]
+# 기존 문항 하나의 최대 길이. 모델 입력이 끝없이 커지지 않게 막는다(코드가 든 문항도 충분히 들어간다).
+PROMPT_MAX = 2000
 
 
 class ExamQuestion(BaseModel):
@@ -32,5 +34,7 @@ class GenerateRequest(BaseModel):
 class RegenerateRequest(BaseModel):
     topic: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     difficulty: Difficulty
-    existing_prompts: list[str] = Field(default_factory=list, max_length=10)
+    existing_prompts: list[Annotated[str, StringConstraints(max_length=PROMPT_MAX)]] = Field(
+        default_factory=list, max_length=10
+    )
     instruction: Annotated[str, StringConstraints(max_length=200)] | None = None

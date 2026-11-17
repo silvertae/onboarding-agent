@@ -229,11 +229,15 @@ def test_regenerate_malformed_502(client, fake_model, trainer_token):
     assert "다시 시도" in res.json()["detail"]
 
 
-def test_regenerate_validation(client, fake_model, trainer_token):
+@pytest.mark.parametrize(
+    "existing_prompts",
+    [["p"] * 11, ["가" * 2001]],  # 11개, 항목 하나가 2000자 초과(모델 입력 비용 상한)
+)
+def test_regenerate_validation(client, fake_model, trainer_token, existing_prompts):
     fake = fake_model(question(0))
     res = client.post(
         "/exams/regenerate-question",
-        json={"topic": "JS", "difficulty": "beginner", "existing_prompts": ["p"] * 11},
+        json={"topic": "JS", "difficulty": "beginner", "existing_prompts": existing_prompts},
         headers=bearer(trainer_token),
     )
     assert res.status_code == 422
