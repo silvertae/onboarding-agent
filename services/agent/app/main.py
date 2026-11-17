@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.admin_routes import router as admin_router
 from app.config import Settings, get_settings
 
 
@@ -18,6 +19,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
         allow_credentials=False,
     )
+
+    app.include_router(admin_router)
 
     @app.get("/health")
     def health() -> dict:
