@@ -41,6 +41,8 @@ jobs:
         run: bash scripts/tests/smoke_test.sh
       - name: deploy-agent.sh 인자 (가짜 gcloud)
         run: bash scripts/tests/deploy_agent_test.sh
+      - name: keepalive.sh 판정 로직 (가짜 서버)
+        run: bash scripts/tests/keepalive_test.sh
       - name: shellcheck
         run: shellcheck scripts/*.sh scripts/tests/*.sh
 

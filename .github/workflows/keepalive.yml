@@ -1,0 +1,40 @@
+# Supabase Free 프로젝트(스테이징·운영)가 활동 부족으로 일시 정지되지 않도록 하루 세 번 실제 요청을 보낸다.
+# 실패하면 워크플로가 실패로 끝나고 GitHub가 알림 메일을 보낸다(일시 정지·장애·비밀번호 불일치).
+# 값은 GitHub Environment "keepalive"(main 브랜치에서만 실행)의 변수·비밀값에서 받는다(docs/deploy.md).
+name: keepalive
+
+on:
+  schedule:
+    - cron: '17 */8 * * *'   # UTC 00:17, 08:17, 16:17 (한국 09:17, 17:17, 01:17)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Supabase 깨우기 (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    environment: keepalive
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [STAGING, PROD]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/keepalive.sh
+          sparse-checkout-cone-mode: false
+      - name: 로그인과 DB 조회
+        env:
+          TARGET: ${{ matrix.target }}
+          URL: ${{ vars[format('{0}_SUPABASE_URL', matrix.target)] }}
+          ANON: ${{ vars[format('{0}_SUPABASE_ANON_KEY', matrix.target)] }}
+          DEMO_PASSWORD: ${{ secrets[format('{0}_DEMO_PASSWORD', matrix.target)] }}
+        run: |
+          if [ -z "$URL" ]; then
+            echo "::notice::${TARGET} 값이 아직 등록되지 않아 건너뜁니다(docs/deploy.md keepalive 절)."
+            exit 0
+          fi
+          bash scripts/keepalive.sh "$URL" "$ANON"
