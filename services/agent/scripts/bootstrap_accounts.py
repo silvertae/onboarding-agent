@@ -75,18 +75,26 @@ def ensure_account(client: Client, account: dict, known: dict[str, str]) -> str:
         ).user.id
         auth_state = "생성"
 
-    profile = {k: v for k, v in account.items() if k != "password"}
-    exists = client.table("profiles").select("id").eq("id", user_id).execute().data
-    if exists:
-        profile_state = "프로필 유지"
-    else:
-        client.table("profiles").insert({"id": user_id, **profile}).execute()
-        profile_state = "프로필 생성"
+    try:
+        profile = {k: v for k, v in account.items() if k != "password"}
+        exists = client.table("profiles").select("id").eq("id", user_id).execute().data
+        if exists:
+            profile_state = "프로필 유지"
+        else:
+            client.table("profiles").insert({"id": user_id, **profile}).execute()
+            profile_state = "프로필 생성"
 
-    line = f"[bootstrap] {email} ({account['role']}): {auth_state}, {profile_state}"
-    if account["role"] == "new_hire":
-        created = client.rpc("_start_onboarding", {"p_new_hire": user_id}).execute().data
-        line += f", 과제 {created}개 생성"
+        line = f"[bootstrap] {email} ({account['role']}): {auth_state}, {profile_state}"
+        if account["role"] == "new_hire":
+            created = client.rpc("_start_onboarding", {"p_new_hire": user_id}).execute().data
+            line += f", 과제 {created}개 생성"
+    except Exception:
+        # 이번에 새로 만든 인증 계정만 지워 반쪽 계정을 남기지 않는다(프로필·과제는 cascade로 함께 지워진다).
+        # 기존 계정은 지우지 않는다.
+        if auth_state == "생성":
+            client.auth.admin.delete_user(user_id)
+            print(f"[bootstrap] {email}: 후속 단계 실패로 새로 만든 계정을 삭제했습니다", file=sys.stderr)
+        raise
     print(line)
     return user_id
 

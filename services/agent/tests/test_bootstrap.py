@@ -89,3 +89,48 @@ def test_output_never_contains_passwords(runs):
     assert output.strip(), "스크립트가 진행 상황을 출력해야 한다"
     assert _env("ADMIN_PASSWORD") not in output
     assert _env("DEMO_PASSWORD") not in output
+
+
+# ── 후속 단계 실패 시 보상 처리 (Codex P1) ────────────────────────────
+def _load_script():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("bootstrap_accounts", AGENT_DIR / "scripts" / "bootstrap_accounts.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _broken_account(email: str) -> dict:
+    # ops_staff인데 부서가 없어 profiles 제약(profiles_ops_department)에 걸린다
+    return {"org_id": "00000000-0000-0000-0000-000000000001", "is_seed": True, "email": email,
+            "password": "broken-test-pw-1", "full_name": "실패 테스트", "job_title": "대리", "role": "ops_staff"}
+
+
+def _user_id(admin, email: str) -> str | None:
+    return next((u.id for u in admin.auth.admin.list_users(per_page=1000) if u.email == email), None)
+
+
+def test_new_auth_user_is_deleted_when_profile_insert_fails(admin):
+    script = _load_script()
+    email = "bootstrap-rollback-new@demo.test"
+    if leftover := _user_id(admin, email):  # 이전 실패 실행이 남긴 계정 정리
+        admin.auth.admin.delete_user(leftover)
+
+    with pytest.raises(Exception):
+        script.ensure_account(admin, _broken_account(email), known={})
+
+    assert _user_id(admin, email) is None, "새로 만든 인증 계정이 남아 있다(반쪽 계정)"
+
+
+def test_existing_auth_user_is_kept_when_profile_insert_fails(admin):
+    script = _load_script()
+    email = "bootstrap-rollback-existing@demo.test"
+    user_id = admin.auth.admin.create_user({"email": email, "password": "existing-pw-1", "email_confirm": True}).user.id
+    try:
+        with pytest.raises(Exception):
+            script.ensure_account(admin, _broken_account(email), known={email: user_id})
+        assert _user_id(admin, email) == user_id, "기존 계정은 지우면 안 된다"
+    finally:
+        admin.auth.admin.delete_user(user_id)
