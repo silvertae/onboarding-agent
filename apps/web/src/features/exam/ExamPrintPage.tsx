@@ -97,10 +97,12 @@ function PaperSheet({ exam }: { exam: ExamWithQuestions }) {
         {exam.questions.map((q, i) => (
           // 시험지에는 prompt와 배점만 넣는다(model_answer·rubric 없음)
           <li key={q.id} className="exam-question grid gap-2">
-            <p className="font-semibold">
-              {i + 1}. <span className="whitespace-pre-wrap">{q.prompt}</span>{' '}
-              <span className="font-normal text-[#515154]">({q.points}점)</span>
-            </p>
+            {/* 문제에는 코드가 섞이므로 고정폭 글꼴과 줄바꿈 유지. 배점은 코드 끝에 붙지 않게 오른쪽 칸에 둔다 */}
+            <div className="flex items-start gap-3">
+              <span className="shrink-0 font-semibold">{i + 1}.</span>
+              <p className="min-w-0 flex-1 font-mono text-[10.5pt] leading-[1.6] whitespace-pre-wrap">{q.prompt}</p>
+              <span className="shrink-0 text-[10pt] text-[#515154]">({q.points}점)</span>
+            </div>
             <div aria-hidden className="min-h-[38mm] rounded-md border border-dashed border-[#d2d2d7]" />
           </li>
         ))}
@@ -129,7 +131,7 @@ function AnswerSheet({ exam }: { exam: ExamWithQuestions }) {
             <span className="grid size-7 place-items-center rounded-full bg-[#e7eef8] text-[10pt] font-bold text-[#06479a]">{i + 1}</span>
             <div className="grid gap-2">
               <div className="flex items-start justify-between gap-3">
-                <p className="whitespace-pre-wrap font-semibold">{q.prompt}</p>
+                <p className="min-w-0 font-mono text-[10.5pt] leading-[1.6] whitespace-pre-wrap">{q.prompt}</p>
                 <span className="shrink-0 text-[10pt] text-[#515154]">{q.points}점</span>
               </div>
               <div className="grid gap-1 rounded-md bg-[#f5f5f7] p-3 text-[11pt]">

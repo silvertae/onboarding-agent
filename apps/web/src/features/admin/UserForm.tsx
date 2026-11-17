@@ -273,7 +273,8 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
         )}
       </div>
 
-      <div className="flex justify-end border-t border-border px-5 py-4">
+      {/* 폼이 길어도 등록 버튼이 화면 아래에 붙어 보이게 한다 */}
+      <div className="sticky bottom-0 z-10 flex justify-end rounded-b-[18px] border-t border-border bg-card px-5 py-4">
         <Button type="submit" className="h-11 px-6 text-base" disabled={!valid || busy}>
           {busy ? '만드는 중…' : '계정 만들기'}
         </Button>

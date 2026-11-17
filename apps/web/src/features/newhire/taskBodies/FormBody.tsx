@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
-import logoUrl from '@/assets/blueward-logo.png'
+import { BusinessCard } from '@/components/BusinessCard'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useTeamName } from '../useTeamName'
@@ -28,19 +28,13 @@ function BusinessCardPreview({ englishName }: { englishName: string }) {
         <span className="text-[15px] font-semibold">자동 채움 미리보기</span>
         <span className="text-xs text-muted-foreground">프로필 기준</span>
       </figcaption>
-      <div className="flex aspect-[90/50] flex-col justify-between rounded-[10px] border border-input bg-white px-6 py-5 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
-        <img src={logoUrl} alt="Blueward" className="h-4 w-auto self-start" />
-        <div className="flex flex-col gap-0.5">
-          <b className="text-[17px]">
-            {profile?.full_name}{' '}
-            <span className="text-xs font-normal text-[var(--text-secondary)]">
-              {[profile?.job_title, teamName].filter(Boolean).join(' · ')}
-            </span>
-          </b>
-          <span className="text-xs font-semibold tracking-[0.4px] text-primary">{englishName.trim() || '영문 이름'}</span>
-          <span className="mt-1.5 text-[11px] break-all text-muted-foreground">{profile?.email}</span>
-        </div>
-      </div>
+      <BusinessCard
+        name={profile?.full_name}
+        jobTitle={profile?.job_title}
+        teamName={teamName}
+        englishName={englishName}
+        email={profile?.email}
+      />
     </figure>
   )
 }

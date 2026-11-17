@@ -23,6 +23,5 @@ export function assessmentsOf(tasks: TaskView[]): TaskView[] {
     })
 }
 
-export function initials(name: string): string {
-  return name.slice(-2)
-}
+// 아바타 글자 규칙은 상단 바와 같이 쓴다
+export { initials } from '@/components/initials'

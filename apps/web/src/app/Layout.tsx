@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react'
 import { Link, NavLink, Outlet } from 'react-router'
 import logoUrl from '@/assets/blueward-logo.png'
 import { Button } from '@/components/ui/button'
+import { initials } from '@/components/initials'
 import { ChatPanel } from '@/features/chat/ChatPanel'
 import type { Enums } from '@/lib/database.types'
 import { OWNER_LABEL, ROLE_LABEL } from '@/lib/labels'
@@ -50,13 +51,16 @@ function AppHeader() {
   return (
     <header className="border-b border-border bg-white/90">
       <div className="mx-auto flex min-h-15 max-w-[1376px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-2 sm:px-8">
-        <Link to="/" className="flex items-center gap-3 text-foreground">
+        {/* 좁은 화면(모바일)에서는 두 줄: 1줄 로고·계정, 2줄 데모 표시·메뉴. sm 이상은 한 줄 */}
+        <Link to="/" className="order-1 flex items-center gap-3 text-foreground">
           <img src={logoUrl} alt="Blueward" className="block h-5 w-auto" />
-          <span className="h-[18px] w-px bg-input" aria-hidden />
-          <span className="text-[15px] font-semibold">온보딩 에이전트</span>
+          <span className="hidden h-[18px] w-px bg-input sm:inline" aria-hidden />
+          <span className="hidden text-[15px] font-semibold sm:inline">온보딩 에이전트</span>
         </Link>
-        <DemoChip />
-        <nav aria-label="주 메뉴" className="flex flex-auto flex-wrap gap-1">
+        <div className="order-3 sm:order-2">
+          <DemoChip />
+        </div>
+        <nav aria-label="주 메뉴" className="order-4 flex flex-auto flex-wrap gap-1 sm:order-3">
           {NAV_BY_ROLE[profile.role].map((item) => (
             <NavLink
               key={item.to}
@@ -73,14 +77,14 @@ function AppHeader() {
             </NavLink>
           ))}
         </nav>
-        <div className="flex items-center gap-2.5">
+        <div className="order-2 ml-auto flex items-center gap-2.5 sm:order-4 sm:ml-0">
           <span
             className="grid size-8 place-items-center rounded-full bg-[#e8eef8] text-[13px] font-semibold text-primary"
             aria-hidden
           >
-            {profile.full_name.slice(-2)}
+            {initials(profile.full_name, profile.role)}
           </span>
-          <div className="flex flex-col leading-tight">
+          <div className="hidden flex-col leading-tight sm:flex">
             <b className="text-[13px]">{profile.full_name}</b>
             {caption && <span className="text-xs text-muted-foreground">{caption}</span>}
           </div>

@@ -3,7 +3,7 @@ import { OwnerBadge } from '@/components/OwnerBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { useTaskActions, type TaskView } from '@/lib/tasks'
-import { formatDateTime, hireDayLabel } from './format'
+import { formatDateTime, hireDayLabel, submittedLabel } from './format'
 import type { Hire } from './hires'
 import { reviewActions } from './reviewActions'
 import { ReworkDialog } from './ReworkDialog'
@@ -55,7 +55,11 @@ export function TaskReviewPanel({ task, hire, onClose }: Props) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
           <OwnerBadge department={task.template.department} teamName={hire?.team?.name} />
-          {task.submitted_at && <span className="text-xs text-muted-foreground">제출 {formatDateTime(task.submitted_at)}</span>}
+          {task.submitted_at && (
+            <span className="text-xs text-muted-foreground">
+              {submittedLabel(task.template.completion_mode)} {formatDateTime(task.submitted_at)}
+            </span>
+          )}
         </div>
 
         {task.template.description && (
@@ -92,7 +96,8 @@ export function TaskReviewPanel({ task, hire, onClose }: Props) {
       </div>
 
       {(canRework || canConfirm || canComplete) && (
-        <div className="border-t border-border px-5 py-4">
+        // 버튼이 긴 본문 아래로 밀려도 화면 아래에 붙어 보이게 한다(1440×900에서 첫 화면 밖으로 밀리던 문제)
+        <div className="sticky bottom-0 z-10 rounded-b-[18px] border-t border-border bg-card px-5 py-4">
           {canRework ? (
             <ReworkDialog
               disabled={busy}

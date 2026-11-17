@@ -62,6 +62,19 @@ describe('ExamPrintPage', () => {
     expect(container.innerHTML).not.toContain('채점 기준')
   })
 
+  it('문제는 코드 정렬이 유지되는 고정폭 글꼴이고, 배점은 문제와 다른 블록에 있다(코드 끝에 붙지 않음)', () => {
+    renderAt('?variant=paper')
+    const prompt = screen.getByText(QUESTIONS[0].prompt)
+    expect(prompt.className).toContain('font-mono')
+    expect(prompt.className).toContain('whitespace-pre-wrap')
+    expect(prompt.closest('p')?.textContent).not.toContain('(20점)')
+  })
+
+  it('답안지의 문제도 고정폭 글꼴이다', () => {
+    renderAt('?variant=answers')
+    expect(screen.getByText(QUESTIONS[0].prompt).className).toContain('font-mono')
+  })
+
   it('variant가 없으면 시험지(paper)로 보인다', () => {
     const { container } = renderAt('')
     expect(screen.getByText(QUESTIONS[0].prompt)).toBeInTheDocument()

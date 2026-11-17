@@ -1,3 +1,4 @@
+import { BusinessCard } from '@/components/BusinessCard'
 import type { Json } from '@/lib/database.types'
 import type { TaskView } from '@/lib/tasks'
 import type { Hire } from './hires'
@@ -20,16 +21,8 @@ function text(value: Json | undefined): string {
 // 명함(GA-07) 자동 채움 미리보기: 이름·직급·팀·메일은 프로필, 영문 이름은 신입 입력
 function BusinessCardPreview({ englishName, hire }: { englishName: string; hire?: Hire }) {
   return (
-    <figure aria-label="명함 미리보기" className="mt-3 rounded-xl border border-border px-4 py-3">
-      <p className="text-sm font-semibold italic text-primary">Blueward</p>
-      <div className="mt-8">
-        <p className="text-sm">
-          <b>{hire?.full_name ?? '이름'}</b>{' '}
-          <span className="text-xs text-muted-foreground">{[hire?.job_title, hire?.team?.name].filter(Boolean).join(' · ')}</span>
-        </p>
-        <p className="text-xs font-semibold tracking-wide text-primary">{englishName}</p>
-        {hire?.email && <p className="text-[11px] text-muted-foreground">{hire.email}</p>}
-      </div>
+    <figure aria-label="명함 미리보기" className="m-0 mt-3 max-w-[360px]">
+      <BusinessCard name={hire?.full_name} jobTitle={hire?.job_title} teamName={hire?.team?.name} englishName={englishName} email={hire?.email} />
     </figure>
   )
 }
@@ -49,10 +42,10 @@ export function SubmittedResult({ task, hire }: { task: TaskView; hire?: Hire })
 
   return (
     <div>
-      <dl className="grid grid-cols-[96px_1fr] gap-x-4 gap-y-1.5 text-sm">
+      <dl className="grid grid-cols-[minmax(96px,max-content)_1fr] gap-x-4 gap-y-1.5 text-sm">
         {rows.map((row) => (
           <div key={row.key} className="contents">
-            <dt className="text-muted-foreground">{row.label}</dt>
+            <dt className="break-keep text-muted-foreground">{row.label}</dt>
             <dd className="whitespace-pre-wrap break-words">{text(result[row.key])}</dd>
           </div>
         ))}
