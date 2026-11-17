@@ -56,3 +56,20 @@ describe('useTaskActions', () => {
     expect(signOut).not.toHaveBeenCalled()
   })
 })
+
+describe('useTaskActions.recordAssessment', () => {
+  afterEach(() => rpc.mockReset())
+
+  it('결과 없이 일정만 저장하면 p_result=null, 비운 칸은 보내지 않는다', async () => {
+    rpc.mockResolvedValue({ data: {}, error: null, status: 200 })
+
+    await actions().recordAssessment('task-1', { result: null, note: '', scheduledAt: '2026-11-20T10:00:00+09:00' })
+
+    expect(rpc).toHaveBeenCalledWith('record_assessment', {
+      p_id: 'task-1',
+      p_result: null,
+      p_note: '',
+      p_scheduled_at: '2026-11-20T10:00:00+09:00',
+    })
+  })
+})

@@ -112,10 +112,12 @@ export function useTaskActions() {
       run(
         supabase.rpc('record_assessment', {
           p_id: id,
-          p_result: a.result,
+          // SQL 함수는 p_result가 null이면 일정·메모만 저장한다. 생성 타입은 인자의 null 허용을 표현하지 못해 캐스팅한다.
+          p_result: a.result as Enums<'assessment_result'>,
           p_note: a.note,
-          p_scheduled_at: a.scheduledAt ?? null,
-          p_location: a.location ?? null,
+          // 생략하면 기존 값을 유지한다(함수가 coalesce로 처리).
+          ...(a.scheduledAt ? { p_scheduled_at: a.scheduledAt } : {}),
+          ...(a.location ? { p_location: a.location } : {}),
         }),
       ),
   }

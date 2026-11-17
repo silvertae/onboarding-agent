@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 데이터는 전부 가상 조직. 실제 회사명·실명·주민번호·계좌·카드번호·지문 관련 필드나 값을 만들지 않는다. 파일 업로드 기능 없음. 경영지원 원본 문서는 저장소에 넣지 않는다.
+- 회사 CI(회사명 Blueward, 로고, 테마 색상)는 화면 브랜딩과 시드 조직명에만 쓴다. 사람 이름·계정·과제·지식 내용은 가상이며, 실명·주민번호·계좌·카드번호·지문 관련 필드나 값, 실제 내부 업무 문서는 넣지 않는다. 파일 업로드 기능 없음. 경영지원 원본 문서는 저장소에 넣지 않는다. 회사 CI 자산·토큰은 `docs/design/onboarding-design/`.
 - 모든 테이블에 `org_id uuid not null`. 모든 테이블 RLS 활성화. 마이그레이션마다 필요한 `grant`(테이블은 `authenticated`, 함수는 호출 가능한 역할)를 명시한다. `anon` 역할에는 아무 권한도 주지 않는다.
 - 과제 상태 변경은 Task 2의 RPC 함수로만 한다. 웹에서 `task_instances`를 직접 update하지 않는다. 에이전트 도구는 과제 상태를 바꾸지 않는다.
 - 상태 값: `blocked | todo | submitted | rework | done | na`. 역할: `new_hire | team_trainer | ops_staff | admin`. 부서: `hr | ga | accounting`.
@@ -57,7 +57,7 @@ supabase/
   migrations/0001_schema.sql       테이블, enum
   migrations/0002_rls.sql          RLS 정책, grant
   migrations/0003_functions.sql    RPC, 잠금 해제 트리거, realtime publication
-  migrations/0004_demo_data.sql    가상 조직·팀·템플릿 31개, seed_demo_knowledge(), reset_demo()
+  migrations/0004_demo_data.sql    조직(회사명)·팀·템플릿 31개, seed_demo_knowledge(), reset_demo()
   tests/*.sql                      pgTAP (각 테스트가 자기 사용자 픽스처를 만든다)
 apps/web/
   .env.staging  .env.production    공개 값만
@@ -263,14 +263,14 @@ consume_quota('other', 1) → 예외
 - [ ] **Step 7:** `npm run types` 실행
 - [ ] **Step 8:** Commit `feat(db): schema, rls, transitions, quota`
 
-### Task 3: 가상 조직 데이터, 초기화, 계정 부트스트랩
+### Task 3: 데모 조직 데이터, 초기화, 계정 부트스트랩
 
 **Files:**
 - Create: `supabase/migrations/0004_demo_data.sql`, `services/agent/scripts/bootstrap_accounts.py`
 - Test: `supabase/tests/04_demo_data.sql`, `services/agent/tests/test_bootstrap.py`
 
 **Interfaces — Produces:**
-- 고정 ID: 조직 `00000000-0000-0000-0000-000000000001`, AI팀 `00000000-0000-0000-0000-000000000002`. 조직명은 실존 회사와 겹치지 않는 가상 이름.
+- 고정 ID: 조직 `00000000-0000-0000-0000-000000000001`, AI팀 `00000000-0000-0000-0000-000000000002`. 조직명은 회사명 `Blueward`(회사 CI). 팀 이름·조직 라인·사람 이름은 가상.
 - `seed_demo_knowledge(p_org uuid) returns int` — 게시 지식 30개 삽입(service_role만 실행).
 - `reset_demo() returns void` — admin만. 호출자 조직의 `exams`, `unanswered_questions`, `knowledge_items`를 지우고 `seed_demo_knowledge`를 다시 실행. `is_seed = true`인 신입마다 `task_instances`를 지우고 `hire_date`를 오늘(Asia/Seoul)로 바꾼 뒤 `_start_onboarding`. `is_seed = false` 사용자와 그 과제는 건드리지 않는다.
 - 마이그레이션은 다시 실행돼도 중복을 만들지 않는다(`on conflict do nothing`, 지식은 조직에 0건일 때만 삽입).
@@ -285,7 +285,7 @@ consume_quota('other', 1) → 예외
 
   admin 외 계정의 비밀번호는 `DEMO_PASSWORD`. 로컬 기본값은 둘 다 `demo1234`, 스테이징·운영은 12자 이상을 GitHub Secrets에서 받는다.
 
-- 템플릿 31개. 이름·문구는 가상 조직으로 작성, 금액 등 수치는 "가상 값"임을 설명에 표시.
+- 템플릿 31개. 사람 이름·문구는 가상으로 작성, 금액 등 수치는 "가상 값"임을 설명에 표시. 실제 사내 규정 원문을 옮기지 않는다.
 
 | code | 제목 | stage | mode | na | 선행 | 비고 |
 |---|---|---|---|---|---|---|
@@ -889,7 +889,7 @@ AgentError(500 또는 0) → "계정을 만들지 못했어요. 다시 시도해
 신입 계정으로 /team/exams, /ops, /knowledge, /admin/users 직접 접근 → 차단
 신입 토큰으로 POST /exams/generate, POST /admin/users → 403
 빌드된 웹 번들(apps/web/dist)에서 "service_role", OpenAI 키 접두어, DEMO_PASSWORD 값 검색 → 0건
-저장소 전체에서 실제 회사명·실명 검색 → 0건
+저장소 전체에서 실명·주민번호·계좌·카드번호 패턴 검색 → 0건. 회사명 `Blueward`는 CI 위치(로고·상단 바·조직명·디자인 문서)에만 있다
 에이전트 서비스 트래픽을 끊은 상태로 타임라인·업무함 정상 동작
 관리자로 신입 1명 등록 → 그 계정으로 로그인해 과제 31개 확인 → 데모 초기화 후에도 그 계정 유지
 ```
