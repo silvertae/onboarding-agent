@@ -95,6 +95,7 @@ npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROD_PR
 | 리전 | Northeast Asia (Seoul) `ap-northeast-2` | 아무 곳(서울 권장) |
 
 두 프로젝트 모두:
+- **프로젝트 생성 화면의 Security 설정**: "Enable Data API" 켬, **"Automatically expose new tables" 켬**, "Enable automatic RLS" 끔. 관리자 키(`service_role`)의 테이블 권한(`profiles` 조회·추가, `teams`·`task_instances` 조회)은 마이그레이션에 따로 적혀 있지 않고 이 기본 설정에 기대므로, 끄면 계정 부트스트랩과 관리자 계정 등록이 "permission denied"로 실패한다. `anon`·`authenticated` 권한은 마이그레이션이 전부 회수한 뒤 필요한 것만 다시 주므로 이 설정과 상관없다. 로컬 Supabase와 스테이징이 같은 조건이다. (실제 도입 단계에서 `service_role` 권한을 마이그레이션에 명시하면 이 설정을 끌 수 있다.)
 - **Authentication → Sign In / Providers → "Allow new users to sign up" 끄기** (`smoke.sh` 5단계가 확인한다).
 - **Authentication → URL Configuration → Site URL**을 해당 웹 주소로.
 - **Project Settings → API Keys**에서 프로젝트 URL, anon 키(공개), service_role 키(비밀)를 확인. 로컬 CLI와 같은 JWT 형식(Legacy API keys)을 쓴다.
