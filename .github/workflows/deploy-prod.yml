@@ -54,7 +54,7 @@ jobs:
           [ "$(file_value VITE_AGENT_URL)" = "$AGENT_URL" ] || { echo "::error::.env.production의 VITE_AGENT_URL이 변수 AGENT_URL과 다릅니다."; fail=1; }
           exit "$fail"
 
-      - uses: supabase/setup-cli@v3
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
           version: 3.2.0
       - name: DB 마이그레이션
@@ -63,7 +63,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: supabase db push --remote="$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --yes
 
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           cache-dependency-glob: services/agent/uv.lock
@@ -78,13 +78,13 @@ jobs:
           uv sync --locked --no-dev
           uv run --no-sync python scripts/bootstrap_accounts.py
 
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
           create_credentials_file: true
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: 에이전트 배포 (agent-prod, 최소 인스턴스 1)
         env:
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
