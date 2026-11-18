@@ -1,7 +1,7 @@
 -- 문제은행·응시 기록 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(53);
 
 -- ── 픽스처 (postgres 권한) ───────────────────────────────────────────
 -- 조직 O, 팀 T(우리 팀)·T2(다른 팀). 사람은 모두 가상.
@@ -75,6 +75,18 @@ select throws_ok(
     values ('a6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-0000000000a1',
             '주제', 'beginner', ' a b ', '답', '기준', 10, 'manual')$$,
   '23505', null, 'trainer: 공백만 다른 같은 문제는 같은 팀에 두 번 못 넣는다');
+select lives_ok(
+  $$insert into public.question_bank_items (org_id, team_id, topic, difficulty, prompt, model_answer, rubric, points, source)
+    values ('a6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-0000000000a1',
+            '주제', 'beginner', '문제', '답', '기준', 10, 'manual')$$,
+  'trainer: 문제 insert');
+select throws_ok(
+  $$insert into public.question_bank_items (org_id, team_id, topic, difficulty, prompt, model_answer, rubric, points, source)
+    values ('a6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-0000000000a1',
+            '주제', 'beginner', E'\n문제\t', '답', '기준', 10, 'manual')$$,
+  '23505', null, 'trainer: 앞뒤 줄바꿈·탭만 다른 같은 문제도 같은 팀에 두 번 못 넣는다');
+select is(private.prompt_key(E'\n a  b\t'), private.prompt_key('a b'),
+  'prompt_key: 줄바꿈·탭·연속 공백을 정리한 뒤 앞뒤를 지운다');
 select throws_ok(
   $$insert into public.exam_sittings (org_id, exam_id, task_instance_id)
     values ('a6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000600',

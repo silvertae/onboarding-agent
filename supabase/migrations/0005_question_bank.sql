@@ -5,11 +5,12 @@
 create type public.bank_item_status as enum ('active', 'hidden');
 create type public.bank_item_source as enum ('exam', 'manual', 'migrated', 'seed');
 
--- 같은 문항 판정 키: 앞뒤 공백을 지우고 연속 공백을 하나로 줄인 문장의 md5.
+-- 같은 문항 판정 키: 연속 공백(줄바꿈·탭 포함)을 스페이스 하나로 줄인 뒤 앞뒤를 지운 문장의 md5.
+-- btrim은 스페이스만 지우므로 줄이기를 먼저 한다.
 -- 생성 컬럼이 insert하는 사용자 권한으로 부르므로 실행 권한을 명시한다.
 create function private.prompt_key(p text) returns text
 language sql immutable set search_path = ''
-as $$ select md5(regexp_replace(btrim(p), '\s+', ' ', 'g')) $$;
+as $$ select md5(btrim(regexp_replace(p, '\s+', ' ', 'g'))) $$;
 
 revoke all on function private.prompt_key(text) from public;
 grant execute on function private.prompt_key(text) to authenticated, service_role;
