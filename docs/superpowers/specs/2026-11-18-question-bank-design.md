@@ -44,7 +44,7 @@ Leo가 B를 골랐다(규칙 기반 자동 구성은 뺀 형태).
 **데이터** (마이그레이션 세 파일: 스키마·RPC·시드, 모두 추가만)
 - `question_bank_items`: 팀 소속 문항. `topic`, `difficulty`(`exam_difficulty`), `prompt`, `model_answer`, `rubric`, `points`, `status`(`active`/`hidden`), `source`(`exam`/`manual`/`migrated`/`seed`), `created_by`, `created_at`, `updated_at`, 중복 판정용 `prompt_key`.
 - `exam_questions.bank_item_id`: 은행에서 왔거나 은행에 등록된 문항의 출처. 은행 문항이 지워지면 `null`.
-- `exam_sittings`: 시험 ↔ 평가 과제 인스턴스 연결. 쓰기는 RPC로만.
+- `exam_sittings`: 시험 ↔ 평가 과제 인스턴스 연결과 연결 시점의 은행 문항 id 스냅샷(`bank_item_ids`). 쓰기는 RPC로만.
 - RPC: `register_exam_to_bank`, `pick_bank_items`, `bank_prompts`, `assign_exam`. 시드 `seed_demo_bank`, `reset_demo` 갱신.
 - 권한: 은행·응시 기록은 그 팀 `team_trainer`만. 신입·경영지원·관리자는 0행.
 
@@ -69,6 +69,6 @@ S13 레이아웃 세부(디자인 토큰·shadcn 안에서), 시드 문항 문�
 - 확정된 시험을 다시 저장할 때도 은행 등록을 부른다. 확정 뒤에 추가한 문항도 은행에 들어가고, 같은 문항은 두 번 들어가지 않는다.
 - 같은 문항 판정: 같은 팀에서, 문제 문장의 앞뒤 공백을 지우고 연속 공백을 하나로 줄인 값이 같으면 같은 문항이다.
 - 숨긴 문항은 채우기와 회피 목록에서 빠지지만, 이미 만든 시험에는 남는다.
-- 회피 목록은 같은 주제·난이도의 게시 문항 중 최근 30개, 문항당 앞 500자다.
+- 회피 목록은 최대 30개, 문항당 앞 500자다. 지금 편집기 문항을 먼저 넣고, 남는 자리를 같은 주제·난이도의 게시 문항 중 최근 것으로 채운다(같은 문장은 한 번만).
 - 데모 초기화 때 은행을 지우고 시드 문항(AI팀, "JavaScript 기초" 입문 8개)을 다시 넣는다.
-- 응시 시험은 확정된 시험만, 같은 팀의 평가 과제에만, `blocked`·`na`가 아닐 때만 연결할 수 있다. 한 과제에 시험 여러 개(재시험)를 연결할 수 있다.
+- 응시 시험은 확정된 시험만, 같은 팀의 평가 과제에만, `blocked`·`na`가 아닐 때만 연결할 수 있다. 한 과제에 시험 여러 개(재시험)를 연결할 수 있다. 신입이 본 문항은 연결 시점의 스냅샷으로 판정하므로, 연결 뒤에 시험 문항을 고쳐도 이미 본 문항은 계속 빠진다.
