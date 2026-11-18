@@ -1,13 +1,23 @@
 """documents.py 테스트. 모든 문서 내용은 가상이다."""
 
 import io
+import time
+import zipfile
 from pathlib import Path
 
 import pytest
 from docx import Document
 from pypdf import PdfWriter
 
-from app.documents import UNREADABLE, UnreadableDocument, extract_text, split_clauses
+import app.documents as documents
+from app.documents import (
+    TOO_LARGE,
+    UNREADABLE,
+    DocumentTooLarge,
+    UnreadableDocument,
+     extract_text,
+    split_clauses,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -143,3 +153,50 @@ def test_article_body_length_boundary():
     assert len(split_clauses("제1조(경계) " + "가" * 2000)) == 1
     two = split_clauses("제1조(경계) " + "가" * 2001)
     assert [c.label for c in two] == ["제1조 (1/2)", "제1조 (2/2)"]
+
+
+def test_many_blank_lines_before_article_is_fast():
+    start = time.perf_counter()
+    clauses = split_clauses("\n" * 200_000 + "제1조(목적) x")
+    assert time.perf_counter() - start < 1.0
+    assert [c.label for c in clauses] == ["제1조"]
+
+
+def _pdf_bytes(pages: int) -> bytes:
+    writer = PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=50, height=50)
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+def test_huge_uncompressed_docx_is_too_large():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("word/big.bin", bytes(51 * 1024 * 1024))
+    with pytest.raises(DocumentTooLarge) as e:
+        extract_text(buf.getvalue(), "docx")
+    assert str(e.value) == TOO_LARGE
+
+
+def test_too_many_pdf_pages_is_too_large():
+    with pytest.raises(DocumentTooLarge) as e:
+        extract_text(_pdf_bytes(301), "pdf")
+    assert str(e.value) == TOO_LARGE
+
+
+def test_too_large_is_not_unreadable():
+    assert not issubclass(DocumentTooLarge, UnreadableDocument)
+
+
+def test_text_cap_for_docx(monkeypatch):
+    monkeypatch.setattr(documents, "MAX_TEXT_CHARS", 10)
+    with pytest.raises(DocumentTooLarge):
+        extract_text(_docx_bytes(["가" * 11]), "docx")
+
+
+def test_text_cap_for_pdf(monkeypatch):
+    monkeypatch.setattr(documents, "MAX_TEXT_CHARS", 10)
+    with pytest.raises(DocumentTooLarge):
+        extract_text((FIXTURES / "sample-policy.pdf").read_bytes(), "pdf")

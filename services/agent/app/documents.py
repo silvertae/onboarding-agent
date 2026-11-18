@@ -2,6 +2,7 @@
 
 import io
 import re
+import zipfile
 from dataclasses import dataclass
 from typing import Literal
 
@@ -9,6 +10,11 @@ import pypdf
 from docx import Document
 
 UNREADABLE = "글자를 읽을 수 없는 파일이에요"
+
+TOO_LARGE = "문서가 너무 커요. 나눠서 올려 주세요."
+MAX_DOCX_UNCOMPRESSED = 50 * 1024 * 1024  # docx(zip) 압축을 풀었을 때 합계 바이트
+MAX_PDF_PAGES = 300
+MAX_TEXT_CHARS = 1_000_000
 
 ARTICLE_MAX = 2000  # 조항 하나(조각)의 최대 글자 수
 CHUNK_TARGET = 800  # 조항 표시가 없을 때 단락 묶음의 목표 글자 수
@@ -24,6 +30,10 @@ class UnreadableDocument(Exception):
     """글자를 읽을 수 없는 문서. 메시지에 문서 내용을 담지 않는다."""
 
 
+class DocumentTooLarge(Exception):
+    """문서가 너무 크다. 메시지에 문서 내용을 담지 않는다."""
+
+
 @dataclass
 class Clause:
     ord: int
@@ -35,12 +45,29 @@ class Clause:
 def extract_text(data: bytes, file_type: Literal["pdf", "docx"]) -> str:
     try:
         if file_type == "docx":
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                if sum(i.file_size for i in archive.infolist()) > MAX_DOCX_UNCOMPRESSED:
+                    raise DocumentTooLarge(TOO_LARGE)
             text = "\n".join(p.text for p in Document(io.BytesIO(data)).paragraphs)
         else:
             reader = pypdf.PdfReader(io.BytesIO(data))
-            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            if len(reader.pages) > MAX_PDF_PAGES:
+                raise DocumentTooLarge(TOO_LARGE)
+            pages: list[str] = []
+            total = 0
+            for page in reader.pages:
+                page_text = page.extract_text() or ""
+                total += len(page_text) + 1
+                if total > MAX_TEXT_CHARS:
+                    raise DocumentTooLarge(TOO_LARGE)
+                pages.append(page_text)
+            text = "\n".join(pages)
+    except DocumentTooLarge:
+        raise DocumentTooLarge(TOO_LARGE) from None
     except Exception:
         raise UnreadableDocument(UNREADABLE) from None
+    if len(text) > MAX_TEXT_CHARS:
+        raise DocumentTooLarge(TOO_LARGE)
     text = _CONTROL_RE.sub(" ", text.replace("\r\n", "\n").replace("\r", "\n"))
     if not text.strip():
         raise UnreadableDocument(UNREADABLE)
