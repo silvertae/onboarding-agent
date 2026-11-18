@@ -11,6 +11,9 @@ from fastapi.testclient import TestClient
 from pypdf import PdfWriter
 
 from app import document_routes
+from postgrest.exceptions import APIError
+from storage3.exceptions import StorageException
+
 from app.config import Settings, get_settings
 from app.documents import DocumentTooLarge
 from app.embeddings import EmbeddingError
@@ -134,6 +137,12 @@ def make_doc(service, trainer_token, trainer_id, created):
     return make
 
 
+def doc_usage(service, trainer_id: str) -> int:
+    today = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+    rows = service.table("usage_counters").select("count").eq("user_id", trainer_id).eq("day", today).eq("kind", "document").execute().data
+    return rows[0]["count"] if rows else 0
+
+
 def row(service, doc_id: str) -> dict:
     return service.table("policy_documents").select("status, error, clause_count").eq("id", doc_id).single().execute().data
 
@@ -190,7 +199,7 @@ def test_too_large_file_marks_failed(client, service, trainer_token, make_doc, f
     assert row(service, doc_id)["error"] == TOO_LARGE
 
 
-def test_other_team_trainer_gets_404(client, service, trainer_token, fake_embed, downloads, created):
+def test_other_team_trainer_gets_404(client, service, trainer_id, trainer_token, fake_embed, downloads, created):
     docs, paths = created
     team = service.table("teams").insert({"org_id": ORG_ID, "name": f"임시팀-{uuid.uuid4().hex[:6]}"}).execute().data[0]
     doc_id = str(uuid.uuid4())
@@ -203,8 +212,10 @@ def test_other_team_trainer_gets_404(client, service, trainer_token, fake_embed,
         docs.append(doc_id)
         service.storage.from_("policy-docs").upload(path, make_docx(), {"content-type": DOCX_MIME})
         paths.append(path)
+        before = doc_usage(service, trainer_id)
         res = client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token))
         assert res.status_code == 404
+        assert doc_usage(service, trainer_id) == before == 0
         assert res.json()["detail"] == "문서를 찾을 수 없어요"
         assert downloads == [] and fake_embed == []
         assert clause_total(service, doc_id) == 0
@@ -215,7 +226,7 @@ def test_other_team_trainer_gets_404(client, service, trainer_token, fake_embed,
         service.table("teams").delete().eq("id", team["id"]).execute()
 
 
-def test_trainer_indexing_company_doc_gets_404(client, service, trainer_token, fake_embed, downloads, created):
+def test_trainer_indexing_company_doc_gets_404(client, service, trainer_id, trainer_token, fake_embed, downloads, created):
     docs, paths = created
     doc_id = str(uuid.uuid4())
     path = f"{ORG_ID}/{doc_id}.docx"
@@ -231,6 +242,7 @@ def test_trainer_indexing_company_doc_gets_404(client, service, trainer_token, f
     ).execute()
     res = client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token))
     assert res.status_code == 404
+    assert doc_usage(service, trainer_id) == 0
     assert downloads == [] and fake_embed == []
     assert clause_total(service, doc_id) == 1
 
@@ -251,3 +263,43 @@ def test_embedding_failure_returns_502_and_keeps_processing(client, service, tra
     assert res.status_code == 502
     assert res.json()["detail"] == EMBED_FAILED
     assert row(service, doc_id) == {"status": "processing", "error": None, "clause_count": 0}
+
+
+def test_storage_download_error_returns_502_and_keeps_processing(client, service, trainer_token, make_doc, fake_embed, monkeypatch):
+    def boom(token, path):
+        raise StorageException("x")
+
+    monkeypatch.setattr(document_routes, "_download", boom)
+    doc_id = make_doc(make_docx())
+    res = client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token))
+    assert res.status_code == 502
+    assert res.json()["detail"] == EMBED_FAILED
+    assert row(service, doc_id) == {"status": "processing", "error": None, "clause_count": 0}
+    assert fake_embed == []
+
+
+def test_replace_rpc_error_returns_502_and_keeps_processing(client, service, trainer_token, make_doc, fake_embed, monkeypatch):
+    def boom(token, document_id, clauses, error=None):
+        raise APIError({"message": "x", "code": "XX000", "hint": None, "details": None})
+
+    monkeypatch.setattr(document_routes, "_replace", boom)
+    doc_id = make_doc(make_docx())
+    res = client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token))
+    assert res.status_code == 502
+    assert res.json()["detail"] == EMBED_FAILED
+    assert row(service, doc_id) == {"status": "processing", "error": None, "clause_count": 0}
+
+
+def test_quota_exceeded_returns_429_before_download(client, service, trainer_id, trainer_token, make_doc, fake_embed, downloads, monkeypatch):
+    monkeypatch.setenv("DOCUMENT_DAILY_LIMIT", "1")
+    get_settings.cache_clear()
+    try:
+        doc_id = make_doc(make_docx())
+        assert client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token)).status_code == 200
+        downloads.clear()
+        res = client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token))
+        assert res.status_code == 429
+        assert res.json() == {"detail": "오늘 사용 한도를 넘었어요"}
+        assert downloads == []
+    finally:
+        get_settings.cache_clear()
