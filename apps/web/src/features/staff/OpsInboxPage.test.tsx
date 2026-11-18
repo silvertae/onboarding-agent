@@ -5,10 +5,11 @@ import { vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { HIRES, makeTask, TEAM_ID } from './testFixtures'
 
-const { actions, state } = vi.hoisted(() => ({
+const { actions, templateActions, state } = vi.hoisted(() => ({
+  templateActions: { save: vi.fn(), archive: vi.fn(), restore: vi.fn(), addForHire: vi.fn() },
   actions: {
     submit: vi.fn(),
-    markNa: vi.fn(),
+    markNa: vi.fn(async (_id: string, _reason: string) => {}),
     confirm: vi.fn(async () => {}),
     requestRework: vi.fn(async () => {}),
     recordAssessment: vi.fn(),
@@ -34,6 +35,11 @@ vi.mock('@/lib/tasks', async (importOriginal) => ({
   useTaskActions: () => actions,
 }))
 vi.mock('./hires', () => ({ useHires: () => ({ data: HIRES, isLoading: false, isError: false }) }))
+// "이 신입에게 과제 추가" 대화 상자의 동작은 AddTaskDialog.test.tsx에서 본다.
+vi.mock('@/features/templates/templates', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/templates/templates')>()),
+  useTemplateActions: () => templateActions,
+}))
 
 import { OpsInboxPage } from './OpsInboxPage'
 
@@ -64,6 +70,14 @@ const points = makeTask({ id: 'ga-04', new_hire_id: 'h1', status: 'done', templa
 const hrTask = makeTask({ id: 'hr-02', new_hire_id: 'h1', status: 'submitted', template: { department: 'hr', title: '근태·결재 시스템 가입' } })
 const teamTask = makeTask({ id: 'ai-04', new_hire_id: 'h1', status: 'submitted', template: { department: null, team_id: TEAM_ID, title: '기술스택·경력 조사' } })
 
+// 이 신입에게만 추가한 과제(assigned_to). 해당 없음 허용이 꺼져 있어도 담당자는 해당 없음으로 뺄 수 있다.
+const parking = makeTask({
+  id: 'one-off',
+  new_hire_id: 'h1',
+  status: 'todo',
+  template: { title: '주차 등록 신청', completion_mode: 'self', allow_na: false, assigned_to: 'h1', is_seed: false },
+})
+
 const ALL: TaskView[] = [businessCard, welcomeKit, welfareCard, fingerprint, points, hrTask, teamTask]
 
 function renderPage(tasks: TaskView[] = ALL) {
@@ -82,6 +96,7 @@ function bodyRows() {
 
 beforeEach(() => {
   Object.values(actions).forEach((fn) => fn.mockClear())
+  Object.values(templateActions).forEach((fn) => fn.mockReset())
   state.query = { isLoading: false, isError: false, isFetching: false }
   state.refetch.mockClear()
 })
@@ -220,6 +235,60 @@ describe('OpsInboxPage (S9)', () => {
     expect(row).not.toHaveClass('bg-accent')
     expect(bodyRows()[1]).toHaveAttribute('aria-selected', 'false')
     expect(bodyRows()[1]).not.toHaveClass('[&>td]:bg-accent')
+  })
+})
+
+describe('OpsInboxPage (S9) 이 신입에게 과제 추가', () => {
+  it('입사자 필터가 "전체"면 버튼이 없고, 한 명을 고르면 보인다. 종류에 "평가"가 없다', async () => {
+    const user = userEvent.setup()
+    renderPage([...ALL, parking])
+    expect(screen.queryByRole('button', { name: '이 신입에게 과제 추가' })).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('입사자'), 'h1')
+    await user.click(screen.getByRole('button', { name: '이 신입에게 과제 추가' }))
+
+    const dialog = screen.getByRole('dialog', { name: "'김하늘'님에게 과제 추가" })
+    expect(within(dialog).queryByRole('radio', { name: '평가' })).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('radio', { name: '안내' })).toBeChecked()
+  })
+
+  it('입사자 필터를 "전체"로 되돌리면 버튼이 사라진다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.selectOptions(screen.getByLabelText('입사자'), 'h2')
+    expect(screen.getByRole('button', { name: '이 신입에게 과제 추가' })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('입사자'), '')
+    expect(screen.queryByRole('button', { name: '이 신입에게 과제 추가' })).not.toBeInTheDocument()
+  })
+
+  it('한 사람용 과제 행에만 "이 신입만" 배지가 붙는다', async () => {
+    const user = userEvent.setup()
+    renderPage([...ALL, parking])
+    await user.click(screen.getByRole('tab', { name: /전체/ }))
+    expect(screen.getByRole('row', { name: /주차 등록 신청/ })).toHaveTextContent('이 신입만')
+    expect(screen.getByRole('row', { name: /명함 신청/ })).not.toHaveTextContent('이 신입만')
+  })
+
+  it('한 사람용 과제는 상세 패널에서 "해당 없음" → 사유 입력 → markNa(id, 사유)', async () => {
+    const user = userEvent.setup()
+    renderPage([...ALL, parking])
+    await user.click(screen.getByRole('tab', { name: /전체/ }))
+    await user.click(screen.getByRole('row', { name: /주차 등록 신청/ }))
+
+    const panel = screen.getByRole('complementary', { name: '과제 상세' })
+    await user.click(within(panel).getByRole('button', { name: '해당 없음' }))
+    await user.type(within(panel).getByLabelText(/해당 없음 사유/), '차량이 없어요')
+    await user.click(within(panel).getByRole('button', { name: '해당 없음으로 처리' }))
+
+    expect(actions.markNa).toHaveBeenCalledWith('one-off', '차량이 없어요')
+  })
+
+  it('기본 과제 상세 패널에는 "해당 없음"이 없다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('row', { name: /김하늘.*명함 신청/ }))
+    const panel = screen.getByRole('complementary', { name: '과제 상세' })
+    expect(within(panel).queryByRole('button', { name: '해당 없음' })).not.toBeInTheDocument()
   })
 })
 

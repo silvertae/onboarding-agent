@@ -1,7 +1,7 @@
 -- 하루 사용 한도(consume_quota) 테스트
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(12);
 
 insert into public.orgs (id, name) values ('a3000000-0000-0000-0000-000000000001', '테스트 가상 조직');
 insert into public.teams (id, org_id, name) values
@@ -24,7 +24,10 @@ select is(public.consume_quota('chat', 2), true,  'chat 1회째 → true');
 select is(public.consume_quota('chat', 2), true,  'chat 2회째 → true');
 select is(public.consume_quota('chat', 2), false, 'chat 3회째(한도 2 초과) → false');
 select is(public.consume_quota('exam', 1), true,  '같은 사용자 exam 1회째 → true (종류별로 센다)');
-select throws_ok($$select public.consume_quota('other', 1)$$, null, null, 'kind가 chat|exam이 아니면 예외');
+select is(public.consume_quota('document', 1), true, 'document 1회째 → true');
+select is(public.consume_quota('draft', 1), true, 'draft 1회째 → true');
+select is(public.consume_quota('document', 1), false, 'document 2회째(한도 1 초과) → false');
+select throws_ok($$select public.consume_quota('unknown', 1)$$, '22023', null, 'kind가 chat|exam|document|draft가 아니면 22023');
 select throws_ok('select 1 from public.usage_counters', '42501', null, 'usage_counters 직접 조회 불가');
 
 set local request.jwt.claim.sub = 'a3000000-0000-0000-0000-000000000102';

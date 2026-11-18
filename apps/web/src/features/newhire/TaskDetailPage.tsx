@@ -3,6 +3,7 @@ import { useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus } from '@/components/LoadingStatus'
+import { TaskFormsSection } from '@/features/forms/TaskFormsSection'
 import { OwnerBadge } from '@/components/OwnerBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -239,6 +240,7 @@ export function TaskDetailPage() {
           <h3 className="text-row font-semibold">안내</h3>
           <p className="text-row leading-[23px] whitespace-pre-wrap text-[var(--text-secondary)]">{t.description}</p>
         </div>
+        <TaskFormsSection templateId={t.id} />
         <Body key={`${task.id}-${task.status}`} task={task} disabled={!actionable || pending}>
           {renderActions}
         </Body>
