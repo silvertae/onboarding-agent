@@ -1,11 +1,62 @@
 import { Plus } from 'lucide-react'
 import { Link } from 'react-router'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus } from '@/components/LoadingStatus'
 import { PageHeader } from '@/components/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { DIFFICULTY_LABEL, EXAM_STATUS_LABEL, useExams } from './exams'
+
+function ListHeader() {
+  return (
+    <TableHeader>
+      <TableRow>
+        <TableHead className="pl-6">제목</TableHead>
+        <TableHead>주제</TableHead>
+        <TableHead>난이도</TableHead>
+        <TableHead>문항 수</TableHead>
+        <TableHead className="pr-6">상태</TableHead>
+      </TableRow>
+    </TableHeader>
+  )
+}
+
+const TITLE_WIDTHS = ['w-48', 'w-36', 'w-56', 'w-40']
+
+// 로딩: 같은 표 머리 아래 행 4개
+function ExamListSkeleton() {
+  return (
+    <LoadingStatus>
+      <Table>
+        <ListHeader />
+        <TableBody>
+          {TITLE_WIDTHS.map((w) => (
+            <TableRow key={w}>
+              <TableCell className="pl-6">
+                <Skeleton className={`h-4 ${w}`} />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-32" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-10" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-6" />
+              </TableCell>
+              <TableCell className="pr-6">
+                <Skeleton className="h-[22px] w-12 rounded-full" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </LoadingStatus>
+  )
+}
 
 export function ExamListPage() {
   const exams = useExams()
@@ -25,22 +76,18 @@ export function ExamListPage() {
 
       <section className="rounded-[18px] border border-border bg-card">
         {exams.isLoading ? (
-          <p role="status" className="px-6 py-12 text-center text-sm text-muted-foreground">불러오는 중…</p>
+          <ExamListSkeleton />
         ) : exams.isError ? (
-          <p role="alert" className="px-6 py-12 text-center text-sm text-destructive">시험 목록을 불러오지 못했어요.</p>
+          <div className="p-6">
+            <LoadError retrying={exams.isFetching} onRetry={() => void exams.refetch()}>
+              시험 목록을 불러오지 못했어요.
+            </LoadError>
+          </div>
         ) : !exams.data?.length ? (
           <p className="px-6 py-12 text-center text-sm text-muted-foreground">아직 만든 시험이 없어요. "새 시험 만들기"로 시작해 보세요.</p>
         ) : (
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-6">제목</TableHead>
-                <TableHead>주제</TableHead>
-                <TableHead>난이도</TableHead>
-                <TableHead>문항 수</TableHead>
-                <TableHead className="pr-6">상태</TableHead>
-              </TableRow>
-            </TableHeader>
+            <ListHeader />
             <TableBody>
               {exams.data.map((exam) => (
                 <TableRow key={exam.id}>

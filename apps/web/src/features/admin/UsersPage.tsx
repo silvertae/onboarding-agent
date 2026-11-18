@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react'
 import type { Profile } from '@/app/AuthProvider'
 import type { Enums } from '@/lib/database.types'
 import { FilterChips } from '@/components/FilterChips'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
 import { PageHeader } from '@/components/PageHeader'
 import { ROW_SELECTED } from '@/components/tableRow'
 import { Alert } from '@/components/ui/alert'
@@ -110,13 +112,26 @@ export function UsersPage() {
           />
 
           {usersQuery.isLoading ? (
-            <p role="status" className="px-6 py-10 text-sm text-muted-foreground">
-              불러오는 중…
-            </p>
+            <LoadingStatus>
+              <TableSkeleton
+                headClassName="border-b"
+                rows={6}
+                columns={[
+                  { label: '이름', className: 'font-medium' },
+                  { label: '메일', className: 'font-medium' },
+                  { label: '역할', className: 'font-medium' },
+                  { label: '부서·팀', className: 'font-medium' },
+                  { label: '입사일', className: 'font-medium' },
+                  { label: '기본 계정', className: 'font-medium' },
+                ]}
+              />
+            </LoadingStatus>
           ) : usersQuery.isError ? (
-            <p role="alert" className="px-6 py-10 text-sm text-destructive">
-              사용자 목록을 불러오지 못했어요. 새로고침해 주세요.
-            </p>
+            <div className="p-6">
+              <LoadError retrying={usersQuery.isFetching} onRetry={() => void usersQuery.refetch()}>
+                사용자 목록을 불러오지 못했어요. 다시 시도해 주세요.
+              </LoadError>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table aria-label="사용자 목록" className="w-full text-sm">
