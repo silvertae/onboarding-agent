@@ -8,17 +8,33 @@ import type { TaskStage, TaskTemplate } from '@/lib/tasks'
 
 type Status = 'success' | 'loading' | 'error'
 
-const { state, actions, refetch } = vi.hoisted(() => ({
-  state: {
-    profile: null as unknown,
-    active: [] as TaskTemplate[],
-    archived: [] as TaskTemplate[],
-    usage: new Map<string, number>(),
-    status: 'success' as Status,
-  },
-  actions: { save: vi.fn(), archive: vi.fn(), restore: vi.fn(), addForHire: vi.fn() },
-  refetch: vi.fn(),
-}))
+const { state, actions, refetch, store } = vi.hoisted(() => {
+  // 목 데이터가 바뀐 것을 화면에 알린다(실제 훅의 쿼리 무효화 → 다시 그리기 흉내)
+  const listeners = new Set<() => void>()
+  const store = {
+    version: 0,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    changed: () => {
+      store.version += 1
+      listeners.forEach((listener) => listener())
+    },
+  }
+  return {
+    state: {
+      profile: null as unknown,
+      active: [] as TaskTemplate[],
+      archived: [] as TaskTemplate[],
+      usage: new Map<string, number>(),
+      status: 'success' as Status,
+    },
+    actions: { save: vi.fn(), archive: vi.fn(), restore: vi.fn(), addForHire: vi.fn() },
+    refetch: vi.fn(),
+    store,
+  }
+})
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 vi.mock('@/app/AuthProvider', () => ({
@@ -29,6 +45,7 @@ vi.mock('@/features/newhire/useTeamName', () => ({
 }))
 // 데이터 훅만 목으로 바꾼다. 잠금 판단(isLocked·lockedFieldsChanged) 같은 순수 함수는 실제 것을 쓴다.
 vi.mock('./templates', async (importOriginal) => {
+  const { useSyncExternalStore } = await import('react')
   const query = <T,>(data: T) => ({
     data: state.status === 'success' ? data : undefined,
     isLoading: state.status === 'loading',
@@ -38,8 +55,14 @@ vi.mock('./templates', async (importOriginal) => {
   })
   return {
     ...(await importOriginal<typeof import('./templates')>()),
-    useManagedTemplates: (view: 'active' | 'archived') => query(view === 'active' ? state.active : state.archived),
-    useTemplateUsage: () => query(state.usage),
+    useManagedTemplates: (view: 'active' | 'archived') => {
+      useSyncExternalStore(store.subscribe, () => store.version)
+      return query(view === 'active' ? state.active : state.archived)
+    },
+    useTemplateUsage: () => {
+      useSyncExternalStore(store.subscribe, () => store.version)
+      return query(state.usage)
+    },
     useTemplateActions: () => actions,
   }
 })
@@ -183,6 +206,13 @@ describe('TemplatesPage (S12) 목록', () => {
     expect(within(screen.getByRole('group', { name: '종류' })).queryByRole('radio', { name: '평가' })).not.toBeInTheDocument()
   })
 
+  it('?template 없이 들어오면 첫 과제를 보여 주고 주소에도 적는다', () => {
+    renderPage()
+    expect(within(list()).getByRole('link', { name: /AI-01/ })).toHaveAttribute('aria-current', 'true')
+    expect(panel('사무실 돌며 인사하기')).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-01')
+  })
+
   it('?template=AI-09로 들어오면 그 과제가 선택된 상태다', () => {
     renderPage({ path: '/tasks?template=AI-09' })
     expect(within(list()).getByRole('link', { name: /AI-09/ })).toHaveAttribute('aria-current', 'true')
@@ -232,6 +262,21 @@ describe('TemplatesPage 과제 추가', () => {
     expect(saveButton()).toBeDisabled()
     await user.type(within(edit).getByLabelText('제목'), '사내 위키 정리')
     expect(saveButton()).toBeEnabled()
+  })
+
+  it('"과제 추가"는 제목 칸으로 포커스를 옮기고, 쓰는 중에 다시 누르면 빈 칸으로 돌아간다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: '과제 추가' }))
+    expect(screen.getByLabelText('제목')).toHaveFocus()
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/tasks$/)
+
+    await user.type(screen.getByLabelText('제목'), '쓰다 만 과제')
+    await user.click(screen.getByRole('radio', { name: '읽기' }))
+    await user.click(screen.getByRole('button', { name: '과제 추가' }))
+    expect(screen.getByLabelText('제목')).toHaveValue('')
+    expect(screen.getByLabelText('제목')).toHaveFocus()
+    expect(screen.getByRole('radio', { name: '안내' })).toBeChecked()
   })
 
   it('체크리스트 종류에 항목이 없으면 문구를 보이고 저장을 막는다. 항목을 넣으면 풀린다', async () => {
@@ -299,6 +344,8 @@ describe('TemplatesPage 과제 추가', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-13')
     expect(panel('사내 위키 정리')).toBeInTheDocument()
     expect(within(list()).getByRole('link', { name: /AI-13/ })).toHaveAttribute('aria-current', 'true')
+    // 저장 버튼이 있던 새 과제 패널이 사라지므로 새 과제의 패널 머리로 포커스를 옮긴다
+    expect(screen.getByRole('heading', { level: 2, name: '사내 위키 정리' })).toHaveFocus()
   })
 })
 
@@ -352,6 +399,86 @@ describe('TemplatesPage 편집', () => {
     expect(await screen.findByText('저장했어요')).toBeInTheDocument()
   })
 
+  it('기본으로 고른 과제의 단계를 바꿔 저장해도 패널이 그 과제에 머문다', async () => {
+    const user = userEvent.setup()
+    const before = aiTemplates()
+    renderPage({ active: before, usage: new Map() })
+    expect(panel('사무실 돌며 인사하기')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('단계'), 'month1')
+    const moved = { ...before[0], stage: 'month1' as const, due_offset_days: STAGE_START_DAYS.month1 }
+    actions.save.mockImplementation(async () => {
+      // 저장 훅은 다시 읽은 목록과 함께 끝난다: AI-01이 첫 달 묶음 끝으로 옮겨 간다
+      state.active = [...before.slice(1), moved]
+      return moved
+    })
+    await user.click(saveButton())
+
+    expect(await screen.findByText('저장했어요')).toBeInTheDocument()
+    expect(panel('사무실 돌며 인사하기')).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-01')
+    expect(within(list()).getByRole('link', { name: /AI-01/ })).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('열어 둔 사이 신입이 들어와 저장이 거부되면, 다시 읽은 사용 수로 잠금 안내와 저장된 값을 보인다', async () => {
+    const user = userEvent.setup()
+    renderPage({ path: '/tasks?template=AI-11' })
+    await user.selectOptions(screen.getByLabelText('단계'), 'month1')
+    actions.save.mockImplementation(async () => {
+      // 훅이 실패 뒤 사용 수를 다시 읽는다: 그 사이 신입 1명이 들어왔다
+      state.usage = new Map([...state.usage, ['id-AI-11', 1]])
+      store.changed()
+      throw new DbError(400, '진행 중인 신입이 있어 제목·안내문만 고칠 수 있습니다', '22023')
+    })
+    await user.click(saveButton())
+
+    expect(await screen.findByText('저장하지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(
+      screen.getByText('신입 1명이 진행 중이라 제목과 안내문만 고칠 수 있어요. 다른 칸을 바꾸려면 보관하고 새로 만들어 주세요.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('단계')).toBeDisabled()
+    expect(screen.getByLabelText('단계')).toHaveValue('week1')
+
+    actions.save.mockResolvedValue(ai('AI-11', '사내 위키 둘러보기', 'week1'))
+    await user.click(saveButton())
+    expect(actions.save).toHaveBeenLastCalledWith('id-AI-11', expect.objectContaining({ stage: 'week1', daysInStage: 2 }))
+  })
+
+  it('입력 양식 과제는 종류가 "입력 양식" 하나뿐이고 바꿀 수 없다', () => {
+    renderPage({
+      path: '/tasks?template=AI-04',
+      active: [ai('AI-04', '기술스택·경력 조사', 'day1', { kind: 'input', form_schema: null })],
+      usage: new Map(),
+    })
+    const kind = within(screen.getByRole('group', { name: '종류' })).getAllByRole('radio')
+    expect(kind).toHaveLength(1)
+    expect(kind[0].closest('label')).toHaveTextContent('입력 양식')
+    expect(kind[0]).toBeChecked()
+    expect(kind[0]).toBeDisabled()
+    // 사용 중이 아니면 다른 칸은 고칠 수 있다
+    expect(screen.getByLabelText('단계')).toBeEnabled()
+  })
+
+  it('이 과제를 이미 (보관한 과제를 거쳐서라도) 기다리는 과제는 선행 후보에서 빠진다', () => {
+    renderPage({
+      path: '/tasks?template=AI-11',
+      active: [
+        ai('AI-01', '사무실 돌며 인사하기', 'day1'),
+        ai('AI-11', '사내 위키 둘러보기', 'week1'),
+        ai('AI-12', '첫 달 회고', 'month1', { prerequisite_codes: ['AI-11'] }),
+        ai('AI-13', '위키 문서 고치기', 'month1', { prerequisite_codes: ['AI-07'] }),
+        ai('AI-14', '회고 공유', 'month1', { prerequisite_codes: ['AI-12'] }),
+      ],
+      archived: [ai('AI-07', '프린터 사용', 'week1', { archived_at: '2026-11-18T00:00:00Z', prerequisite_codes: ['AI-11'] })],
+      usage: new Map(),
+    })
+    const names = within(screen.getByRole('group', { name: /선행 과제/ }))
+      .getAllByRole('checkbox')
+      .map((box) => box.closest('label')?.textContent)
+    // AI-12는 직접, AI-14는 AI-12를 거쳐, AI-13은 보관한 AI-07을 거쳐 AI-11을 기다린다
+    expect(names).toEqual(['AI-01 사무실 돌며 인사하기'])
+  })
+
   it('저장에 실패하면 문구를 보이고 입력값을 그대로 둔다', async () => {
     const user = userEvent.setup()
     actions.save.mockRejectedValue(new DbError(500, 'boom'))
@@ -367,9 +494,10 @@ describe('TemplatesPage 편집', () => {
     expect(saveButton()).toBeEnabled()
   })
 
-  it('선행 과제 후보에 자기 자신과 보관한 과제가 없고, 3개를 고르면 4번째는 고를 수 없다', async () => {
+  it('선행 과제 후보는 사용 중인 과제에서 나온다: 자기 자신과 보관한 과제가 없고, 3개를 고르면 4번째는 고를 수 없다', async () => {
     const user = userEvent.setup()
-    renderPage({ path: '/tasks?template=AI-11' })
+    // 보관 목록에만 있는 AI-07은 후보가 아니다
+    renderPage({ path: '/tasks?template=AI-11', archived: [ai('AI-07', '프린터 사용', 'week1', { archived_at: '2026-11-18T00:00:00Z' })] })
     const group = screen.getByRole('group', { name: /선행 과제/ })
     expect(group).toHaveTextContent('최대 3개')
     const names = within(group)
@@ -395,7 +523,11 @@ describe('TemplatesPage 편집', () => {
 describe('TemplatesPage 보관·다시 사용', () => {
   it('"보관" → 확인 창 → 확인하면 archiveTemplate, 페이지 머리 아래 "보관했어요"', async () => {
     const user = userEvent.setup()
-    actions.archive.mockResolvedValue(ai('AI-11', '사내 위키 둘러보기', 'week1'))
+    actions.archive.mockImplementation(async (id: string) => {
+      // 저장 훅은 다시 읽은 목록과 함께 끝난다: 보관한 과제는 사용 중 보기에서 빠진다
+      state.active = state.active.filter((t) => t.id !== id)
+      return ai('AI-11', '사내 위키 둘러보기', 'week1')
+    })
     renderPage({ path: '/tasks?template=AI-11' })
     await user.click(screen.getByRole('button', { name: '보관' }))
 
@@ -410,8 +542,9 @@ describe('TemplatesPage 보관·다시 사용', () => {
     expect(actions.archive).toHaveBeenCalledTimes(1)
     expect(actions.archive).toHaveBeenCalledWith('id-AI-11')
     expect(await screen.findByText('보관했어요')).toBeInTheDocument()
-    // 보관한 과제는 사용 중 보기에서 빠지므로 선택을 지운다
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/tasks$/)
+    // 보관한 과제는 사용 중 보기에서 빠지므로 첫 과제를 고르고, 포커스는 결과 알림으로 옮긴다
+    expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-01')
+    expect(screen.getByText('보관했어요').closest('[role="status"]')).toHaveFocus()
   })
 
   it('확인 창에서 취소하면 보관하지 않는다', async () => {

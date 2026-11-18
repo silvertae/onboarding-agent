@@ -67,3 +67,29 @@ export function isTemplateInputValid(v: TemplateInput): boolean {
     v.prerequisiteCodes.length <= PREREQUISITE_MAX
   )
 }
+
+// 선행 과제 후보: 사용 중인 기본 과제에서 자기 자신과, 이미 이 과제를 직접·간접으로 기다리는 과제를 뺀다(고르면 순환).
+// DB 순환 검사와 같이 보관한 과제의 선행도 따라간다. 새 과제(current = null)는 기다리는 과제가 없다.
+export function prerequisiteCandidates(
+  current: TaskTemplate | null,
+  active: TaskTemplate[],
+  archived: TaskTemplate[],
+): TaskTemplate[] {
+  if (!current) return active
+  const prerequisitesOf = new Map<string, readonly string[]>()
+  for (const t of [...active, ...archived]) prerequisitesOf.set(t.code, t.prerequisite_codes)
+
+  function waitsForCurrent(code: string): boolean {
+    const seen = new Set<string>()
+    const stack = [code]
+    while (stack.length > 0) {
+      const next = stack.pop()!.trim()
+      if (next === current!.code) return true
+      if (seen.has(next)) continue
+      seen.add(next)
+      stack.push(...(prerequisitesOf.get(next) ?? []))
+    }
+    return false
+  }
+  return active.filter((t) => t.id !== current.id && !waitsForCurrent(t.code))
+}

@@ -1,10 +1,11 @@
 import { vi } from 'vitest'
 
 type Call = { method: string; args: unknown[] }
-const { calls, state, rpc } = vi.hoisted(() => ({
+const { calls, state, rpc, signOut } = vi.hoisted(() => ({
   calls: [] as Call[],
   state: { profile: null as unknown, rows: [] as unknown[] },
   rpc: vi.fn(async (_n: string, _a?: unknown) => ({ data: { id: 't1' }, error: null as unknown, status: 200 })),
+  signOut: vi.fn(async () => ({ error: null })),
 }))
 
 vi.mock('@/lib/supabase', () => {
@@ -20,7 +21,7 @@ vi.mock('@/lib/supabase', () => {
     b.then = (resolve: (r: unknown) => unknown) => Promise.resolve({ data: state.rows, error: null, status: 200 }).then(resolve)
     return b
   }
-  return { supabase: { rpc, from: builder } }
+  return { supabase: { rpc, from: builder, auth: { signOut } } }
 })
 vi.mock('@/app/AuthProvider', () => ({ useAuth: () => ({ session: { user: { id: 'u1' } }, profile: state.profile }) }))
 
@@ -42,6 +43,7 @@ beforeEach(() => {
   state.rows = [{ id: 't1' }]
   state.profile = null
   rpc.mockClear()
+  signOut.mockClear()
 })
 
 describe('useManagedTemplates', () => {
@@ -104,11 +106,30 @@ describe('useTemplateActions', () => {
     expect(keys).toEqual(expect.arrayContaining([['templates'], ['template-usage'], ['tasks']]))
   })
 
-  it('실패하면 무효화하지 않는다', async () => {
+  it('실패하면 원래 오류를 던지고, 템플릿·사용 수만 다시 읽는다(과제는 그대로)', async () => {
     rpc.mockResolvedValueOnce({ data: null as never, error: { message: 'x', code: '22023' }, status: 400 })
     const spy = vi.spyOn(client, 'invalidateQueries')
     const { result } = renderHook(() => useTemplateActions(), { wrapper })
     await expect(result.current.archive('t1')).rejects.toMatchObject({ code: '22023' })
+    const keys = spy.mock.calls.map((c) => (c[0] as { queryKey: unknown[] }).queryKey)
+    expect(keys).toEqual([['templates'], ['template-usage']])
+    expect(signOut).not.toHaveBeenCalled()
+  })
+
+  it('저장 중 인증이 만료되면(401) 로그아웃하고 원래 오류를 던진다', async () => {
+    rpc.mockResolvedValueOnce({ data: null as never, error: { message: 'JWT expired', code: 'PGRST301' }, status: 401 })
+    const spy = vi.spyOn(client, 'invalidateQueries')
+    const { result } = renderHook(() => useTemplateActions(), { wrapper })
+    await expect(result.current.save('t1', input)).rejects.toMatchObject({ status: 401 })
+    expect(signOut).toHaveBeenCalledTimes(1)
     expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('한 사람용 과제 추가도 401이면 로그아웃한다', async () => {
+    rpc.mockResolvedValueOnce({ data: null as never, error: { message: 'JWT expired' }, status: 401 })
+    const { result } = renderHook(() => useTemplateActions(), { wrapper })
+    const { prerequisiteCodes: _omit, ...common } = input
+    await expect(result.current.addForHire('h1', common)).rejects.toMatchObject({ status: 401 })
+    expect(signOut).toHaveBeenCalledTimes(1)
   })
 })

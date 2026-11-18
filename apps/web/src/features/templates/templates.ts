@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { useAuth } from '@/app/AuthProvider'
 import type { Enums, Json } from '@/lib/database.types'
-import { DbError } from '@/lib/errors'
+import { DbError, isAuthError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import type { TaskInstance, TaskStage, TaskTemplate } from '@/lib/tasks'
 import { daysInStage } from './stage'
@@ -139,13 +139,22 @@ export function lockedFieldsChanged(before: TaskTemplate, input: TemplateInput):
 }
 
 // 화면용: 위 함수를 부르고 성공하면 템플릿·사용 수·과제 쿼리를 무효화한다.
+// 실패하면 원래 오류(DbError)를 그대로 던진다. 인증 오류면 로그아웃하고, 그 밖의 실패면 템플릿·사용 수를 다시 읽는다.
 export function useTemplateActions() {
   const queryClient = useQueryClient()
+  const invalidate = (keys: string[]) => Promise.all(keys.map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
   async function after<T>(call: Promise<T>): Promise<T> {
-    const result = await call
-    await Promise.all(
-      ['templates', 'template-usage', 'tasks'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
-    )
+    let result: T
+    try {
+      result = await call
+    } catch (err) {
+      // useMutation을 거치지 않으므로 전역 MutationCache 대신 여기서 로그아웃한다(SECURITY.md 웹: 401 → 로그아웃).
+      if (isAuthError(err)) await supabase.auth.signOut()
+      // 화면을 연 뒤 신입이 들어와 잠겼거나 다른 곳에서 보관된 경우: 지금 상태(잠금 안내 등)를 보이게 다시 읽는다.
+      else await invalidate(['templates', 'template-usage'])
+      throw err
+    }
+    await invalidate(['templates', 'template-usage', 'tasks'])
     return result
   }
   return {

@@ -57,6 +57,8 @@ const CHECKLIST_MISSING = '체크리스트 항목을 하나 이상 넣어 주세
 // 읽기 전용 칸(system.md): 흐리게 하지 않고 bg-muted 바탕에 글자는 그대로 둔다
 const READ_ONLY = 'disabled:bg-muted disabled:text-foreground disabled:opacity-100'
 const READ_ONLY_SELECT = '[&_select:disabled]:bg-muted [&_select:disabled]:text-foreground [&_select:disabled]:opacity-100'
+// 체크박스는 막혀도 체크된 상태는 흐리지 않는다(고르지 않은 칸만 흐림, SegmentedRadio와 같은 기준)
+const READ_ONLY_CHECK = 'disabled:aria-checked:opacity-100'
 const LABEL = 'text-label font-semibold'
 const LEGEND = 'mb-1.5 text-label font-semibold'
 // 넓으면 두 칸, 좁으면 한 칸(시안 .form-grid)
@@ -198,7 +200,12 @@ export function TemplateForm({ value, onChange, lockedFields, allowAssessment, s
       </div>
 
       <label className={cn(CHECK_LABEL, 'w-fit')}>
-        <Checkbox checked={value.allowNa} disabled={lockedFields} onCheckedChange={(checked) => set({ allowNa: checked === true })} />
+        <Checkbox
+          checked={value.allowNa}
+          disabled={lockedFields}
+          className={READ_ONLY_CHECK}
+          onCheckedChange={(checked) => set({ allowNa: checked === true })}
+        />
         해당 없음 허용
       </label>
 
@@ -274,6 +281,7 @@ export function TemplateForm({ value, onChange, lockedFields, allowAssessment, s
                   <Checkbox
                     checked={checked}
                     disabled={lockedFields || (!checked && prerequisitesFull)}
+                    className={READ_ONLY_CHECK}
                     onCheckedChange={(next) => togglePrerequisite(t.code, next === true)}
                   />
                   <span className="w-11 shrink-0 text-xs text-muted-foreground tabular-nums">{t.code}</span>{' '}
