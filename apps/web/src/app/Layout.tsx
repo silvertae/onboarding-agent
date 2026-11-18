@@ -15,10 +15,12 @@ const NAV_BY_ROLE: Record<Enums<'user_role'>, { to: string; label: string }[]> =
     { to: '/team', label: '팀 신입 현황' },
     { to: '/team/exams', label: '시험 출제' },
     { to: '/team/bank', label: '문제은행' },
+    { to: '/tasks', label: '온보딩 과제' },
     { to: '/knowledge', label: '지식 관리' },
   ],
   ops_staff: [
     { to: '/ops', label: '부서 업무함' },
+    { to: '/tasks', label: '온보딩 과제' },
     { to: '/knowledge', label: '지식 관리' },
   ],
   admin: [{ to: '/admin/users', label: '사용자 관리' }],

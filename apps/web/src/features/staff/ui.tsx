@@ -1,10 +1,22 @@
 // 도메인 B 화면에서 함께 쓰는 작은 UI 조각. 공통 components/ui를 건드리지 않으려고 여기에 둔다.
 import type { ComponentProps, ReactNode } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
 export function Panel({ className, ...props }: ComponentProps<'section'>) {
   return <section className={cn('rounded-[18px] border border-border bg-card', className)} {...props} />
+}
+
+// S6·S9 과제 표의 제목 칸. 이 신입에게만 추가한 과제는 제목 뒤에 "이 신입만" 배지(시안 .badge = Badge secondary)를 붙인다.
+export function TaskTitle({ title, oneOff }: { title: string; oneOff: boolean }) {
+  if (!oneOff) return title
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {title}
+      <Badge variant="secondary">이 신입만</Badge>
+    </span>
+  )
 }
 
 export { PageHeader } from '@/components/PageHeader'

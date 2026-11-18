@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { makeTask, PROFILE, TEAM_ID } from './testFixtures'
 
-const state = vi.hoisted(() => ({ tasks: [] as TaskView[] }))
+const state = vi.hoisted(() => ({ tasks: [] as TaskView[], files: [] as unknown[] }))
 const actions = vi.hoisted(() => ({
   submit: vi.fn(),
   markNa: vi.fn(),
@@ -22,6 +22,11 @@ vi.mock('@/lib/tasks', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/tasks')>()),
   useMyTasks: () => ({ data: state.tasks, isPending: false, isError: false }),
   useTaskActions: () => actions,
+}))
+vi.mock('@/lib/taskFiles', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/taskFiles')>()),
+  useTemplateFiles: () => ({ data: state.files, isPending: false }),
+  downloadTaskFile: vi.fn(),
 }))
 vi.mock('./useTeamName', () => ({ useTeamName: () => 'AI팀' }))
 
@@ -41,6 +46,7 @@ function renderDetail(task: TaskView, others: TaskView[] = []) {
 const ga07Form = { fields: [{ key: 'english_name', label: '영문 이름', type: 'text', required: true, placeholder: 'Haneul Kim' }] }
 
 beforeEach(() => {
+  state.files = []
   for (const fn of Object.values(actions)) {
     fn.mockReset()
     fn.mockResolvedValue(undefined)
@@ -224,5 +230,27 @@ describe('과제 상세', () => {
     )
     expect(screen.getByText('과제를 찾을 수 없어요')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /타임라인으로/ })).toHaveAttribute('href', '/me')
+  })
+})
+
+describe('과제 상세 — 작성할 서식', () => {
+  const xlsx = { id: 'f1', file_name: '법인카드 신청서.xlsx', size_bytes: 48 * 1024 }
+
+  it('서식이 없으면 섹션이 없다', () => {
+    renderDetail(makeTask({ code: 'GA-10', title: '법인카드 신청서 작성' }))
+    expect(screen.queryByText('작성할 서식')).not.toBeInTheDocument()
+  })
+
+  it('"안내" 바로 아래에 보인다', () => {
+    state.files = [xlsx]
+    renderDetail(makeTask({ code: 'GA-10', title: '법인카드 신청서 작성' }))
+    const guide = screen.getByRole('heading', { name: '안내' }).parentElement!
+    expect(guide.nextElementSibling).toHaveTextContent('작성할 서식')
+  })
+
+  it.each(['blocked', 'done'] as const)('%s 과제에서도 보인다', (status) => {
+    state.files = [xlsx]
+    renderDetail(makeTask({ code: 'GA-10', title: '법인카드 신청서 작성' }, { status }))
+    expect(screen.getAllByRole('button', { name: '법인카드 신청서.xlsx 내려받기' })).toHaveLength(2)
   })
 })
