@@ -1,4 +1,5 @@
 import { useId, useRef, useState, type FormEvent } from 'react'
+import { SegmentedRadio } from '@/components/SegmentedRadio'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -117,23 +118,13 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
           <span id={field('role')} className="text-sm font-semibold">
             역할
           </span>
-          <div role="radiogroup" aria-labelledby={field('role')} className="flex rounded-xl bg-secondary p-1">
-            {ROLES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                role="radio"
-                aria-checked={role === r}
-                onClick={() => setRole(r)}
-                className={cn(
-                  'flex-1 rounded-lg px-3 py-1.5 text-sm text-[var(--text-secondary)]',
-                  role === r && 'bg-card font-semibold text-foreground shadow-sm',
-                )}
-              >
-                {ROLE_LABEL[r]}
-              </button>
-            ))}
-          </div>
+          <SegmentedRadio
+            name={field('role-choice')}
+            labelledBy={field('role')}
+            options={ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+            value={role}
+            onChange={setRole}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">

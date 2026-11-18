@@ -94,7 +94,10 @@ describe('신입 홈 타임라인', () => {
   it('담당 필터 "AI팀" 선택 → team 과제만 표시', async () => {
     renderHome(all)
     const list = screen.getByRole('region', { name: '전체 과제' })
-    await userEvent.click(within(list).getByRole('button', { name: 'AI팀' }))
+    expect(within(list).getByRole('group', { name: '담당 필터' })).toBeInTheDocument()
+    expect(within(list).getByRole('button', { name: '전체' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(within(list).getByRole('button', { name: 'AI팀', pressed: false }))
+    expect(within(list).getByRole('button', { name: 'AI팀' })).toHaveAttribute('aria-pressed', 'true')
     const titles = within(list)
       .getAllByRole('link')
       .map((a) => a.querySelector('[data-task-title]')?.textContent)

@@ -114,6 +114,24 @@ describe('OpsInboxPage (S9)', () => {
     expect(table).not.toHaveTextContent('기술스택·경력 조사')
   })
 
+  it('탭은 ←/→로 옮겨 가고, 선택한 탭이 업무 표가 든 탭 패널을 가리킨다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const submitted = screen.getByRole('tab', { name: /확인 대기/ })
+    const mine = screen.getByRole('tab', { name: /내가 처리할 일/ })
+    expect(mine).toHaveAttribute('tabindex', '-1')
+
+    await user.click(submitted)
+    await user.keyboard('{ArrowRight}')
+
+    expect(mine).toHaveFocus()
+    expect(mine).toHaveAttribute('aria-selected', 'true')
+    const panel = screen.getByRole('tabpanel')
+    expect(mine).toHaveAttribute('aria-controls', panel.id)
+    expect(within(panel).getByRole('table', { name: '업무 목록' })).toBeInTheDocument()
+    expect(bodyRows()).toHaveLength(1)
+  })
+
   it('행을 누르면 오른쪽 패널에 제출 내용(result)을 보여 준다', async () => {
     const user = userEvent.setup()
     renderPage()

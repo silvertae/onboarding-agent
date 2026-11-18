@@ -1,6 +1,7 @@
 import { PartyPopper } from 'lucide-react'
 import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { useAuth } from '@/app/AuthProvider'
+import { FilterChips } from '@/components/FilterChips'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { STAGE_LABEL } from '@/lib/labels'
 import { groupByStage, progress, useMyTasks, type TaskStage, type TaskView } from '@/lib/tasks'
@@ -155,22 +156,7 @@ export function HomePage() {
           <h2 id="all-heading" className="text-lg font-semibold">
             전체 과제
           </h2>
-          <div role="group" aria-label="담당 필터" className="flex gap-2">
-            {filters.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                aria-pressed={filter === f.value}
-                onClick={() => setFilter(f.value)}
-                className={cn(
-                  'rounded-full border border-input bg-card px-3 py-1 text-[13px] text-[var(--text-secondary)] hover:bg-background',
-                  filter === f.value && 'border-foreground bg-foreground text-white hover:bg-foreground',
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <FilterChips label="담당 필터" items={filters} value={filter} onChange={setFilter} />
         </div>
         {STAGES.map((stage) => {
           const list = stages[stage]

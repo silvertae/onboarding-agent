@@ -3,6 +3,7 @@ import { Check } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Profile } from '@/app/AuthProvider'
 import type { Enums } from '@/lib/database.types'
+import { FilterChips } from '@/components/FilterChips'
 import { Alert } from '@/components/ui/alert'
 import { OWNER_LABEL, ROLE_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/utils'
@@ -81,9 +82,9 @@ export function UsersPage() {
     refreshUsers()
   }
 
-  const tabs: { key: Filter; label: string; count: number }[] = [
-    { key: 'all', label: '전체', count: users.length },
-    ...FILTERS.map((r) => ({ key: r, label: ROLE_LABEL[r], count: counts[r] })),
+  const filters: { value: Filter; label: string }[] = [
+    { value: 'all', label: `전체 ${users.length}` },
+    ...FILTERS.map((r) => ({ value: r, label: `${ROLE_LABEL[r]} ${counts[r]}` })),
   ]
 
   return (
@@ -102,23 +103,13 @@ export function UsersPage() {
 
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
         <section className="overflow-hidden rounded-[18px] border border-border bg-card">
-          <div role="tablist" aria-label="역할 필터" className="flex flex-wrap gap-2 border-b border-border px-6 py-5">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                role="tab"
-                aria-selected={filter === t.key}
-                onClick={() => setFilter(t.key)}
-                className={cn(
-                  'rounded-full border border-border px-3.5 py-1.5 text-sm',
-                  filter === t.key && 'border-foreground bg-foreground text-white',
-                )}
-              >
-                {t.label} {t.count}
-              </button>
-            ))}
-          </div>
+          <FilterChips
+            label="역할 필터"
+            className="border-b border-border px-6 py-5"
+            items={filters}
+            value={filter}
+            onChange={setFilter}
+          />
 
           {usersQuery.isLoading ? (
             <p role="status" className="px-6 py-10 text-sm text-muted-foreground">

@@ -1,11 +1,11 @@
 import { useId, useState } from 'react'
+import { SegmentedRadio } from '@/components/SegmentedRadio'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { Enums } from '@/lib/database.types'
 import { useTaskActions, type TaskView } from '@/lib/tasks'
-import { cn } from '@/lib/utils'
 import { isoToLocalInput, localInputToIso } from './format'
 import { ASSESSMENT_LABEL } from './teamTasks'
 import { ErrorText, Panel, Textarea } from './ui'
@@ -121,28 +121,13 @@ export function AssessmentCard({ task }: { task: TaskView }) {
 
         <fieldset disabled={disabled} className="flex flex-col gap-1.5">
           <legend className="mb-1.5 text-sm font-semibold">결과</legend>
-          <div role="radiogroup" aria-label="결과" className="grid grid-cols-3 rounded-xl bg-secondary p-1">
-            {CHOICES.map((c) => (
-              <label
-                key={c.value}
-                className={cn(
-                  'cursor-pointer rounded-lg px-3 py-1.5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-40 text-center text-sm text-[var(--text-secondary)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
-                  choice === c.value && 'bg-card font-semibold text-foreground shadow-sm',
-                )}
-              >
-                <input
-                  type="radio"
-                  name={`${id}-result`}
-                  value={c.value}
-                  checked={choice === c.value}
-                  onChange={() => set('choice', c.value)}
-                  disabled={c.value === 'none' && resultRecorded}
-                  className="sr-only"
-                />
-                {c.label}
-              </label>
-            ))}
-          </div>
+          <SegmentedRadio
+            name={`${id}-result`}
+            label="결과"
+            options={CHOICES.map((c) => ({ ...c, disabled: c.value === 'none' && resultRecorded }))}
+            value={choice}
+            onChange={(next) => set('choice', next)}
+          />
         </fieldset>
 
         <div className="flex flex-col gap-1.5">
