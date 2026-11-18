@@ -1,7 +1,7 @@
 -- 과제 템플릿 관리 테스트(보관·한 사람용·시드 사본·조회 정책·쓰기 RPC). 시드 조직에 픽스처를 더해 확인하고 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(128);
+select plan(137);
 
 -- ── 픽스처 ──────────────────────────────────────────────────────────
 -- 시드 조직 O, AI팀(T), 다른 팀 T2. 사람은 모두 가상.
@@ -27,13 +27,15 @@ insert into auth.users (id, email) values
   ('a7000000-0000-0000-0000-000000000104', 'new-d@tpl.test'),
   ('a7000000-0000-0000-0000-000000000105', 'new-e@tpl.test'),
   ('a7000000-0000-0000-0000-000000000106', 'new-f@tpl.test'),
+  ('a7000000-0000-0000-0000-000000000107', 'new-g@tpl.test'),
   ('a7000000-0000-0000-0000-000000000201', 'trainer@tpl.test'),
   ('a7000000-0000-0000-0000-000000000202', 'trainer2@tpl.test'),
   ('a7000000-0000-0000-0000-000000000301', 'hr@tpl.test'),
   ('a7000000-0000-0000-0000-000000000302', 'ga@tpl.test'),
   ('a7000000-0000-0000-0000-000000000401', 'admin@tpl.test');
 
--- 신입E는 입사 40일 전(기한이 오늘로 당겨지는지), 신입F는 한 사람용 과제를 만든 뒤에 시작한다
+-- 신입E는 입사 40일 전(기한이 오늘로 당겨지는지), 신입G는 입사 10일 뒤(기한이 입사일 기준인지),
+-- 신입F는 한 사람용 과제를 만든 뒤에 시작한다
 insert into public.profiles (id, org_id, email, full_name, role, department, team_id, hire_date) values
   ('a7000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', 'new-a@tpl.test', '신입A', 'new_hire', null, '00000000-0000-0000-0000-000000000002', date '2026-11-02'),
   ('a7000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000001', 'new-b@tpl.test', '신입B', 'new_hire', null, '00000000-0000-0000-0000-000000000002', date '2026-11-02'),
@@ -41,6 +43,7 @@ insert into public.profiles (id, org_id, email, full_name, role, department, tea
   ('a7000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000001', 'new-d@tpl.test', '신입D', 'new_hire', null, '00000000-0000-0000-0000-000000000002', date '2026-11-02'),
   ('a7000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000001', 'new-e@tpl.test', '신입E', 'new_hire', null, '00000000-0000-0000-0000-000000000002', (now() at time zone 'Asia/Seoul')::date - 40),
   ('a7000000-0000-0000-0000-000000000106', '00000000-0000-0000-0000-000000000001', 'new-f@tpl.test', '신입F', 'new_hire', null, '00000000-0000-0000-0000-000000000002', date '2026-11-02'),
+  ('a7000000-0000-0000-0000-000000000107', '00000000-0000-0000-0000-000000000001', 'new-g@tpl.test', '신입G', 'new_hire', null, '00000000-0000-0000-0000-000000000002', (now() at time zone 'Asia/Seoul')::date + 10),
   ('a7000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000001', 'trainer@tpl.test', '교육', 'team_trainer', null, '00000000-0000-0000-0000-000000000002', null),
   ('a7000000-0000-0000-0000-000000000202', '00000000-0000-0000-0000-000000000001', 'trainer2@tpl.test', '교육2', 'team_trainer', null, 'a7000000-0000-0000-0000-0000000000a2', null),
   ('a7000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000001', 'hr@tpl.test', '인사', 'ops_staff', 'hr', null, null),
@@ -261,6 +264,13 @@ select throws_ok($$select public.save_task_template(null, '읽기', '', 'read', 
   '22023', null, 'read에 체크리스트 → 22023');
 select throws_ok($$select public.save_task_template(null, '   ', '', 'read', 'self', 'week1', 0, false, null, '{}')$$,
   '22023', null, '제목 공백 → 22023');
+select throws_ok($$select public.save_task_template(null, E'\u3000', '', 'read', 'self', 'week1', 0, false, null, '{}')$$,
+  '22023', null, '제목이 전각 공백(U+3000)뿐 → 22023');
+select throws_ok($$select public.save_task_template(null, E'\u00a0 \u3000', '', 'read', 'self', 'week1', 0, false, null, '{}')$$,
+  '22023', null, '제목이 줄바꿈 없는 공백(U+00A0)·전각 공백뿐 → 22023');
+select throws_ok($$select public.save_task_template(null, '세팅', '', 'setup', 'self', 'week1', 0, false,
+                   E'["SAP 계정", "\u3000"]', '{}')$$,
+  '22023', null, 'setup 체크리스트 항목이 전각 공백뿐 → 22023');
 select throws_ok($$select public.save_task_template(null, repeat('가', 61), '', 'read', 'self', 'week1', 0, false, null, '{}')$$,
   '22023', null, '제목 61자 → 22023');
 select throws_ok($$select public.save_task_template(null, '읽기', repeat('가', 2001), 'read', 'self', 'week1', 0, false,
@@ -311,6 +321,19 @@ select throws_ok($$select public.save_task_template(pg_temp.tid('AI-12'), '바�
                    10, true, '["항목1", "항목2"]', '{AI-01,AI-11}')$$,
   '22023', '선행 과제가 서로를 기다리게 되어 고를 수 없습니다', 'AI-12에 AI-11을 선행으로 → 순환 22023');
 select is((pg_temp.tpl('AI-12')).prerequisite_codes, '{AI-01}'::text[], '순환 거부 뒤 AI-12 선행 그대로');
+
+-- 이미 걸려 있던 선행은 그 뒤 보관돼도 다시 검사하지 않는다(새로 더한 코드만 검사)
+select ok((public.archive_task_template(pg_temp.tid('AI-01'))).archived_at is not null, 'AI-01 보관(AI-12의 선행)');
+select is((public.save_task_template(pg_temp.tid('AI-12'), '선행 보관 뒤 제목', '바뀐 안내', 'setup', 'confirm', 'month1', 10,
+            true, '["항목1", "항목2"]', '{AI-01}')).title,
+  '선행 보관 뒤 제목', '보관된 선행(AI-01)을 그대로 둔 AI-12 저장 성공');
+select is((public.save_task_template(pg_temp.tid('AI-12'), '선행 보관 뒤 제목', '바뀐 안내', 'setup', 'confirm', 'month1', 10,
+            true, '["항목1", "항목2"]', '{AI-01,AI-03}')).prerequisite_codes,
+  '{AI-01,AI-03}'::text[], '보관된 선행을 둔 채 AI-03을 더하면 성공(AI-03만 검사)');
+select throws_ok($$select public.save_task_template(null, '선행', '', 'read', 'self', 'week1', 0, false, null, '{AI-01}')$$,
+  '22023', '선행 과제는 같은 담당 범위의 보관되지 않은 기본 과제만 고를 수 있습니다',
+  '새 템플릿의 선행에 보관된 AI-01 → 22023');
+select is((public.restore_task_template(pg_temp.tid('AI-01'))).archived_at, null::timestamptz, 'AI-01 복원');
 
 -- ── 사용 중 잠금 (Review Focus 1): 신입A가 진행 중인 AI-09(setup) ──────
 select throws_ok($$select public.save_task_template(pg_temp.tid('AI-09'), 'BTP 개발 초기 세팅', '안내', 'setup', 'self',
@@ -393,6 +416,9 @@ select is((pg_temp.inst('AI-P01', 'a7000000-0000-0000-0000-000000000101')).due_d
 select is((public.add_task_for_hire('a7000000-0000-0000-0000-000000000105', '지난 입사자 과제', '', 'ops', 'self', 'day1', 0,
             false, null)).due_date,
   (now() at time zone 'Asia/Seoul')::date, '입사 40일 지난 신입에게 day1·0일 과제 → 기한 오늘');
+select is((public.add_task_for_hire('a7000000-0000-0000-0000-000000000107', '입사 전 준비', '', 'ops', 'self', 'week1', 2,
+            false, null)).due_date,
+  (now() at time zone 'Asia/Seoul')::date + 17, '입사 10일 뒤인 신입에게 week1·2일 과제 → 기한 입사일 + 7일(오늘 + 17일)');
 select throws_ok($$select public.add_task_for_hire('a7000000-0000-0000-0000-000000000101', '입력', '', 'input', 'self', 'day1',
                    0, false, null)$$,
   '22023', null, '한 사람용 input → 22023');
