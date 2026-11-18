@@ -74,6 +74,7 @@
   - trainer로 회사 ready 조항을 볼 수 있다(읽기 범위). 회사 failed 문서 행은 볼 수 없다(관리 범위 밖).
   - ga로 회사 failed 문서 행을 볼 수 있다.
   - trainer로 회사 문서 insert는 `throws_ok`(42501), 팀T 문서 insert는 성공, 팀T2 문서 insert는 실패한다.
+  - `knowledge_sources`: trainer가 팀T 지식 + 회사 ready 조항 연결 insert는 성공하고 select로 보인다. trainer가 회사 지식에 연결 insert는 실패한다. trainer가 팀T2 문서 조항을 연결하면 실패한다. ga는 회사 지식 연결을 읽고 쓸 수 있다.
   - `select file_size_limit, allowed_mime_types, public from storage.buckets where id='policy-docs'` = `(10485760, {application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document}, false)`
   - trainer로 `storage.objects`에 `policy-docs/{org}/{팀T2문서}.pdf` insert는 실패하고, 신입A로 select는 0행이다.
 
@@ -86,6 +87,7 @@
     - 조항 select: 신입과 담당자 모두 `org_id = my_org()`이고, 부모 문서가 `ready`이며, 부모 범위가 company이거나 `team_id = my_team()`일 때 허용한다.
     - 문서 select: `can_manage_scope`이거나, 문서가 ready이고 읽기 범위(회사 공통 또는 `team_id = my_team()`) 안일 때 허용한다. 신입도 포함한다. 조항 정책의 부모 문서 조회와 `match_document_clauses`의 문서명 JOIN이 RLS에 막히지 않게 하려는 것이다. 원본 파일은 storage 정책(관리 범위만)으로 막는다.
     - 문서 insert와 delete, 조항 insert와 delete: `can_manage_scope`일 때만 허용한다.
+    - `knowledge_sources` select·insert·delete: `org_id = my_org()`이고, 연결된 지식에 대해 `private.can_manage_scope(지식.scope, 지식.team_id)`가 참일 때 허용한다. insert는 추가로 `clause_id`가 호출자가 읽을 수 있는 조항(조항 select 정책 통과)이어야 한다. 신입에게는 정책이 없어 0행이다. `save_knowledge_drafts`(invoker)와 S10 편집 창이 이 정책에 기대므로 빠뜨리지 않는다.
   - grant: 문서는 select·insert·delete, 조항은 select·insert·delete, knowledge_sources는 select·insert·delete를 `authenticated`에 준다. `policy_documents`에는 update 권한을 주지 않는다. 상태 갱신은 `replace_document_clauses`(security definer)만 한다.
   - 버킷: `insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) ... on conflict do nothing`
   - storage 정책: 경로의 두 번째 부분인 document_id로 `policy_documents`를 찾아 `can_manage_scope`로 판정한다.
