@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 create extension if not exists dblink with schema extensions;
-select plan(14);
+select plan(15);
 
 select extensions.dblink_connect('c0', format('host=%s port=5432 dbname=postgres user=postgres password=postgres',
                                                host(inet_server_addr())));
@@ -19,6 +19,24 @@ select extensions.dblink_connect('c3', format('host=%s port=5432 dbname=postgres
 create temp table conn_pid as
   select c.conn, (select pid from extensions.dblink(c.conn, 'select pg_backend_pid()') as r(pid int)) as pid
     from unnest(array['c1', 'c2', 'c3']) as c(conn);
+
+-- 연결 p_conn의 백엔드가 잠금을 기다리는 상태(pg_locks.granted=false)가 될 때까지 0.05초 간격으로 최대 p_timeout_s초 확인한다.
+-- 고정 pg_sleep은 느린 환경에서 아직 기다리기 전일 수 있어 쓰지 않는다. 기다리는 중이면 true, 시간 안에 안 되면 false.
+create function pg_temp.wait_for_lock_wait(p_conn text, p_timeout_s numeric default 10) returns boolean
+language plpgsql as $$
+declare
+  v_pid int := (select pid from conn_pid where conn = p_conn);
+  v_deadline timestamptz := clock_timestamp() + make_interval(secs => p_timeout_s);
+begin
+  loop
+    if exists (select 1 from pg_locks where pid = v_pid and not granted) then
+      return true;
+    end if;
+    exit when clock_timestamp() >= v_deadline;
+    perform pg_sleep(0.05);
+  end loop;
+  return false;
+end $$;
 
 -- ── 픽스처 (c0, 자동 커밋) ──────────────────────────────────────────
 select extensions.dblink_exec('c0', $fx$
@@ -93,7 +111,7 @@ select extensions.dblink_send_query('c2', $$
   select (public.submit_task(i.id)).status::text from public.task_instances i
     join public.task_templates t on t.id = i.template_id
    where t.org_id = 'a5000000-0000-0000-0000-000000000001' and t.code = 'S1'$$);
-select pg_sleep(0.5);
+select pg_temp.wait_for_lock_wait('c2');
 
 select extensions.dblink_exec('c1', 'commit');
 select is((select status from extensions.dblink_get_result('c2') as r(status text)), 'done', 'S1 제출 → done');
@@ -116,7 +134,7 @@ select extensions.dblink_send_query('c1', $$
   select (public.mark_na(i.id, '대상 아님')).status::text from public.task_instances i
     join public.task_templates t on t.id = i.template_id
    where t.org_id = 'a5000000-0000-0000-0000-000000000001' and t.code = 'BN1'$$);
-select pg_sleep(0.5);
+select pg_temp.wait_for_lock_wait('c1');
 
 select lives_ok(
   $$select extensions.dblink_exec('c0', $q$
@@ -173,7 +191,7 @@ select ok(pg_temp.org_lock('c1', 'ExclusiveLock', true), '저장: 조직별 템�
 -- c2: 신입2 온보딩 시작 (비동기)
 select extensions.dblink_exec('c2', 'begin');
 select extensions.dblink_send_query('c2', $$select public._start_onboarding('a5000000-0000-0000-0000-000000000102')$$);
-select pg_sleep(0.5);
+select pg_temp.wait_for_lock_wait('c2');
 select ok(pg_temp.org_lock('c2', 'ShareLock', false), '시작: 저장이 끝날 때까지 조직별 템플릿 잠금(공유)을 기다린다');
 
 select extensions.dblink_exec('c1', 'commit');
@@ -204,7 +222,7 @@ select extensions.dblink_send_query('c1', $$
   select (public.save_task_template(t.id, '미사용2', '', 'ops', 'confirm', 'day1', 0, false, null, '{P1}')).title
     from public.task_templates t
    where t.org_id = 'a5000000-0000-0000-0000-000000000001' and t.code = 'U2'$$);
-select pg_sleep(0.5);
+select pg_temp.wait_for_lock_wait('c1');
 select ok(pg_temp.org_lock('c1', 'ExclusiveLock', false),
   '저장: 템플릿 행을 잠그기 전에 조직별 템플릿 잠금(배타)을 기다린다');
 
@@ -227,7 +245,7 @@ select extensions.dblink_exec('c2', 'begin');
 select extensions.dblink_exec('c2', $$set local role authenticated$$);
 select extensions.dblink_exec('c2', $$set local request.jwt.claim.sub = 'a5000000-0000-0000-0000-000000000401'$$);
 select extensions.dblink_send_query('c2', $$select public.reset_demo()::text$$);
-select pg_sleep(0.5);
+select ok(pg_temp.wait_for_lock_wait('c2'), '초기화: 저장을 보내기 전에 시드 신입 잠금에서 기다리는 중이다');
 
 select extensions.dblink_exec('c1', 'begin');
 select extensions.dblink_exec('c1', $$set local role authenticated$$);
@@ -236,7 +254,14 @@ select extensions.dblink_send_query('c1', $$
   select (public.save_task_template(t.id, '선행2(수정)', '', 'ops', 'confirm', 'day1', 0, false, null, '{}')).title
     from public.task_templates t
    where t.org_id = 'a5000000-0000-0000-0000-000000000001' and t.code = 'P2'$$);
-select pg_sleep(0.5);
+-- 저장이 끝나(is_busy=0) 결과가 준비될 때까지 최대 10초 기다린다
+do $$
+declare v_deadline timestamptz := clock_timestamp() + interval '10 seconds';
+begin
+  while extensions.dblink_is_busy('c1') <> 0 and clock_timestamp() < v_deadline loop
+    perform pg_sleep(0.05);
+  end loop;
+end $$;
 select is(extensions.dblink_is_busy('c1'), 0,
   '초기화가 시드 신입 잠금을 기다리는 동안 템플릿 행을 잠그지 않아 저장이 바로 끝난다');
 

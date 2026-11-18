@@ -157,6 +157,7 @@ as $$
 declare
   v_org uuid := (select private.my_org());
   v_hire uuid;
+  v_hires uuid[] := '{}';
 begin
   if (select private.my_role()) is distinct from 'admin' then
     raise exception '관리자만 데모 데이터를 초기화할 수 있습니다' using errcode = '42501';
@@ -165,11 +166,10 @@ begin
   -- 잠금 순서(0009): 신입별 잠금(id 순) → 조직별 템플릿 잠금 → 템플릿 행 잠금.
   -- 템플릿 행을 고치기 전에 시드 신입 잠금을 모두 잡고, 템플릿을 시드 값으로 되돌리므로 조직별 템플릿 잠금은 배타로 잡는다.
   -- 행부터 잠그면 저장(조직별 잠금 → 행)과 서로를 기다린다: 이 함수가 아래 _start_onboarding에서 조직별 잠금을 기다리게 된다.
-  for v_hire in
-    select id from public.profiles
-     where org_id = v_org and role = 'new_hire' and is_seed
-     order by id
-  loop
+  -- 시드 신입 id는 여기서 한 번만 모아 둔다: 아래 두 번째 루프가 같은 배열을 쓰므로 그 사이에 새로 커밋된 신입의 잠금을 뒤늦게 잡지 않는다.
+  v_hires := coalesce((select array_agg(id order by id) from public.profiles
+                        where org_id = v_org and role = 'new_hire' and is_seed), '{}');
+  foreach v_hire in array v_hires loop
     perform pg_advisory_xact_lock(private.hire_lock_key(v_hire));
   end loop;
   perform pg_advisory_xact_lock(private.template_lock_key(v_org));
@@ -206,11 +206,7 @@ begin
    where org_id = v_org
      and not is_seed;
 
-  for v_hire in
-    select id from public.profiles
-     where org_id = v_org and role = 'new_hire' and is_seed
-     order by id
-  loop
+  foreach v_hire in array v_hires loop
     perform pg_advisory_xact_lock(private.hire_lock_key(v_hire));  -- 위에서 이미 잡았다(다시 잡아도 바로 통과)
     delete from public.task_instances where new_hire_id = v_hire;
     update public.profiles set hire_date = (now() at time zone 'Asia/Seoul')::date where id = v_hire;
