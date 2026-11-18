@@ -9,6 +9,7 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STAGE_LABEL } from '@/lib/labels'
+import { useFileCounts } from '@/lib/taskFiles'
 import { groupByStage, progress, useMyTasks, type TaskStage, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
 import { daysSinceHire, formatToday, toDateOnly } from './format'
@@ -126,6 +127,7 @@ export function HomePage() {
   const { profile } = useAuth()
   const { data: tasks, isPending, isError, isFetching, refetch } = useMyTasks()
   const teamName = useTeamName(profile?.team_id)
+  const { data: formCounts } = useFileCounts()
   const [filter, setFilter] = useState<OwnerFilter>('all')
   const [today] = useState(() => new Date())
   const todayKey = toDateOnly(today)
@@ -223,7 +225,7 @@ export function HomePage() {
             </span>
           </div>
           {shownNow.map((task) => (
-            <TaskRow key={task.id} task={task} all={tasks} teamName={teamName} today={todayKey} highlight />
+            <TaskRow key={task.id} task={task} all={tasks} teamName={teamName} today={todayKey} highlight formCount={formCounts?.get(task.template_id)} />
           ))}
           {hiddenCount > 0 && (
             <Button
@@ -256,7 +258,7 @@ export function HomePage() {
             onOpenChange={(open) => setStageOpen((prev) => ({ ...prev, [stage]: open }))}
           >
             {stages[stage].map((task) => (
-              <TaskRow key={task.id} task={task} all={tasks} teamName={teamName} today={todayKey} />
+              <TaskRow key={task.id} task={task} all={tasks} teamName={teamName} today={todayKey} formCount={formCounts?.get(task.template_id)} />
             ))}
           </StageSection>
         ))}

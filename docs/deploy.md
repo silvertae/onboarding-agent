@@ -266,6 +266,9 @@ set_env() {
   gh variable set SUPABASE_ANON_KEY    --repo "$REPO" --env "$E" --body "$anon"
   printf '  OPENAI_MODEL: '; read -r model
   gh variable set OPENAI_MODEL         --repo "$REPO" --env "$E" --body "$model"
+  # 1536차원 임베딩 모델(예: text-embedding-3-small). 없으면 에이전트 배포가 멈춘다
+  printf '  OPENAI_EMBEDDING_MODEL: '; read -r embed
+  gh variable set OPENAI_EMBEDDING_MODEL --repo "$REPO" --env "$E" --body "$embed"
   # 비밀값은 gh가 직접 프롬프트로 받는다. ADMIN_PASSWORD·DEMO_PASSWORD는 12자 이상
   for s in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_SERVICE_ROLE_KEY ADMIN_PASSWORD DEMO_PASSWORD; do
     gh secret set "$s" --repo "$REPO" --env "$E"
@@ -289,7 +292,7 @@ gh variable set ALLOWED_ORIGIN_REGEX --repo "$REPO" --env staging \
 |---|---|---|
 | `GCP_PREVIEW_PROJECT_ID`, `GCP_PREVIEW_WIF_PROVIDER`, `GCP_PREVIEW_SERVICE_ACCOUNT` | 저장소 (스테이징 프로젝트 값) | 변수 |
 | `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT` | 환경 `staging`·`production` (각 환경의 프로젝트 값) | 변수 |
-| `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AGENT_URL`, `WEB_URL`, `OPENAI_MODEL`, (`ADMIN_EMAIL`) | 환경 `staging`·`production` | 변수 |
+| `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AGENT_URL`, `WEB_URL`, `OPENAI_MODEL`, `OPENAI_EMBEDDING_MODEL`, (`ADMIN_EMAIL`) | 환경 `staging`·`production` | 변수 |
 | `ALLOWED_ORIGIN_REGEX` | 환경 `staging`만 | 변수 |
 | (`CHAT_DAILY_LIMIT`, `EXAM_DAILY_LIMIT`) | 환경 `staging`만, 선택. 양의 정수 | 변수 |
 | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, `DEMO_PASSWORD` | 환경 `staging`·`production` | 비밀값 |

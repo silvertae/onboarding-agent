@@ -379,20 +379,45 @@ describe('ChatPanel', () => {
     expect(chat().getByText(/1000자까지 보낼 수 있어요/)).toBeInTheDocument()
   })
 
-  it('전송 중에는 보내기와 추천 칩이 비활성이고 답변 중 표시', async () => {
+  it('전송 중에는 보내기와 추천 칩이 비활성이고, 첫 글자 전까지 무엇을 하는지 보인다', async () => {
     const pending = pendingResponse([])
     agent.agentFetch.mockResolvedValueOnce(pending.response)
     renderPanel()
 
     await ask('오늘 뭐 해야 해?')
 
-    expect(await chat().findByRole('status', { name: '답변 중' })).toBeInTheDocument()
+    expect(await chat().findByRole('status')).toHaveTextContent('사내 지식과 내 과제를 확인하고 있어요')
     await userEvent.type(chat().getByLabelText('질문 입력'), '다음')
     expect(chat().getByRole('button', { name: '보내기' })).toBeDisabled()
     expect(chat().getByRole('button', { name: '회의실 예약 어떻게 해?' })).toBeDisabled()
 
     await act(async () => pending.finish([{ type: 'token', text: '끝' }, { type: 'done' }]))
     expect(await chat().findByText('끝')).toBeInTheDocument()
+    expect(chat().queryByText('사내 지식과 내 과제를 확인하고 있어요')).not.toBeInTheDocument()
+  })
+
+  it('8초가 지나도 첫 글자가 없으면 늦어지고 있다고 알리고, 글자가 오면 답으로 바뀐다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const pending = pendingResponse([])
+      agent.agentFetch.mockResolvedValueOnce(pending.response)
+      renderPanel()
+
+      await ask('오늘 뭐 해야 해?')
+      const waiting = await chat().findByRole('status')
+
+      await act(async () => vi.advanceTimersByTime(7000))
+      expect(waiting).toHaveTextContent('사내 지식과 내 과제를 확인하고 있어요')
+
+      await act(async () => vi.advanceTimersByTime(1500))
+      expect(waiting).toHaveTextContent('답변이 조금 늦어지고 있어요. 잠시만 기다려 주세요.')
+
+      await act(async () => pending.finish([{ type: 'token', text: '끝' }, { type: 'done' }]))
+      expect(await chat().findByText('끝')).toBeInTheDocument()
+      expect(chat().queryByRole('status')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('추천 질문 칩을 누르면 그 문구로 보낸다', async () => {

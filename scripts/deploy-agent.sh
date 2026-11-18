@@ -8,6 +8,7 @@
 #   SUPABASE_URL          해당 환경 Supabase 주소
 #   SUPABASE_ANON_KEY     해당 환경 anon key(공개 값)
 #   OPENAI_MODEL          모델 이름
+#   OPENAI_EMBEDDING_MODEL 임베딩 모델 이름(1536차원). 채팅 조항 검색과 문서 색인에 쓴다
 #   WEB_URL               해당 환경 웹 주소 → ALLOWED_ORIGINS
 #   ALLOWED_ORIGIN_REGEX  (선택) PR 미리보기 채널 주소 패턴. 스테이징에만 둔다
 #   CHAT_DAILY_LIMIT, EXAM_DAILY_LIMIT (선택) 하루 사용 한도(양의 정수). 없으면 서비스 기본값(50, 10)
@@ -32,7 +33,7 @@ case "$env_name" in
 esac
 
 missing=()
-for var in GCP_PROJECT_ID SUPABASE_URL SUPABASE_ANON_KEY OPENAI_MODEL WEB_URL; do
+for var in GCP_PROJECT_ID SUPABASE_URL SUPABASE_ANON_KEY OPENAI_MODEL OPENAI_EMBEDDING_MODEL WEB_URL; do
   [ -n "${!var:-}" ] || missing+=("$var")
 done
 if [ "${#missing[@]}" -ne 0 ]; then
@@ -62,6 +63,7 @@ trap 'rm -f "$env_file"' EXIT
   echo "SUPABASE_URL: $(yaml_quote "$SUPABASE_URL")"
   echo "SUPABASE_ANON_KEY: $(yaml_quote "$SUPABASE_ANON_KEY")"
   echo "OPENAI_MODEL: $(yaml_quote "$OPENAI_MODEL")"
+  echo "OPENAI_EMBEDDING_MODEL: $(yaml_quote "$OPENAI_EMBEDDING_MODEL")"
   echo "ALLOWED_ORIGINS: $(yaml_quote "${WEB_URL%/}")"
   if [ -n "${ALLOWED_ORIGIN_REGEX:-}" ]; then
     echo "ALLOWED_ORIGIN_REGEX: $(yaml_quote "$ALLOWED_ORIGIN_REGEX")"
