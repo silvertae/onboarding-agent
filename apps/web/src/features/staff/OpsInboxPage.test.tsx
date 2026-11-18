@@ -208,6 +208,19 @@ describe('OpsInboxPage (S9)', () => {
     renderPage([points])
     expect(screen.getByText('확인 대기 중인 과제가 없어요')).toBeInTheDocument()
   })
+
+  // 선택 행 배경을 tr에 칠하면 칸 경계(소수점 너비)에 흰 세로줄이 생긴다. 칸(td)에 칠하고 1px 그림자로 이음새를 덮는다.
+  it('선택한 행은 aria-selected이고 배경을 칸(td)에 칠한다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(bodyRows()[0])
+    const row = bodyRows()[0]
+    expect(row).toHaveAttribute('aria-selected', 'true')
+    expect(row).toHaveClass('[&>td]:bg-accent')
+    expect(row).not.toHaveClass('bg-accent')
+    expect(bodyRows()[1]).toHaveAttribute('aria-selected', 'false')
+    expect(bodyRows()[1]).not.toHaveClass('[&>td]:bg-accent')
+  })
 })
 
 describe('OpsInboxPage 로딩·오류', () => {

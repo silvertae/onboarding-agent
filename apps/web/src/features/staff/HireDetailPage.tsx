@@ -5,6 +5,7 @@ import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ROW_SELECTED } from '@/components/tableRow'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -234,7 +235,7 @@ export function HireDetailPage() {
                   const { canConfirm, canComplete } = reviewActions(task)
                   const muted = task.status === 'blocked'
                   return (
-                    <tr key={task.id} className={cn('border-b border-border last:border-b-0', task.id === selectedId && 'bg-accent')}>
+                    <tr key={task.id} className={cn('border-b border-border last:border-b-0', task.id === selectedId && ROW_SELECTED)}>
                       <td className="px-4 py-3 text-[var(--text-secondary)]">{STAGE_LABEL[task.template.stage]}</td>
                       <td className={cn('px-4 py-3', muted ? 'text-[var(--text-secondary)]' : 'font-medium')}>{task.template.title}</td>
                       <td className="px-4 py-3">
