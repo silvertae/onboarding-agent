@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ROW_FOCUS, ROW_HOVER, ROW_SELECTED } from '@/components/tableRow'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { OWNER_LABEL } from '@/lib/labels'
@@ -181,8 +182,8 @@ export function OpsInboxPage() {
                             }
                           }}
                           className={cn(
-                            'cursor-pointer border-b border-border last:border-b-0 hover:bg-surface-subtle focus-visible:bg-accent focus-visible:outline-none',
-                            task.id === selectedId && 'bg-accent',
+                            'cursor-pointer border-b border-border last:border-b-0',
+                            task.id === selectedId ? ROW_SELECTED : cn(ROW_HOVER, ROW_FOCUS),
                           )}
                         >
                           <td className="px-4 py-3">

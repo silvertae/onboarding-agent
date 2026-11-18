@@ -1,6 +1,7 @@
 import { Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
+import { ROW_SELECTED } from '@/components/tableRow'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -139,7 +140,7 @@ export function KnowledgePage() {
                     {unanswered.map((q) => {
                       const active = editing?.mode === 'resolve' && editing.unanswered.id === q.id
                       return (
-                        <tr key={q.id} className={cn('border-b border-border last:border-b-0', active && 'bg-accent')}>
+                        <tr key={q.id} className={cn('border-b border-border last:border-b-0', active && ROW_SELECTED)}>
                           <td className="px-4 py-3 font-semibold">{q.question}</td>
                           <td className="px-4 py-3 text-[var(--text-secondary)]">{formatDateTime(q.created_at)}</td>
                           <td className="px-4 py-3">{q.team?.name ?? '—'}</td>
