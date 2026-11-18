@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { isAuthError } from './errors'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DbError, isAuthError } from './errors'
 
 const m = vi.hoisted(() => ({
   upload: vi.fn(),
@@ -26,6 +26,7 @@ vi.mock('@/lib/supabase', () => ({
 import {
   checkFormFile,
   deleteTaskFile,
+  downloadTaskFile,
   formatFileMeta,
   formExt,
   MAX_FORM_BYTES,
@@ -218,10 +219,105 @@ describe('storage 오류 상태', () => {
 })
 
 describe('signedDownloadUrl', () => {
-  it('60초 서명 URL을 원본 이름으로 받는다', async () => {
+  // storage-js 2.119는 download 이름을 두 번 인코딩한다(%25EB…). 그래서 이름은 서명 URL에 싣지 않는다.
+  it('60초 서명 URL을 download 옵션 없이 받는다', async () => {
     m.createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://x/y' }, error: null })
     await expect(signedDownloadUrl(row)).resolves.toBe('https://x/y')
-    expect(m.createSignedUrl).toHaveBeenCalledWith('org/tpl/abc.xlsx', 60, { download: '법인카드 신청서.xlsx' })
+    expect(m.createSignedUrl).toHaveBeenCalledWith('org/tpl/abc.xlsx', 60)
+  })
+})
+
+describe('downloadTaskFile', () => {
+  const SIGNED = 'http://127.0.0.1:54321/storage/v1/object/sign/task-forms/org/tpl/abc.xlsx?token=t'
+  const OBJECT_URL = 'blob:http://localhost/obj-1'
+  const fetchMock = vi.fn()
+  const createObjectURL = vi.fn()
+  const revokeObjectURL = vi.fn()
+  const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL }
+  let clicked: { href: string; download: string; inDom: boolean; revokedAtClick: boolean }[]
+  let clickSpy: { mockRestore: () => void } | undefined
+  // jsdom의 Blob과 Node의 Response는 서로 섞이지 않는다. 구현이 쓰는 ok·status·blob()만 흉내 낸다.
+  const response = (status: number, body = '') => ({
+    ok: status >= 200 && status < 300,
+    status,
+    blob: async () => new Blob([body]),
+  })
+
+  beforeEach(() => {
+    clicked = []
+    m.createSignedUrl.mockResolvedValue({ data: { signedUrl: SIGNED }, error: null })
+    fetchMock.mockResolvedValue(response(200, 'xlsx-bytes'))
+    createObjectURL.mockReturnValue(OBJECT_URL)
+    vi.stubGlobal('fetch', fetchMock)
+    URL.createObjectURL = createObjectURL
+    URL.revokeObjectURL = revokeObjectURL
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push({
+        href: this.href,
+        download: this.download,
+        inDom: document.body.contains(this),
+        revokedAtClick: revokeObjectURL.mock.calls.length > 0,
+      })
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    clickSpy?.mockRestore()
+    URL.createObjectURL = original.create
+    URL.revokeObjectURL = original.revoke
+  })
+
+  it('서명 URL을 직접 받아 원본 이름 그대로 저장하게 한다', async () => {
+    vi.useFakeTimers()
+    await downloadTaskFile(row)
+
+    expect(m.createSignedUrl).toHaveBeenCalledWith('org/tpl/abc.xlsx', 60)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(SIGNED)
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
+    expect(clicked).toEqual([{ href: OBJECT_URL, download: '법인카드 신청서.xlsx', inDom: true, revokedAtClick: false }])
+    expect(document.querySelector('a[download]')).toBeNull()
+
+    // 누른 뒤에 객체 URL을 놓는다(누르자마자 놓으면 Safari가 내려받기를 끊는다)
+    expect(revokeObjectURL).not.toHaveBeenCalled()
+    vi.runAllTimers()
+    expect(revokeObjectURL).toHaveBeenCalledWith(OBJECT_URL)
+  })
+
+  it('받은 내용을 Blob으로 넘긴다', async () => {
+    await downloadTaskFile(row)
+    const blob = createObjectURL.mock.calls[0][0] as Blob
+    await expect(blob.text()).resolves.toBe('xlsx-bytes')
+  })
+
+  it('응답이 실패면 HTTP 상태를 담은 DbError로 거절하고 아무것도 누르지 않는다', async () => {
+    fetchMock.mockResolvedValue(response(404, '{"error":"not_found"}'))
+    const err = await downloadTaskFile(row).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(DbError)
+    expect(err).toMatchObject({ name: 'DbError', status: 404 })
+    expect(isAuthError(err)).toBe(false)
+    expect(createObjectURL).not.toHaveBeenCalled()
+    expect(clicked).toEqual([])
+  })
+
+  it('응답이 401이면 인증 오류로 거절한다(호출한 쪽이 로그아웃)', async () => {
+    fetchMock.mockResolvedValue(response(401))
+    const err = await downloadTaskFile(row).catch((e: unknown) => e)
+    expect(err).toMatchObject({ name: 'DbError', status: 401 })
+    expect(isAuthError(err)).toBe(true)
+  })
+
+  it('서명이 토큰 만료로 실패하면 받지 않고 401로 거절한다', async () => {
+    m.createSignedUrl.mockResolvedValue({
+      data: null,
+      error: { message: 'jwt expired', status: 400, statusCode: 'InvalidJWT', code: 'InvalidJWT' },
+    })
+    const err = await downloadTaskFile(row).catch((e: unknown) => e)
+    expect(err).toMatchObject({ name: 'DbError', status: 401 })
+    expect(isAuthError(err)).toBe(true)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 
