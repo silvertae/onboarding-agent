@@ -88,6 +88,23 @@
     </div>
   </section>
 
+  <section class="card">
+    <div class="card-hd"><h2>선택 컨트롤</h2><span class="caption">겉모습이 비슷해도 하는 일이 다르면 역할도 다르다. 오른쪽 열은 키보드 포커스 상태</span></div>
+    <div class="card-bd">
+      <dl class="spec" style="grid-template-columns: 200px 1fr 1fr">
+        <dt>탭 · 패널을 바꾼다<br><span class="caption">Radix Tabs · ←/→ 이동</span></dt>
+        <dd><div class="tabs" role="tablist" aria-label="탭 예시"><button type="button" role="tab" class="on" aria-selected="true">확인 대기 <span class="count">3</span></button><button type="button" role="tab" aria-selected="false" tabindex="-1">내가 처리할 일 <span class="count" style="background: var(--disabled-fg)">2</span></button><button type="button" role="tab" aria-selected="false" tabindex="-1">전체</button></div></dd>
+        <dd><div class="tabs" aria-hidden="true"><button type="button" tabindex="-1">확인 대기 <span class="count" style="background: var(--disabled-fg)">3</span></button><button type="button" class="on is-focus" tabindex="-1">내가 처리할 일 <span class="count">2</span></button><button type="button" tabindex="-1">전체</button></div></dd>
+        <dt>세그먼트 라디오 · 값 하나를 고른다<br><span class="caption">네이티브 radio · ←/→ 선택</span></dt>
+        <dd><div class="seg" role="radiogroup" aria-label="라디오 예시" style="width: 300px"><label><input type="radio" name="s0-role" checked>신입</label><label><input type="radio" name="s0-role">교육 담당자</label><label><input type="radio" name="s0-role">경영지원</label></div></dd>
+        <dd><div class="seg" aria-hidden="true" style="width: 300px"><label>미기록</label><label class="is-focus" style="background: var(--surface); color: var(--foreground); font-weight: 600">통과</label><label>보충 필요</label></div></dd>
+        <dt>필터 칩 · 목록을 거른다<br><span class="caption">버튼 + aria-pressed · Tab 이동</span></dt>
+        <dd><div class="row" role="group" aria-label="필터 예시" style="gap: 6px"><button class="chip on" type="button" aria-pressed="true">전체 12</button><button class="chip" type="button" aria-pressed="false">신입 5</button><button class="chip" type="button" aria-pressed="false">경영지원 4</button></div></dd>
+        <dd><div class="row" aria-hidden="true" style="gap: 6px"><button class="chip" type="button" tabindex="-1">전체 12</button><button class="chip is-focus" type="button" tabindex="-1">신입 5</button><button class="chip" type="button" tabindex="-1">경영지원 4</button></div></dd>
+      </dl>
+    </div>
+  </section>
+
   <div class="grid-2">
     <section class="card">
       <div class="card-hd"><h2>버튼·입력</h2><span class="caption">pill 버튼 · 입력 라운드 8px</span></div>

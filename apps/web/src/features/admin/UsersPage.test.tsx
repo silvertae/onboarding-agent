@@ -123,7 +123,12 @@ describe('UsersPage 목록', () => {
     renderPage()
     const table = await screen.findByRole('table', { name: '사용자 목록' })
 
-    await user.click(screen.getByRole('tab', { name: /^신입 2$/ }))
+    // 역할 필터는 탭이 아니라 목록을 거르는 필터 버튼이다(aria-pressed)
+    expect(screen.getByRole('group', { name: '역할 필터' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^전체 5$/ })).toHaveAttribute('aria-pressed', 'true')
+    const newHire = screen.getByRole('button', { name: /^신입 2$/, pressed: false })
+    await user.click(newHire)
+    expect(newHire).toHaveAttribute('aria-pressed', 'true')
 
     const rows = within(table).getAllByRole('row').slice(1)
     expect(rows).toHaveLength(2)
@@ -157,6 +162,21 @@ describe('UsersPage 등록 폼', () => {
 
     // 관리자 역할은 고를 수 없다
     expect(screen.queryByRole('radio', { name: '관리자' })).not.toBeInTheDocument()
+  })
+
+  it('역할은 라디오 그룹이라 ←/→로 고를 수 있다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('table', { name: '사용자 목록' })
+    const newHire = screen.getByRole('radio', { name: '신입' })
+    expect(newHire).toBeChecked()
+
+    await user.click(newHire)
+    await user.keyboard('{ArrowRight}')
+
+    expect(screen.getByRole('radio', { name: '교육 담당자' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: '교육 담당자' })).toHaveFocus()
+    expect(screen.queryByLabelText('입사일')).not.toBeInTheDocument()
   })
 
   it('필수 칸이 비었거나 비밀번호가 8자 미만이면 등록할 수 없다', async () => {

@@ -98,7 +98,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
             </div>
             <fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px">
               <legend class="label" style="padding: 0; margin-bottom: 8px">결과</legend>
-              <div class="tabs" role="radiogroup"><button type="button" class="on" aria-pressed="true">미기록</button><button type="button">통과</button><button type="button">보충 필요</button></div>
+              <div class="seg"><label><input type="radio" name="result" checked>미기록</label><label><input type="radio" name="result">통과</label><label><input type="radio" name="result">보충 필요</label></div>
             </fieldset>
             <div class="field"><label class="label" for="m1">메모</label><textarea class="textarea" id="m1" style="min-height: 64px" placeholder="신입에게도 보여요"></textarea></div>
             <button class="btn btn-primary btn-sm" type="submit" style="align-self: flex-end">저장</button>

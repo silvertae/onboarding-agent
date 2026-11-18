@@ -16,7 +16,7 @@ import {
   type UnansweredQuestion,
 } from './knowledge'
 import { KnowledgeForm, type KnowledgeValues } from './KnowledgeForm'
-import { EmptyState, ErrorText, LoadingText, PageHeader, Panel, SegmentTabs } from './ui'
+import { EmptyState, ErrorText, LoadingText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 type Tab = 'unanswered' | 'knowledge'
@@ -81,88 +81,86 @@ export function KnowledgePage() {
 
   return (
     <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
-      <PageHeader
-        title="지식 관리"
-        description={description}
-        actions={
-          <SegmentTabs
-            label="지식 관리 보기"
-            value={tab}
-            onChange={setTab}
-            items={[
-              { key: 'unanswered', label: '미답변 질문', count: unanswered.length },
-              { key: 'knowledge', label: '지식 목록' },
-            ]}
-          />
-        }
-      />
+      <PageHeader title="지식 관리" description={description} />
 
       <div className={cn('grid items-start gap-6', editing && 'lg:grid-cols-[1fr_380px]')}>
         <Panel className="overflow-hidden">
-          {tab === 'unanswered' ? (
-            unansweredQuery.isLoading ? (
-              <LoadingText />
-            ) : unansweredQuery.isError ? (
-              <div className="px-6 py-10">
-                <ErrorText>미답변 질문을 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
-              </div>
-            ) : unanswered.length === 0 ? (
-              <EmptyState>미답변 질문이 없어요</EmptyState>
-            ) : (
-              <table aria-label="미답변 질문" className="w-full text-sm">
-                <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
-                  <tr>
-                    <th className={th}>질문</th>
-                    <th className={th}>물은 시각</th>
-                    <th className={th}>물은 사람의 팀</th>
-                    <th className="px-4 py-3">
-                      <span className="sr-only">처리</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unanswered.map((q) => {
-                    const active = editing?.mode === 'resolve' && editing.unanswered.id === q.id
-                    return (
-                      <tr key={q.id} className={cn('border-b border-border last:border-b-0', active && 'bg-accent')}>
-                        <td className="px-4 py-3 font-semibold">{q.question}</td>
-                        <td className="px-4 py-3 text-[var(--text-secondary)]">{formatDateTime(q.created_at)}</td>
-                        <td className="px-4 py-3">{q.team?.name ?? '—'}</td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            type="button"
-                            variant={active ? 'default' : 'outline'}
-                            className={cn('px-3', !active && 'border-primary text-primary')}
-                            onClick={() => setEditing({ mode: 'resolve', key: `resolve-${q.id}`, unanswered: q })}
-                          >
-                            답 등록
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-                <div className="relative w-full max-w-xs">
-                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                  <Input
-                    type="search"
-                    aria-label="지식 검색"
-                    placeholder="질문·답변 검색"
-                    className="pl-9"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+          <SegmentTabs value={tab} onChange={setTab}>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
+              <SegmentTabList
+                label="지식 관리 보기"
+                items={[
+                  { key: 'unanswered', label: '미답변 질문', count: unanswered.length },
+                  { key: 'knowledge', label: '지식 목록' },
+                ]}
+              />
+              {tab === 'knowledge' && (
+                <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
+                  <div className="relative w-full max-w-xs">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                    <Input
+                      type="search"
+                      aria-label="지식 검색"
+                      placeholder="질문·답변 검색"
+                      className="pl-9"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <Button type="button" size="lg" className="px-4" onClick={() => setEditing({ mode: 'create', key: `create-${Date.now()}` })}>
+                    <Plus />
+                    지식 추가
+                  </Button>
                 </div>
-                <Button type="button" size="lg" className="px-4" onClick={() => setEditing({ mode: 'create', key: `create-${Date.now()}` })}>
-                  <Plus />
-                  지식 추가
-                </Button>
-              </div>
+              )}
+            </div>
+            <SegmentTabPanel value="unanswered">
+              {unansweredQuery.isLoading ? (
+                <LoadingText />
+              ) : unansweredQuery.isError ? (
+                <div className="px-6 py-10">
+                  <ErrorText>미답변 질문을 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
+                </div>
+              ) : unanswered.length === 0 ? (
+                <EmptyState>미답변 질문이 없어요</EmptyState>
+              ) : (
+                <table aria-label="미답변 질문" className="w-full text-sm">
+                  <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
+                    <tr>
+                      <th className={th}>질문</th>
+                      <th className={th}>물은 시각</th>
+                      <th className={th}>물은 사람의 팀</th>
+                      <th className="px-4 py-3">
+                        <span className="sr-only">처리</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unanswered.map((q) => {
+                      const active = editing?.mode === 'resolve' && editing.unanswered.id === q.id
+                      return (
+                        <tr key={q.id} className={cn('border-b border-border last:border-b-0', active && 'bg-accent')}>
+                          <td className="px-4 py-3 font-semibold">{q.question}</td>
+                          <td className="px-4 py-3 text-[var(--text-secondary)]">{formatDateTime(q.created_at)}</td>
+                          <td className="px-4 py-3">{q.team?.name ?? '—'}</td>
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              type="button"
+                              variant={active ? 'default' : 'outline'}
+                              className={cn('px-3', !active && 'border-primary text-primary')}
+                              onClick={() => setEditing({ mode: 'resolve', key: `resolve-${q.id}`, unanswered: q })}
+                            >
+                              답 등록
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </SegmentTabPanel>
+            <SegmentTabPanel value="knowledge">
               {listAction.error && (
                 <div className="px-6 pb-3">
                   <ErrorText>{listAction.error}</ErrorText>
@@ -176,7 +174,7 @@ export function KnowledgePage() {
                 </div>
               ) : (
                 <table aria-label="지식 목록" className="w-full text-sm">
-                  <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
+                  <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                     <tr>
                       <th className={th}>질문</th>
                       <th className={th}>답변</th>
@@ -235,8 +233,8 @@ export function KnowledgePage() {
                   </tbody>
                 </table>
               )}
-            </>
-          )}
+            </SegmentTabPanel>
+          </SegmentTabs>
         </Panel>
 
         {editing && (

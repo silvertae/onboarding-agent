@@ -44,11 +44,11 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       <section class="card split-main" style="gap: 0">
         <div class="card-hd">
           <div class="row" role="group" aria-label="역할 필터" style="gap: 6px; flex-wrap: wrap">
-            <button class="chip on" type="button">전체 12</button>
-            <button class="chip" type="button">신입 5</button>
-            <button class="chip" type="button">교육 담당자 2</button>
-            <button class="chip" type="button">경영지원 4</button>
-            <button class="chip" type="button">관리자 1</button>
+            <button class="chip on" type="button" aria-pressed="true">전체 12</button>
+            <button class="chip" type="button" aria-pressed="false">신입 5</button>
+            <button class="chip" type="button" aria-pressed="false">교육 담당자 2</button>
+            <button class="chip" type="button" aria-pressed="false">경영지원 4</button>
+            <button class="chip" type="button" aria-pressed="false">관리자 1</button>
           </div>
         </div>
         <div class="tbl-wrap">
@@ -72,13 +72,13 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       <form class="split-side sheet" aria-label="계정 등록">
         <div class="card-hd" style="padding: 18px 20px"><h2 style="font-size: 17px">계정 등록</h2><span class="caption">관리자 계정은 만들 수 없어요</span></div>
         <div class="card-bd col" style="gap: 14px; padding: 20px">
-          <div class="field"><span class="label">역할</span>
-            <div class="tabs" role="radiogroup" aria-label="역할">
-              <button type="button" class="on">신입</button>
-              <button type="button" class="">교육 담당자</button>
-              <button type="button" class="">경영지원</button>
+          <fieldset class="field" style="border: 0; padding: 0; margin: 0"><legend class="label" style="margin-bottom: 6px">역할</legend>
+            <div class="seg">
+              <label><input type="radio" name="role" checked>신입</label>
+              <label><input type="radio" name="role">교육 담당자</label>
+              <label><input type="radio" name="role">경영지원</label>
             </div>
-          </div>
+          </fieldset>
           <div class="grid-2" style="gap: 12px">
             <div class="field"><label class="label" for="un">이름</label><input class="input" id="un" placeholder="홍길동"></div>
             <div class="field"><label class="label" for="ur">직급</label><input class="input" id="ur" placeholder="사원"></div>

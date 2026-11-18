@@ -112,6 +112,7 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:7px 13px;border-radius:var(--radius-pill);border:1px solid var(--border-strong);background:var(--surface);color:var(--foreground);cursor:pointer;font-family:inherit}
 .chip:hover{border-color:var(--link);color:var(--link)}
 .chip.on{background:var(--foreground);border-color:var(--foreground);color:#fff}
+.chip:focus-visible,.chip.is-focus{outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary)}
 .tag{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--canvas);color:var(--secondary)}
 
 /* Forms */
@@ -149,6 +150,16 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .tabs{display:inline-flex;gap:2px;padding:3px;background:var(--fill);border-radius:10px}
 .tabs button{font:inherit;font-size:13px;border:0;background:transparent;padding:7px 14px;border-radius:8px;color:var(--secondary);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
 .tabs button.on{background:var(--surface);color:var(--foreground);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+/* 키보드: 탭은 Radix Tabs(←/→ 이동, 선택 즉시 패널 전환), 세그먼트 라디오는 네이티브 radio(←/→ 선택) */
+.tabs button:focus-visible,.tabs button.is-focus{outline:none;box-shadow:0 0 0 2px var(--primary)}
+.tabs button.on:focus-visible,.tabs button.on.is-focus{box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 2px var(--primary)}
+/* Segmented radio (.tabs 모양 + 숨긴 radio). 역할 선택(S11), 평가 결과(S6) */
+.seg{display:flex;gap:2px;padding:3px;background:var(--fill);border-radius:10px;border:0;margin:0}
+.seg label{flex:1;text-align:center;font-size:13px;padding:7px 14px;border-radius:8px;color:var(--secondary);cursor:pointer}
+.seg input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--surface);color:var(--foreground);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg label:has(input:focus-visible),.seg label.is-focus{box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 2px var(--primary)}
+.seg label:has(input:disabled){opacity:.4;cursor:not-allowed}
 .count{font-size:11px;font-weight:700;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--foreground);color:#fff;display:inline-grid;place-items:center}
 
 /* Task rows */

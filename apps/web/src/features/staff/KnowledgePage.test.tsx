@@ -110,6 +110,24 @@ describe('KnowledgePage (S10) 미답변 탭', () => {
     expect(row).toHaveTextContent('11/17 14:02')
   })
 
+  it('탭은 ←/→로 옮겨 가고 선택한 탭의 패널만 보인다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const unanswered = screen.getByRole('tab', { name: /미답변 질문/ })
+    expect(screen.getByRole('tabpanel')).toContainElement(screen.getByRole('table', { name: '미답변 질문' }))
+
+    await user.click(unanswered)
+    await user.keyboard('{ArrowRight}')
+
+    const knowledge = screen.getByRole('tab', { name: /지식 목록/ })
+    expect(knowledge).toHaveFocus()
+    expect(knowledge).toHaveAttribute('aria-selected', 'true')
+    const panel = screen.getByRole('tabpanel')
+    expect(knowledge).toHaveAttribute('aria-controls', panel.id)
+    expect(within(panel).getByRole('table', { name: '지식 목록' })).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: '미답변 질문' })).not.toBeInTheDocument()
+  })
+
   it('미답변이 0건이면 빈 상태 문구', () => {
     renderPage({ open: [] })
     expect(screen.getByText('미답변 질문이 없어요')).toBeInTheDocument()

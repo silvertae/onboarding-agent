@@ -1,5 +1,6 @@
 // 도메인 B 화면에서 함께 쓰는 작은 UI 조각. 공통 components/ui를 건드리지 않으려고 여기에 둔다.
 import type { ComponentProps, ReactNode } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
 const fieldClass =
@@ -31,52 +32,45 @@ export function PageHeader({ title, description, actions }: { title: string; des
 
 type TabItem<K extends string> = { key: K; label: string; count?: number }
 
-// 버튼형 탭(role=tablist). 선택한 탭 내용은 호출한 쪽이 그린다.
+// 세그먼트 탭(Radix Tabs, components/ui/tabs). 탭 목록과 패널이 같은 SegmentTabs 안에 있어야
+// aria-controls·tabpanel이 이어진다. 화면 구조: SegmentTabs > (머리에 SegmentTabList) + SegmentTabPanel
 export function SegmentTabs<K extends string>({
-  items,
   value,
   onChange,
-  label,
+  className,
+  children,
 }: {
-  items: TabItem<K>[]
   value: K
   onChange: (key: K) => void
-  label: string
+  className?: string
+  children: ReactNode
 }) {
   return (
-    <div role="tablist" aria-label={label} className="inline-flex rounded-xl bg-secondary p-1">
-      {items.map((item) => {
-        const selected = item.key === value
-        return (
-          <button
-            key={item.key}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => onChange(item.key)}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm text-[var(--text-secondary)]',
-              selected && 'bg-card font-semibold text-foreground shadow-sm',
-            )}
-          >
-            {item.label}
-            {item.count !== undefined && ' '}
-            {item.count !== undefined && (
-              <span
-                className={cn(
-                  'grid min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-semibold text-white',
-                  selected ? 'bg-foreground' : 'bg-muted-foreground',
-                )}
-              >
-                {item.count}
-              </span>
-            )}
-          </button>
-        )
-      })}
-    </div>
+    <Tabs value={value} onValueChange={(next) => onChange(next as K)} className={className}>
+      {children}
+    </Tabs>
   )
 }
+
+export function SegmentTabList<K extends string>({ items, label }: { items: TabItem<K>[]; label: string }) {
+  return (
+    <TabsList aria-label={label}>
+      {items.map((item) => (
+        <TabsTrigger key={item.key} value={item.key}>
+          {item.label}
+          {item.count !== undefined && ' '}
+          {item.count !== undefined && (
+            <span className="grid min-w-5 place-items-center rounded-full bg-disabled-foreground px-1.5 text-[11px] font-semibold text-white group-data-[state=active]/tab:bg-foreground">
+              {item.count}
+            </span>
+          )}
+        </TabsTrigger>
+      ))}
+    </TabsList>
+  )
+}
+
+export const SegmentTabPanel = TabsContent
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="px-6 py-12 text-center text-sm text-muted-foreground">{children}</p>

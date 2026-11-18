@@ -73,7 +73,15 @@
   - 오류: `alert`
   - 한도·결과 알림: `status`
   - 보완 사유·검토 안내처럼 처음부터 보이는 안내: `note`
-- **세그먼트 탭·라디오:** `bg-secondary p-1 rounded-xl`, 선택 시 `bg-card font-semibold shadow-sm`이다. 탭과 라디오는 각각 Radix Tabs와 네이티브 radio로 만든다(P0-2).
+- **선택 컨트롤 3종:** 겉모습이 비슷해도 하는 일에 따라 역할을 나눈다. 모양은 `bg-secondary p-[3px] rounded-[10px]`, 선택 시 `bg-card font-semibold shadow-sm`, 키보드 포커스는 `ring-2 ring-ring`이다.
+
+| 하는 일 | 컴포넌트 | 키보드 | 쓰는 곳 |
+|---|---|---|---|
+| 패널을 바꾼다 | `components/ui/tabs.tsx`(Radix Tabs). 화면에서는 `staff/ui.tsx`의 `SegmentTabs` › `SegmentTabList` + `SegmentTabPanel`로 쓴다 | ←/→ 이동과 동시에 선택, Tab은 선택된 탭에만 멈춘다 | S9 업무함, S10 지식 관리. 탭 목록은 패널 머리에 둔다 |
+| 값 하나를 고른다 | `components/SegmentedRadio.tsx`(네이티브 radio) | ←/→ 선택 | S6 평가 결과, S11 역할 |
+| 목록을 거른다 | `components/FilterChips.tsx`(버튼 + `aria-pressed`) | Tab 이동, Enter/Space | S2 담당 필터, S11 역할 필터 |
+
+`role="tab"`이나 `role="radio"`를 붙인 `button`을 직접 만들지 않는다.
 
 ## 모션 (P1-6에서 적용)
 
