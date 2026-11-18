@@ -465,6 +465,38 @@ describe('S14 올리기 창', () => {
     expect(within(dialog).getByRole('button', { name: '올리기' })).toBeDisabled()
   })
 
+  it('고르기 전에는 "파일 선택" 버튼이 있고, 고른 뒤에는 파일 이름·"형식 · 크기"·"다른 파일" 줄로 바뀐다', async () => {
+    renderPage()
+    const dialog = await openDialog()
+    expect(within(dialog).getByRole('button', { name: '파일 선택' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: '다른 파일' })).not.toBeInTheDocument()
+    await userEvent.upload(within(dialog).getByLabelText('파일'), file('취업규칙 발췌(가상).pdf', 214 * 1024))
+    expect(within(dialog).getByText('PDF · 214KB')).toBeInTheDocument()
+    expect(within(dialog).getByTitle('취업규칙 발췌(가상).pdf')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: '다른 파일' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: '파일 선택' })).not.toBeInTheDocument()
+  })
+
+  it('"파일 선택"과 "다른 파일"은 숨은 파일 입력을 연다', async () => {
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click')
+    renderPage()
+    const dialog = await openDialog()
+    await userEvent.click(within(dialog).getByRole('button', { name: '파일 선택' }))
+    expect(click).toHaveBeenCalledTimes(1)
+    await userEvent.upload(within(dialog).getByLabelText('파일'), pdf())
+    await userEvent.click(within(dialog).getByRole('button', { name: '다른 파일' }))
+    expect(click).toHaveBeenCalledTimes(2)
+    click.mockRestore()
+  })
+
+  it('거절된 파일은 파일 줄 대신 "파일 선택" 버튼과 거절 문구를 보인다', async () => {
+    renderPage()
+    const dialog = await openDialog()
+    await userEvent.upload(within(dialog).getByLabelText('파일'), file('사진.jpg'), { applyAccept: false })
+    expect(within(dialog).getByRole('button', { name: '파일 선택' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: '다른 파일' })).not.toBeInTheDocument()
+  })
+
   it('교육 담당자는 범위가 "{팀 이름} · 교육 담당자가 관리해요"로 보인다', async () => {
     state.profile = TRAINER
     state.docs = [TEAM_DOC]

@@ -1,11 +1,13 @@
 import { TriangleAlert } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { FileRow } from '@/features/forms/FileRow'
 import { ErrorText } from '@/features/staff/ui'
 import { useGuardedAction } from '@/features/staff/useGuardedAction'
+import { formatFileMeta } from '@/lib/taskFiles'
 import { checkDocumentFile, useDocumentActions, type PolicyDocument } from './documents'
 
 const UPLOAD_FAILED = '올리지 못했어요. 다시 시도해 주세요.'
@@ -15,6 +17,13 @@ const WARNING = '가상 문서만 올려 주세요. 실명·연락처 같은 개
 function baseName(fileName: string): string {
   const dot = fileName.lastIndexOf('.')
   return dot > 0 ? fileName.slice(0, dot) : fileName
+}
+
+// 시안: "DOCX · 86KB"
+function fileMeta(file: File): string {
+  const size = formatFileMeta({ file_name: file.name, size_bytes: file.size }).split(' · ').pop()
+  const ext = file.name.slice(file.name.lastIndexOf('.') + 1).toUpperCase()
+  return `${ext} · ${size}`
 }
 
 type Props = {
@@ -33,6 +42,7 @@ export function UploadDocumentDialog({ open, onOpenChange, scopeText, onUploaded
   const id = useId()
   const [title, setTitle] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // 열 때마다 빈 칸으로 시작한다(실패한 뒤 닫았다 열어도 이전 입력·문구가 남지 않게).
   const [wasOpen, setWasOpen] = useState(open)
@@ -93,14 +103,46 @@ export function UploadDocumentDialog({ open, onOpenChange, scopeText, onUploaded
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={`${id}-file`}>파일</Label>
-            <Input
+            {/* 파일 입력은 숨기고 버튼으로 연다(S12와 같은 방식). 고른 파일은 파일 줄로 보인다. */}
+            <input
+              ref={inputRef}
               id={`${id}-file`}
               type="file"
               accept=".docx,.pdf"
+              hidden
               disabled={action.busy}
               aria-describedby={`${id}-hint`}
-              onChange={(e) => pick(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const chosen = e.target.files?.[0] ?? null
+                // 같은 파일을 다시 골라도 change가 오게 비운다
+                e.target.value = ''
+                pick(chosen)
+              }}
             />
+            {file && !fileError ? (
+              <ul className="rounded-xl border border-border">
+                <FileRow
+                  file={{ file_name: file.name, size_bytes: file.size }}
+                  meta={fileMeta(file)}
+                  actions={
+                    <Button type="button" size="sm" variant="secondary" disabled={action.busy} onClick={() => inputRef.current?.click()}>
+                      다른 파일
+                    </Button>
+                  }
+                />
+              </ul>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="self-start border-primary text-primary"
+                disabled={action.busy}
+                aria-describedby={`${id}-hint`}
+                onClick={() => inputRef.current?.click()}
+              >
+                파일 선택
+              </Button>
+            )}
             <p id={`${id}-hint`} className="text-xs text-muted-foreground">
               {HINT}
             </p>
@@ -117,7 +159,7 @@ export function UploadDocumentDialog({ open, onOpenChange, scopeText, onUploaded
               <ErrorText>{action.error}</ErrorText>
             </div>
           )}
-          <Button type="button" size="sm" variant="ghost" disabled={action.busy} onClick={() => changeOpen(false)}>
+          <Button type="button" size="sm" variant="secondary" disabled={action.busy} onClick={() => changeOpen(false)}>
             취소
           </Button>
           <Button type="button" size="sm" disabled={!canSubmit} onClick={() => void submit()}>

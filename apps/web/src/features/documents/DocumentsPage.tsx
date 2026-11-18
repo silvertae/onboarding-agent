@@ -319,7 +319,7 @@ function DocumentPanel({
             aria-label={`${doc.title} 지우기`}
             disabled={panelBusy}
             onClick={onDelete}
-            className="text-destructive hover:text-destructive"
+            className="text-[var(--text-secondary)] hover:bg-alert-err-bg hover:text-destructive"
           >
             <Trash2 aria-hidden />
           </Button>
@@ -340,7 +340,7 @@ function DocumentPanel({
           </Alert>
           {manageable && (
             <div className="flex justify-end gap-2">
-              <Button type="button" size="sm" variant="ghost" disabled={panelBusy} onClick={onRetry}>
+              <Button type="button" size="sm" variant="secondary" disabled={panelBusy} onClick={onRetry}>
                 다시 처리
               </Button>
               <Button type="button" size="sm" variant="destructive" disabled={panelBusy} onClick={onDelete}>
