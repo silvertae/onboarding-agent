@@ -23,6 +23,55 @@ export type Database = {
   };
   public: {
     Tables: {
+      document_clauses: {
+        Row: {
+          body: string;
+          document_id: string;
+          embedding: string | null;
+          heading: string | null;
+          id: string;
+          label: string | null;
+          ord: number;
+          org_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          body: string;
+          document_id: string;
+          embedding?: string | null;
+          heading?: string | null;
+          id?: string;
+          label?: string | null;
+          ord: number;
+          org_id: string;
+        };
+        Update: {
+          body?: string;
+          document_id?: string;
+          embedding?: string | null;
+          heading?: string | null;
+          id?: string;
+          label?: string | null;
+          ord?: number;
+          org_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_clauses_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: false;
+            referencedRelation: "policy_documents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "document_clauses_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       exam_questions: {
         Row: {
           bank_item_id: string | null;
@@ -207,6 +256,7 @@ export type Database = {
           category: string;
           id: string;
           org_id: string;
+          origin: string;
           question: string;
           scope: Database["public"]["Enums"]["knowledge_scope"];
           status: Database["public"]["Enums"]["knowledge_status"];
@@ -220,6 +270,7 @@ export type Database = {
           category?: string;
           id?: string;
           org_id: string;
+          origin?: string;
           question: string;
           scope: Database["public"]["Enums"]["knowledge_scope"];
           status?: Database["public"]["Enums"]["knowledge_status"];
@@ -232,6 +283,7 @@ export type Database = {
           category?: string;
           id?: string;
           org_id?: string;
+          origin?: string;
           question?: string;
           scope?: Database["public"]["Enums"]["knowledge_scope"];
           status?: Database["public"]["Enums"]["knowledge_status"];
@@ -263,6 +315,47 @@ export type Database = {
           },
         ];
       };
+      knowledge_sources: {
+        Row: {
+          clause_id: string;
+          knowledge_id: string;
+          org_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          clause_id: string;
+          knowledge_id: string;
+          org_id: string;
+        };
+        Update: {
+          clause_id?: string;
+          knowledge_id?: string;
+          org_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_sources_clause_id_fkey";
+            columns: ["clause_id"];
+            isOneToOne: false;
+            referencedRelation: "document_clauses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "knowledge_sources_knowledge_id_fkey";
+            columns: ["knowledge_id"];
+            isOneToOne: false;
+            referencedRelation: "knowledge_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "knowledge_sources_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       orgs: {
         Row: {
           id: string;
@@ -278,6 +371,74 @@ export type Database = {
           name?: string;
         };
         Relationships: [];
+      };
+      policy_documents: {
+        Row: {
+          clause_count: number;
+          created_at: string;
+          error: string | null;
+          file_path: string;
+          file_type: string;
+          id: string;
+          org_id: string;
+          scope: Database["public"]["Enums"]["knowledge_scope"];
+          status: string;
+          team_id: string | null;
+          title: string;
+          uploaded_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          clause_count?: number;
+          created_at?: string;
+          error?: string | null;
+          file_path: string;
+          file_type: string;
+          id?: string;
+          org_id: string;
+          scope: Database["public"]["Enums"]["knowledge_scope"];
+          status?: string;
+          team_id?: string | null;
+          title: string;
+          uploaded_by?: string | null;
+        };
+        Update: {
+          clause_count?: number;
+          created_at?: string;
+          error?: string | null;
+          file_path?: string;
+          file_type?: string;
+          id?: string;
+          org_id?: string;
+          scope?: Database["public"]["Enums"]["knowledge_scope"];
+          status?: string;
+          team_id?: string | null;
+          title?: string;
+          uploaded_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "policy_documents_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "policy_documents_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "policy_documents_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       profiles: {
         Row: {
@@ -909,6 +1070,7 @@ export type Database = {
         };
         Returns: string[];
       };
+      can_manage_document: { Args: { p_document_id: string }; Returns: boolean };
       confirm_task: {
         Args: { p_id: string };
         Returns: {
@@ -965,6 +1127,18 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      match_document_clauses: {
+        Args: { p_count?: number; p_embedding: string };
+        Returns: {
+          body: string;
+          document_id: string;
+          document_title: string;
+          heading: string;
+          id: string;
+          label: string;
+          similarity: number;
+        }[];
       };
       pick_bank_items: {
         Args: {
@@ -1035,6 +1209,10 @@ export type Database = {
         };
       };
       register_exam_to_bank: { Args: { p_exam: string }; Returns: number };
+      replace_document_clauses: {
+        Args: { p_clauses: Json; p_document_id: string; p_error?: string };
+        Returns: number;
+      };
       request_rework: {
         Args: { p_id: string; p_reason: string };
         Returns: {
@@ -1071,6 +1249,7 @@ export type Database = {
           category: string;
           id: string;
           org_id: string;
+          origin: string;
           question: string;
           scope: Database["public"]["Enums"]["knowledge_scope"];
           status: Database["public"]["Enums"]["knowledge_status"];
@@ -1084,6 +1263,17 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      resolve_unanswered_with_sources: {
+        Args: {
+          p_answer: string;
+          p_category: string;
+          p_clause_ids: string[];
+          p_id: string;
+          p_origin: string;
+          p_question: string;
+        };
+        Returns: string;
       };
       restore_task_template: {
         Args: { p_id: string };
@@ -1117,6 +1307,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      save_knowledge_drafts: { Args: { p_items: Json }; Returns: number };
       save_task_template: {
         Args: {
           p_allow_na: boolean;

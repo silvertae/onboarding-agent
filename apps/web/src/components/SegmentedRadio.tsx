@@ -33,7 +33,8 @@ export function SegmentedRadio<V extends string>({
           key={option.value}
           className={cn(
             'cursor-pointer rounded-lg px-3 py-1.5 text-center text-sm text-[var(--text-secondary)]',
-            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-40',
+            // 읽기 전용(system.md): 막혀도 고른 값은 그대로 읽히게 두고, 고르지 않은 값만 흐리게 한다
+            'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:disabled]:cursor-not-allowed has-[:disabled:not(:checked)]:opacity-40',
             'has-[:checked]:bg-card has-[:checked]:font-semibold has-[:checked]:text-foreground has-[:checked]:shadow-sm',
           )}
         >

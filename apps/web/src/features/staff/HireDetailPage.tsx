@@ -10,6 +10,7 @@ import { ROW_SELECTED } from '@/components/tableRow'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AddTaskButton } from '@/features/templates/AddTaskDialog'
 import { STAGE_LABEL } from '@/lib/labels'
 import { blockedBy, groupByStage, progress, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
@@ -17,11 +18,11 @@ import { AssessmentCard } from './AssessmentCard'
 import { formatDateTime, formatKoreanDate, formatMonthDay, hireDayLabel, submittedLabel } from './format'
 import { useHires } from './hires'
 import { isRecord } from './json'
-import { reviewActions } from './reviewActions'
+import { isOneOff, reviewActions } from './reviewActions'
 import { SubmittedResult } from './SubmittedResult'
 import { TaskReviewPanel } from './TaskReviewPanel'
 import { assessmentsOf, initials, isTeamTask } from './teamTasks'
-import { EmptyState, Panel } from './ui'
+import { EmptyState, Panel, TaskTitle } from './ui'
 
 const SURVEY_CODE = 'AI-04'
 const SETUP_CODE = 'AI-09'
@@ -207,9 +208,12 @@ export function HireDetailPage() {
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
         <div className="flex flex-col gap-6">
           <Panel className="overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4">
-              <h2 className="text-lead font-semibold">팀 과제</h2>
-              <span className="text-xs text-muted-foreground">경영지원 과제는 표시되지 않아요</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 className="text-lead font-semibold">팀 과제</h2>
+                <span className="text-xs text-muted-foreground">경영지원 과제는 표시되지 않아요</span>
+              </div>
+              <AddTaskButton hire={hire} allowAssessment={profile?.role === 'team_trainer'} />
             </div>
             <table aria-label="팀 과제" className="w-full text-sm">
               <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
@@ -230,18 +234,20 @@ export function HireDetailPage() {
                   </tr>
                 )}
                 {ordered.map((task) => {
-                  const { canConfirm, canComplete } = reviewActions(task)
+                  const { canConfirm, canComplete, canNa } = reviewActions(task)
                   const muted = task.status === 'blocked'
                   return (
                     <tr key={task.id} className={cn('border-b border-border last:border-b-0', task.id === selectedId && ROW_SELECTED)}>
                       <td className="px-4 py-3 text-[var(--text-secondary)]">{STAGE_LABEL[task.template.stage]}</td>
-                      <td className={cn('px-4 py-3', muted ? 'text-[var(--text-secondary)]' : 'font-medium')}>{task.template.title}</td>
+                      <td className={cn('px-4 py-3', muted ? 'text-[var(--text-secondary)]' : 'font-medium')}>
+                        <TaskTitle title={task.template.title} oneOff={isOneOff(task)} />
+                      </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
                       </td>
                       <td className="px-4 py-3 text-[var(--text-secondary)]">{dueText(task, teamTasks)}</td>
                       <td className="px-4 py-3 text-right">
-                        {(canConfirm || canComplete) && (
+                        {(canConfirm || canComplete || canNa) && (
                           <Button
                             type="button"
                             size="sm"
