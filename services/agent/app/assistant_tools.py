@@ -62,6 +62,21 @@ def get_my_tasks(user: CurrentUser) -> list[dict]:
     return tasks
 
 
+CLAUSE_FIELDS = ("id", "document_title", "label", "heading", "body")
+
+
+def search_documents(user: CurrentUser, embedding: list[float], count: int = 6) -> list[dict]:
+    """내 범위의 규정 문서 조항 중 임베딩이 가까운 순서로 count개. 읽을 수 있는 범위는 RLS가 정한다."""
+    rows = cast(
+        list[dict[str, Any]],
+        user_client(user.token)
+        .rpc("match_document_clauses", {"p_embedding": embedding, "p_count": count})
+        .execute()
+        .data,
+    )
+    return [{f: r[f] for f in CLAUSE_FIELDS} for r in rows]
+
+
 def search_knowledge(user: CurrentUser) -> list[dict]:
     """내 범위(회사 공통 + 우리 팀)의 게시된 지식 전부. 벡터 검색 없이 모델이 고른다."""
     return cast(
