@@ -105,8 +105,9 @@ export function TemplatesPage() {
   // "과제 추가"를 누를 때마다 1씩 늘린다. 새 과제 패널의 key라서 다시 누르면 빈 칸으로 돌아간다.
   const [creating, setCreating] = useState(0)
   // 보관·다시 사용 결과: 그 과제가 지금 보기에서 빠지므로 페이지 머리 아래에 둔다
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ id: number; text: string } | null>(null)
   const noticeRef = useRef<HTMLDivElement>(null)
+  const noticeId = useRef(0)
   // 저장 결과: 그 과제의 패널 동작 줄에 둔다
   const [saved, setSaved] = useState<{ id: string; text: string } | null>(null)
   // 새 과제를 저장하면 그 과제 패널의 제목(머리)으로 포커스를 옮긴다
@@ -135,10 +136,12 @@ export function TemplatesPage() {
     )
   }, [selectedCode, code, setSearchParams])
 
+  const noticeKey = notice?.id ?? null
   // 보관·다시 사용 뒤에는 그 패널이 사라지므로 결과 알림으로 포커스를 옮긴다
   useEffect(() => {
-    if (notice) noticeRef.current?.focus()
-  }, [notice])
+    if (noticeKey !== null) noticeRef.current?.focus()
+    // 같은 문구가 이어져도 다시 옮기도록 id로 건다
+  }, [noticeKey])
 
   function resetResults() {
     setNotice(null)
@@ -169,7 +172,7 @@ export function TemplatesPage() {
 
   function onMoved(text: string) {
     setSaved(null)
-    setNotice(text)
+    setNotice({ id: ++noticeId.current, text })
     setSelectedCode(null)
   }
 
@@ -191,7 +194,7 @@ export function TemplatesPage() {
       {notice && (
         <Alert ref={noticeRef} tabIndex={-1} variant="success" role="status" className="outline-none">
           <Check aria-hidden />
-          <p className="self-center">{notice}</p>
+          <p className="self-center">{notice.text}</p>
         </Alert>
       )}
 

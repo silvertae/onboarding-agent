@@ -116,6 +116,13 @@ describe('uploadTaskFile', () => {
     )
   })
 
+  it('한글 이름은 NFC로 적는다(맥에서 끌어온 NFD 이름)', async () => {
+    const nfd = '신청서.pdf'.normalize('NFD')
+    expect(nfd).not.toBe('신청서.pdf')
+    await uploadTaskFile({ id: 'tpl', org_id: 'org' }, fileOf(nfd, 7))
+    expect(m.insert).toHaveBeenCalledWith(expect.objectContaining({ file_name: '신청서.pdf' }))
+  })
+
   it('테이블 추가가 실패하면 올린 객체를 지우고 DbError를 던진다', async () => {
     m.insert.mockReturnValue({
       select: () => ({ single: async () => ({ data: null, error: { message: 'dup', code: '23505' }, status: 409 }) }),

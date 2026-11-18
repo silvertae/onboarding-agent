@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { vi } from 'vitest'
@@ -562,8 +562,24 @@ describe('TemplatesPage 보관·다시 사용', () => {
     expect(actions.archive).toHaveBeenCalledWith('id-AI-11')
     expect(await screen.findByText('보관했어요')).toBeInTheDocument()
     // 보관한 과제는 사용 중 보기에서 빠지므로 첫 과제를 고르고, 포커스는 결과 알림으로 옮긴다
-    expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-01')
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-01'))
     expect(screen.getByText('보관했어요').closest('[role="status"]')).toHaveFocus()
+  })
+
+  it('연속으로 보관해도 두 번 모두 결과 알림으로 포커스가 간다', async () => {
+    const user = userEvent.setup()
+    actions.archive.mockImplementation(async (id: string) => {
+      state.active = state.active.filter((t) => t.id !== id)
+      return ai('AI-11', '사내 위키 둘러보기', 'week1')
+    })
+    renderPage({ path: '/tasks?template=AI-11' })
+    for (let i = 0; i < 2; i++) {
+      await user.click(screen.getByRole('button', { name: '보관' }))
+      await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: '보관' }))
+      await waitFor(() => expect(actions.archive).toHaveBeenCalledTimes(i + 1))
+      await waitFor(() => expect(screen.getByText('보관했어요').closest('[role="status"]')).toHaveFocus())
+      ;(document.activeElement as HTMLElement).blur()
+    }
   })
 
   it('보관에 실패하면 "보관하지 못했어요…"를 보이고 패널을 그대로 둔다', async () => {

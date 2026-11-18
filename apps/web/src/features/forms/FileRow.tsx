@@ -52,7 +52,7 @@ export function FileRow({ file, meta, badge, actions, error, busy = false, ref, 
             busy && 'text-[var(--text-secondary)]',
           )}
         >
-          <span className="flex min-w-0 items-center">
+          <span className="flex min-w-0 items-center" title={file.file_name}>
             <span className="truncate">{base}</span>
             <span className="shrink-0">{ext}</span>
           </span>

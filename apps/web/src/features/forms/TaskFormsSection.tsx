@@ -17,7 +17,7 @@ export function TaskFormsSection({ templateId }: { templateId: string }) {
   // 상태 갱신 전 두 번째 클릭도 막는다
   const inFlight = useRef(new Set<string>())
 
-  if (isError) {
+  if (isError && !files) {
     return (
       <div className="flex flex-col gap-3 border-t border-border px-5 py-6 sm:px-7">
         <h3 className="text-row font-semibold">작성할 서식</h3>

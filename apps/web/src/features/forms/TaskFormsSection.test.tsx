@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import { DbError } from '@/lib/errors'
 import type { TaskFile } from '@/lib/taskFiles'
 
-const state = vi.hoisted(() => ({ files: [] as TaskFile[], isPending: false, isError: false, refetch: vi.fn() }))
+const state = vi.hoisted(() => ({ files: [] as TaskFile[], isPending: false, isError: false, keepData: false, refetch: vi.fn() }))
 const download = vi.hoisted(() => vi.fn())
 const signOut = vi.hoisted(() => vi.fn())
 
@@ -12,7 +12,7 @@ vi.mock('@/lib/supabase', () => ({ supabase: { auth: { signOut } } }))
 vi.mock('@/lib/taskFiles', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/taskFiles')>()),
   useTemplateFiles: () => ({
-    data: state.isError ? undefined : state.files,
+    data: state.isError && !state.keepData ? undefined : state.files,
     isPending: state.isPending,
     isError: state.isError,
     isFetching: false,
@@ -48,6 +48,7 @@ beforeEach(() => {
   state.files = []
   state.isPending = false
   state.isError = false
+  state.keepData = false
   state.refetch.mockReset()
   download.mockReset()
   signOut.mockReset()
@@ -59,6 +60,21 @@ describe('작성할 서식', () => {
     const { container } = render(<TaskFormsSection templateId="tpl" />)
     expect(screen.queryByText('작성할 서식')).not.toBeInTheDocument()
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('다시 읽기가 실패해도 보이는 목록은 그대로 두고 오류 상자를 그리지 않는다', () => {
+    state.files = [XLSX]
+    state.isError = true
+    state.keepData = true
+    render(<TaskFormsSection templateId="tpl" />)
+    expect(screen.getByTitle('법인카드 신청서.xlsx')).toBeInTheDocument()
+    expect(screen.queryByText('서식을 불러오지 못했어요. 다시 시도해 주세요.')).not.toBeInTheDocument()
+  })
+
+  it('긴 이름은 title로 전체 이름을 알 수 있다', () => {
+    state.files = [XLSX]
+    render(<TaskFormsSection templateId="tpl" />)
+    expect(screen.getByTitle('법인카드 신청서.xlsx')).toBeInTheDocument()
   })
 
   it('불러오는 중에는 그리지 않는다', () => {

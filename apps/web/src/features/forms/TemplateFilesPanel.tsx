@@ -105,6 +105,9 @@ export function TemplateFilesPanel({ template, archived }: Props) {
   )
 }
 
+// 화면과 문구에는 NFC 이름을 쓴다(taskFiles가 적는 이름과 같다)
+const nameOf = (file: File) => file.name.normalize('NFC')
+
 type Pending = { key: number; file: File; failed: boolean }
 type RowBusy = 'download' | 'delete'
 
@@ -205,7 +208,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
       if (err instanceof DbError && err.code === '23505') {
         if (rowHasFocus(entry.key)) focusNext.current = 'rejected'
         setPending((list) => list.filter((p) => p.key !== entry.key))
-        setRejected((list) => [...list, duplicate(entry.file.name)])
+        setRejected((list) => [...list, duplicate(nameOf(entry.file))])
       } else {
         setPending((list) => list.map((p) => (p.key === entry.key ? { ...p, failed: true } : p)))
       }
@@ -223,8 +226,8 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
     const entries: Pending[] = []
     for (const file of chosen) {
       const check = checkFormFile(file)
-      if (check === 'type') messages.push(wrongType(file.name))
-      else if (check === 'size') messages.push(tooLarge(file.name))
+      if (check === 'type') messages.push(wrongType(nameOf(file)))
+      else if (check === 'size') messages.push(tooLarge(nameOf(file)))
       else entries.push({ key: nextKey.current++, file, failed: false })
     }
     setResult(null)
@@ -290,7 +293,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
   }
 
   // 올리는 중·실패 행은 목록을 불러오는 중이거나 불러오지 못했어도 보인다(업로드 영역은 그대로 쓸 수 있다)
-  const loaded = !files.isLoading && !files.isError
+  const loaded = !files.isLoading && (!files.isError || Boolean(files.data))
   const list = loaded ? (files.data ?? []) : []
 
   return (
@@ -305,7 +308,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
                 else pendingRows.current.delete(entry.key)
               }}
               focusable
-              file={{ file_name: entry.file.name, size_bytes: entry.file.size }}
+              file={{ file_name: nameOf(entry.file), size_bytes: entry.file.size }}
               busy={!entry.failed}
               meta={UPLOADING}
               error={entry.failed ? UPLOAD_FAILED : undefined}
@@ -371,7 +374,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
         </ul>
       )}
       {files.isLoading && <FilesSkeleton />}
-      {files.isError && (
+      {files.isError && !files.data && (
         <LoadError retrying={files.isFetching} onRetry={() => void files.refetch()}>
           {LOAD_FAILED}
         </LoadError>

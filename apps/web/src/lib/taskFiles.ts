@@ -93,7 +93,8 @@ export async function uploadTaskFile(template: { id: string; org_id: string }, f
     .insert({
       org_id: template.org_id,
       template_id: template.id,
-      file_name: file.name,
+      // 맥에서 끌어온 한글 이름은 NFD일 수 있다. 같은 이름 검사와 화면이 어긋나지 않게 NFC로 적는다.
+      file_name: file.name.normalize('NFC'),
       storage_path: path,
       size_bytes: file.size,
       uploaded_by: userId,

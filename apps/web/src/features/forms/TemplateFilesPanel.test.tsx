@@ -6,7 +6,7 @@ import { makeTemplate } from '@/features/staff/testFixtures'
 import { DbError } from '@/lib/errors'
 import type { TaskFile } from '@/lib/taskFiles'
 
-type Status = 'success' | 'loading' | 'error'
+type Status = 'success' | 'loading' | 'error' | 'refetch-error'
 
 const { state, store, m } = vi.hoisted(() => {
   // 목 데이터가 바뀐 것을 화면에 알린다(실제 훅의 쿼리 무효화 → 다시 그리기 흉내)
@@ -44,10 +44,10 @@ vi.mock('@/lib/taskFiles', async (importActual) => {
     useTemplateFiles: () => {
       useSyncExternalStore(store.subscribe, () => store.version)
       return {
-        data: state.status === 'success' ? state.files : undefined,
+        data: state.status === 'success' || state.status === 'refetch-error' ? state.files : undefined,
         isLoading: state.status === 'loading',
         isPending: state.status === 'loading',
-        isError: state.status === 'error',
+        isError: state.status === 'error' || state.status === 'refetch-error',
         isFetching: false,
         refetch: state.refetch,
       }
@@ -331,6 +331,25 @@ describe('TemplateFilesPanel 올리기', () => {
     expect(screen.queryByText('올리는 중')).not.toBeInTheDocument()
     expect(screen.queryByText(/개 올렸어요/)).not.toBeInTheDocument()
     filesInvalidated()
+  })
+
+  it('NFD 한글 이름도 NFC로 보여 준다(같은 이름 문구)', async () => {
+    const user = userEvent.setup()
+    m.upload.mockRejectedValue(new DbError(409, 'duplicate key value', '23505'))
+    const { input } = renderPanel()
+    const nfd = '신청서.pdf'.normalize('NFD')
+    await user.upload(input(), fileOf(nfd))
+
+    const message = await within(section()).findByText(/서식이 이미 있어요/)
+    expect(message.textContent).toContain("'신청서.pdf'")
+    expect(message.textContent).toContain('신청서.pdf'.normalize('NFC'))
+    expect(message.textContent).not.toContain(nfd)
+  })
+
+  it('다시 읽기가 실패해도 이미 보이는 목록은 그대로 두고 오류 상자를 그리지 않는다', () => {
+    renderPanel({ status: 'refetch-error' })
+    expect(rows()).toHaveLength(2)
+    expect(screen.queryByText('서식을 불러오지 못했어요. 다시 시도해 주세요.')).not.toBeInTheDocument()
   })
 
   it('알림 닫기를 누르면 거절 문구가 사라진다', async () => {
