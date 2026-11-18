@@ -66,6 +66,7 @@ const row = { id: 'ignored', org_id: 'org-1', status: 'processing' }
 const order = () => calls.map((c) => `${c.table}.${c.op}`)
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   calls.length = 0
   results.clear()
   agentFetch.mockReset()
