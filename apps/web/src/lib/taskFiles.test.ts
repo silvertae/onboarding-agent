@@ -144,6 +144,36 @@ describe('deleteTaskFile', () => {
   })
 })
 
+describe('deleteTaskFile 객체 삭제 실패', () => {
+  it('행을 지운 뒤 remove가 실패하면 DbError로 거절한다', async () => {
+    m.remove.mockResolvedValue({ data: null, error: { message: 'gone wrong', status: 500 } })
+    await expect(deleteTaskFile(row)).rejects.toMatchObject({ name: 'DbError', status: 500 })
+    expect(m.del).toHaveBeenCalledTimes(1)
+    expect(m.remove).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('storage 오류 상태', () => {
+  it('올리기 오류의 숫자 status와 code를 DbError에 담는다', async () => {
+    m.upload.mockResolvedValue({
+      data: null,
+      error: { message: 'exists', status: 409, statusCode: '409', code: 'ResourceAlreadyExists' },
+    })
+    await expect(uploadTaskFile({ id: 'tpl', org_id: 'org' }, fileOf('a.pdf', 3))).rejects.toMatchObject({
+      name: 'DbError',
+      status: 409,
+      code: 'ResourceAlreadyExists',
+    })
+  })
+
+  it('status가 없으면 statusCode 문자열로 대신한다', async () => {
+    m.upload.mockResolvedValue({ data: null, error: { message: 'denied', statusCode: '403' } })
+    await expect(uploadTaskFile({ id: 'tpl', org_id: 'org' }, fileOf('a.pdf', 3))).rejects.toMatchObject({
+      status: 403,
+    })
+  })
+})
+
 describe('signedDownloadUrl', () => {
   it('60초 서명 URL을 원본 이름으로 받는다', async () => {
     m.createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://x/y' }, error: null })

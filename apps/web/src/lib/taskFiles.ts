@@ -106,7 +106,8 @@ export async function uploadTaskFile(template: { id: string; org_id: string }, f
   return data
 }
 
-// 테이블 행을 먼저 지운다(RLS가 기본 서식·권한 밖을 막는다). 지워진 행이 없으면 객체는 건드리지 않는다.
+// 행을 먼저 지운다(Storage 삭제 정책이 기본 서식 행이 있는지 본다). 지워진 행이 없으면 객체는 건드리지 않는다.
+// 행 삭제 뒤 객체 삭제가 실패하면 던지지만 행은 이미 없다. 호출한 쪽은 성공·실패 모두 목록을 새로 불러온다(onSettled).
 export async function deleteTaskFile(file: TaskFile): Promise<void> {
   const { data, error, status } = await supabase.from('task_template_files').delete().eq('id', file.id).select('id')
   if (error) throw new DbError(status, error.message, error.code)
@@ -135,7 +136,12 @@ export async function downloadTaskFile(file: TaskFile): Promise<void> {
   a.remove()
 }
 
-function storageError(err: { message: string; statusCode?: string | number } | null): DbError {
-  const status = Number(err?.statusCode)
-  return new DbError(Number.isFinite(status) && status > 0 ? status : 500, err?.message ?? 'Storage 오류')
+// storage-js StorageApiError: status는 숫자(HTTP), statusCode는 문자열, code는 서비스 코드(예: ResourceAlreadyExists).
+function storageError(
+  err: { message: string; status?: number; statusCode?: string | number; code?: string } | null,
+): DbError {
+  const fromCode = Number(err?.statusCode)
+  const status =
+    typeof err?.status === 'number' && err.status > 0 ? err.status : fromCode > 0 ? fromCode : 500
+  return new DbError(status, err?.message ?? 'Storage 오류', err?.code)
 }
