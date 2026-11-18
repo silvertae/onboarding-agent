@@ -68,7 +68,6 @@ const knowledge: KnowledgeItem[] = [
     origin: 'manual',
     updated_by: null,
     updated_at: '2026-11-16T00:00:00Z',
-    origin: 'manual',
   },
   {
     id: 'k2',
@@ -82,7 +81,6 @@ const knowledge: KnowledgeItem[] = [
     origin: 'manual',
     updated_by: null,
     updated_at: '2026-11-15T00:00:00Z',
-    origin: 'manual',
   },
 ]
 

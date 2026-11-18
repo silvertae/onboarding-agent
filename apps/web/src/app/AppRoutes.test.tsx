@@ -19,6 +19,7 @@ vi.mock('@/features/chat/ChatPanel', () => ({ ChatPanel: ({ children }: { childr
 vi.mock('@/features/newhire/HomePage', () => ({ HomePage: () => <p>신입 홈</p> }))
 vi.mock('@/features/exam/BankPage', () => ({ BankPage: () => <p>문제은행 화면</p> }))
 vi.mock('@/features/templates/TemplatesPage', () => ({ TemplatesPage: () => <p>온보딩 과제 화면</p> }))
+vi.mock('@/features/documents/DocumentsPage', () => ({ DocumentsPage: () => <p>규정 문서 화면</p> }))
 vi.mock('@/features/admin/UsersPage', () => ({ UsersPage: () => <p>사용자 관리 화면</p> }))
 
 import { AppRoutes } from './App'
@@ -70,5 +71,29 @@ describe('/tasks 라우트', () => {
     renderAt('/tasks')
     expect(screen.getByText('사용자 관리 화면')).toBeInTheDocument()
     expect(screen.queryByText('온보딩 과제 화면')).not.toBeInTheDocument()
+  })
+})
+
+describe('/documents 라우트', () => {
+  it('교육 담당자와 경영지원에게 규정 문서 화면을 보여 준다', () => {
+    auth.role = 'team_trainer'
+    const { unmount } = renderAt('/documents')
+    expect(screen.getByText('규정 문서 화면')).toBeInTheDocument()
+    unmount()
+
+    auth.role = 'ops_staff'
+    renderAt('/documents')
+    expect(screen.getByText('규정 문서 화면')).toBeInTheDocument()
+  })
+
+  it('신입은 /me로, 관리자는 /admin/users로 보낸다', () => {
+    auth.role = 'new_hire'
+    const { unmount } = renderAt('/documents')
+    expect(screen.getByText('신입 홈')).toBeInTheDocument()
+    unmount()
+
+    auth.role = 'admin'
+    renderAt('/documents')
+    expect(screen.getByText('사용자 관리 화면')).toBeInTheDocument()
   })
 })

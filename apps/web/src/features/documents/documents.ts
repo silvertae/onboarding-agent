@@ -54,9 +54,14 @@ async function storageFail(error: { message: string; status?: number | string; s
   return fail({ message: error.message, code }, status)
 }
 
-function agentMessage(err: unknown): string {
+export function agentMessage(err: unknown): string {
   if (err instanceof AgentError) return err.status === 429 ? `${err.message}. 내일 다시 이용해 주세요.` : err.message
   return '문서를 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
+}
+
+// 처리 중인 문서가 있을 때만 5초마다 다시 불러온다(색인이 끝나면 상태가 바뀐다).
+export function documentsRefetchInterval(docs: Pick<PolicyDocument, 'status'>[] | undefined): number | false {
+  return docs?.some((d) => d.status === 'processing') ? 5000 : false
 }
 
 export function useDocuments(): UseQueryResult<PolicyDocument[]> {
@@ -64,6 +69,7 @@ export function useDocuments(): UseQueryResult<PolicyDocument[]> {
   return useQuery({
     queryKey: ['documents', profile?.id],
     enabled: Boolean(profile),
+    refetchInterval: (query) => documentsRefetchInterval(query.state.data),
     queryFn: async () => {
       const { data, error, status } = await supabase
         .from('policy_documents')

@@ -53,7 +53,7 @@ vi.mock('@/lib/agent', async (importOriginal) => ({ ...(await importOriginal<typ
 import type { Profile } from '@/app/AuthProvider'
 import { AgentError } from '@/lib/agent'
 import { DbError } from '@/lib/errors'
-import { canManage, checkDocumentFile, deleteDocument, makeKnowledgeDrafts, uploadDocument } from './documents'
+import { canManage, checkDocumentFile, deleteDocument, documentsRefetchInterval, makeKnowledgeDrafts, uploadDocument } from './documents'
 
 const ops: Profile = { id: 'u-ops', org_id: 'org-1', role: 'ops_staff', team_id: null } as Profile
 const trainer: Profile = { id: 'u-tr', org_id: 'org-1', role: 'team_trainer', team_id: 'team-ai' } as Profile
@@ -253,5 +253,17 @@ describe('canManage', () => {
   it('다른 조직이면 false다', () => {
     expect(canManage(ops, doc('company', null, 'org-2'))).toBe(false)
     expect(canManage(null, doc('company', null))).toBe(false)
+  })
+})
+
+describe('documentsRefetchInterval', () => {
+  const d = (status: string) => ({ status }) as never
+  it('처리 중인 문서가 있으면 5초마다 다시 불러온다', () => {
+    expect(documentsRefetchInterval([d('ready'), d('processing')])).toBe(5000)
+  })
+  it('처리 중인 문서가 없거나 목록이 없으면 다시 불러오지 않는다', () => {
+    expect(documentsRefetchInterval([d('ready'), d('failed')])).toBe(false)
+    expect(documentsRefetchInterval([])).toBe(false)
+    expect(documentsRefetchInterval(undefined)).toBe(false)
   })
 })
