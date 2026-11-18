@@ -1,7 +1,7 @@
 -- 데모 조직 데이터·초기화 테스트. 시드 조직(Blueward)에 픽스처 사용자를 더해 확인하고 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(24);
 
 -- ── 시드 데이터 ─────────────────────────────────────────────────────
 select is((select name from public.orgs where id = '00000000-0000-0000-0000-000000000001'), 'Blueward',
@@ -19,6 +19,14 @@ select is(public.seed_demo_knowledge('00000000-0000-0000-0000-000000000001'), 0,
   '지식이 이미 있으면 seed_demo_knowledge는 아무것도 넣지 않는다(재실행 안전)');
 select ok(not has_function_privilege('authenticated', 'public.seed_demo_knowledge(uuid)', 'execute'),
   'seed_demo_knowledge: authenticated 실행 불가');
+select is((select count(*)::int from public.question_bank_items
+            where org_id = '00000000-0000-0000-0000-000000000001'
+              and team_id = '00000000-0000-0000-0000-000000000002'), 8,
+  'AI팀 문제은행 시드 8개');
+select is(public.seed_demo_bank('00000000-0000-0000-0000-000000000001'), 0,
+  '은행이 이미 있으면 seed_demo_bank는 아무것도 넣지 않는다(재실행 안전)');
+select ok(not has_function_privilege('authenticated', 'public.seed_demo_bank(uuid)', 'execute'),
+  'seed_demo_bank: authenticated 실행 불가');
 
 -- ── 픽스처: 시드 신입(is_seed), 관리자가 만든 신입, 관리자, 교육 담당자 ───
 insert into auth.users (id, email) values
@@ -57,8 +65,25 @@ insert into public.knowledge_items (org_id, scope, question, answer, status)
 insert into public.unanswered_questions (org_id, asked_by, team_id, question)
   values ('00000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000101',
           '00000000-0000-0000-0000-000000000002', '동호회 가입비 얼마야?');
-insert into public.exams (org_id, team_id, title, topic, difficulty)
-  values ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', '시험', 'JS', 'beginner');
+insert into public.exams (id, org_id, team_id, title, topic, difficulty, status)
+  values ('a4000000-0000-0000-0000-000000000601', '00000000-0000-0000-0000-000000000001',
+          '00000000-0000-0000-0000-000000000002', '시험', 'JS', 'beginner', 'final');
+-- 문제은행: 문항 하나 추가, 하나 숨김, 은행 문항이 든 시험을 평가 과제에 연결
+insert into public.question_bank_items (org_id, team_id, topic, difficulty, prompt, model_answer, rubric, points, source)
+  values ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+          'JavaScript 기초', 'beginner', '심사위원이 추가한 문항', '답', '기준', 10, 'manual');
+update public.question_bank_items set status = 'hidden'
+ where id = (select id from public.question_bank_items
+              where org_id = '00000000-0000-0000-0000-000000000001' and source = 'seed' order by id limit 1);
+insert into public.exam_questions (org_id, exam_id, position, prompt, model_answer, rubric, points, bank_item_id)
+  select org_id, 'a4000000-0000-0000-0000-000000000601', 1, prompt, model_answer, rubric, points, id
+    from public.question_bank_items
+   where org_id = '00000000-0000-0000-0000-000000000001' and source = 'seed' order by id limit 1;
+insert into public.exam_sittings (org_id, exam_id, task_instance_id, bank_item_ids)
+  select i.org_id, 'a4000000-0000-0000-0000-000000000601', i.id,
+         array(select bank_item_id from public.exam_questions where exam_id = 'a4000000-0000-0000-0000-000000000601')
+    from public.task_instances i join public.task_templates t on t.id = i.template_id
+   where t.code = 'AI-10' and i.new_hire_id = 'a4000000-0000-0000-0000-000000000101';
 update public.task_instances set status = 'done'
  where id in (select i.id from public.task_instances i join public.task_templates t on t.id = i.template_id
                where t.code = 'GA-08' and i.new_hire_id in ('a4000000-0000-0000-0000-000000000101',
@@ -86,6 +111,13 @@ select is((select count(*)::int from public.unanswered_questions
             where org_id = '00000000-0000-0000-0000-000000000001'), 0, '초기화 후 미답변 0');
 select is((select count(*)::int from public.exams where org_id = '00000000-0000-0000-0000-000000000001'), 0,
   '초기화 후 시험 0');
+select is((select count(*)::int from public.question_bank_items
+            where org_id = '00000000-0000-0000-0000-000000000001'), 8,
+  '초기화 후 문제은행 8개');
+select is_empty(
+  $$select 1 from public.question_bank_items
+     where org_id = '00000000-0000-0000-0000-000000000001' and (status <> 'active' or source <> 'seed')$$,
+  '초기화 후 문제은행은 모두 게시된 시드 문항');
 select results_eq(
   $$select count(*)::int, count(*) filter (where status = 'done')::int,
            bool_and(due_date >= (now() at time zone 'Asia/Seoul')::date)

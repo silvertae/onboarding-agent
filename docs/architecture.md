@@ -82,6 +82,10 @@ erDiagram
     knowledge_items |o--o{ unanswered_questions : "답이 된 지식"
     teams ||--o{ exams : ""
     exams ||--o{ exam_questions : ""
+    teams ||--o{ question_bank_items : "팀 문제은행"
+    question_bank_items |o--o{ exam_questions : "출처"
+    exams ||--o{ exam_sittings : "응시 시험"
+    task_instances ||--o{ exam_sittings : "평가 과제"
     profiles ||--o{ usage_counters : "하루 사용량"
 
     orgs {
@@ -160,6 +164,24 @@ erDiagram
         text model_answer
         text rubric
         int points
+        uuid bank_item_id FK "은행 출처"
+    }
+    question_bank_items {
+        uuid id PK
+        uuid team_id FK
+        text topic
+        text topic_key "lower(btrim(topic)), 주제 비교용"
+        exam_difficulty difficulty "beginner | intermediate"
+        text prompt
+        text prompt_key "공백 정리한 문장의 md5, 팀 안에서 유일"
+        bank_item_status status "active | hidden"
+        bank_item_source source "exam | manual | migrated | seed"
+    }
+    exam_sittings {
+        uuid id PK
+        uuid exam_id FK
+        uuid task_instance_id FK
+        uuid_arr bank_item_ids "연결 시점 은행 문항 스냅샷"
     }
     usage_counters {
         uuid user_id FK
@@ -188,7 +210,7 @@ stateDiagram-v2
 
 상태 변경은 DB 함수만 담당하고 화면에서 사람이 누른다. 에이전트는 상태를 바꾸는 도구가 없으므로, LLM이 잘못 판단해도 업무 상태가 망가지지 않는다. 에이전트가 답을 만들 때는 도구가 돌려준 지식과 과제에만 근거하도록 지시하고, 근거가 없으면 미답변으로 넘긴다. 실제 모델 평가 문항으로 이를 확인한다.
 
-모든 테이블에 RLS를 적용한다. 신입은 본인 과제만 볼 수 있고, 시험 문제·답안은 교육 담당자만 볼 수 있다(pgTAP 테스트). 과제 서식은 비공개 버킷에 두고, 그 과제의 담당자만 올리고 지우며 같은 조직 사용자는 서명 URL로만 내려받는다. OpenAI 키와 Supabase 관리자 키는 Secret Manager에만 두고, 웹 번들에는 공개 키만 들어간다. 관리자 키는 계정 생성 경로에서만 쓴다. 에이전트 서비스가 토큰의 역할을 확인하고, 초기화 함수는 DB에서 관리자만 실행할 수 있다. 공개 가입은 막는다.
+모든 테이블에 RLS를 적용한다. 신입은 본인 과제만 볼 수 있고, 시험 문제·답안은 교육 담당자만 볼 수 있다(pgTAP 테스트). 문제은행(`question_bank_items`)과 응시 기록(`exam_sittings`)도 그 팀 교육 담당자만 보며, 은행은 삭제 대신 숨기고 응시 기록은 `assign_exam` 함수로만 쓴다. 과제 서식은 비공개 버킷에 두고, 그 과제의 담당자만 올리고 지우며 같은 조직 사용자는 서명 URL로만 내려받는다. OpenAI 키와 Supabase 관리자 키는 Secret Manager에만 두고, 웹 번들에는 공개 키만 들어간다. 관리자 키는 계정 생성 경로에서만 쓴다. 에이전트 서비스가 토큰의 역할을 확인하고, 초기화 함수는 DB에서 관리자만 실행할 수 있다. 공개 가입은 막는다.
 
 모든 API는 로그인 토큰이 필요하다. 사용자당 하루 채팅 50회, 시험 생성 10회를 DB에서 집계해 막는다. OpenAI 프로젝트 월 한도와 GCP 예산 알림을 둔다. 스테이징과 운영을 다른 클라우드 프로젝트로 나누고, 운영은 버전 태그와 승인으로만 배포한다.
 
