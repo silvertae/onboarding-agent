@@ -35,14 +35,18 @@ function fail(status: number, error: { message: string; code?: string }): never 
 export function useManagedTemplates(view: 'active' | 'archived'): UseQueryResult<TaskTemplate[]> {
   const { session, profile } = useAuth()
   const userId = session?.user.id
-  const teamId = profile?.team_id ?? null
-  const department = profile?.department ?? null
-  const scope = [teamId ? `team_id.eq.${teamId}` : null, department ? `department.eq.${department}` : null].filter(Boolean)
+  // DB RPC와 같은 범위: 교육 담당자는 팀, 경영지원은 부서. 프로필을 불러오기 전이나 다른 역할이면 조회하지 않는다.
+  const scope =
+    profile?.role === 'team_trainer' && profile.team_id
+      ? { column: 'team_id', value: profile.team_id }
+      : profile?.role === 'ops_staff' && profile.department
+        ? { column: 'department', value: profile.department }
+        : null
   return useQuery({
-    queryKey: [...templateKeys.list(userId, view), teamId, department],
-    enabled: Boolean(userId) && scope.length > 0,
+    queryKey: [...templateKeys.list(userId, view), scope?.column, scope?.value],
+    enabled: Boolean(userId) && scope !== null,
     queryFn: async () => {
-      let q = supabase.from('task_templates').select('*').or(scope.join(',')).is('assigned_to', null)
+      let q = supabase.from('task_templates').select('*').eq(scope!.column, scope!.value).is('assigned_to', null)
       q = view === 'archived' ? q.not('archived_at', 'is', null) : q.is('archived_at', null)
       const { data, error, status } = await q.order('stage').order('sort_order')
       if (error) fail(status, error)
@@ -117,17 +121,20 @@ export function isLocked(usage: number): boolean {
   return usage > 0
 }
 
+// DB와 같은 정규화: 선행 코드는 공백 제거·중복 제거·정렬한 집합, 체크리스트는 항목 공백 제거, null과 빈 배열은 같다.
+const normPrereq = (codes: readonly string[]) => [...new Set(codes.map((c) => c.trim()))].sort()
+const normChecklist = (items: readonly string[] | null) => (items ?? []).map((i) => i.trim())
+
 // 사용 중 템플릿에서 DB가 거부하는 변경(제목·안내문 외 전부)이 있는지. DB 비교와 같은 기준이다.
 export function lockedFieldsChanged(before: TaskTemplate, input: TemplateInput): boolean {
-  const beforeChecklist = (before.checklist as string[] | null) ?? null
   return (
     before.kind !== input.kind ||
     before.completion_mode !== input.completionMode ||
     before.stage !== input.stage ||
     daysInStage(before) !== input.daysInStage ||
     before.allow_na !== input.allowNa ||
-    JSON.stringify(beforeChecklist) !== JSON.stringify(input.checklist) ||
-    JSON.stringify(before.prerequisite_codes) !== JSON.stringify(input.prerequisiteCodes)
+    JSON.stringify(normChecklist(before.checklist as string[] | null)) !== JSON.stringify(normChecklist(input.checklist)) ||
+    JSON.stringify(normPrereq(before.prerequisite_codes)) !== JSON.stringify(normPrereq(input.prerequisiteCodes))
   )
 }
 

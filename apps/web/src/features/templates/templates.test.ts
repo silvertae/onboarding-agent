@@ -93,4 +93,16 @@ describe('잠금', () => {
   it('daysInStage만 다르면 true', () => {
     expect(lockedFieldsChanged(before, { ...input, daysInStage: 3 })).toBe(true)
   })
+  it('선행 코드는 순서·중복·공백과 무관한 집합으로 비교', () => {
+    const b = { ...before, prerequisite_codes: ['A', 'B'] } as unknown as TaskTemplate
+    expect(lockedFieldsChanged(b, { ...input, prerequisiteCodes: ['B', 'A', 'B', ' A '] })).toBe(false)
+    expect(lockedFieldsChanged(b, { ...input, prerequisiteCodes: ['A'] })).toBe(true)
+    expect(lockedFieldsChanged(b, { ...input, prerequisiteCodes: ['A', 'C'] })).toBe(true)
+  })
+  it('체크리스트 null과 빈 배열은 같고 항목은 공백을 지워 비교', () => {
+    expect(lockedFieldsChanged(before, { ...input, checklist: [] })).toBe(false)
+    const b = { ...before, kind: 'setup', checklist: ['a'] } as unknown as TaskTemplate
+    expect(lockedFieldsChanged(b, { ...input, kind: 'setup', checklist: [' a '] })).toBe(false)
+    expect(lockedFieldsChanged(b, { ...input, kind: 'setup', checklist: null })).toBe(true)
+  })
 })
