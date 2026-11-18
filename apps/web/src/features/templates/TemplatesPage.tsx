@@ -48,9 +48,12 @@ const STAGES = Object.keys(STAGE_LABEL) as TaskStage[]
 const FROM_NEXT_HIRES = '새로 만든 과제는 이후 온보딩을 시작하는 신입부터 들어가요.'
 const LOAD_FAILED = '과제를 불러오지 못했어요. 다시 시도해 주세요.'
 const EMPTY = '아직 과제가 없어요. "과제 추가"로 첫 과제를 만들어 보세요.'
+const ARCHIVED_EMPTY = '보관한 과제가 없어요.'
 const CREATED = '과제를 추가했어요. 이후 온보딩을 시작하는 신입부터 들어가요.'
 const SAVED = '저장했어요'
 const SAVE_FAILED = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.'
+const ARCHIVE_FAILED = '보관하지 못했어요. 잠시 후 다시 시도해 주세요.'
+const RESTORE_FAILED = '다시 사용하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const ARCHIVED = '보관했어요'
 const RESTORED = '다시 사용해요. 이후 온보딩을 시작하는 신입부터 들어가요.'
 const ARCHIVE_DESCRIPTION = '이후 온보딩을 시작하는 신입에게 들어가지 않아요. 진행 중인 신입의 과제는 그대로예요.'
@@ -59,9 +62,9 @@ const lockNotice = (n: number) =>
 
 // 실패 문구는 화면 문구로 바꾼다(DB 메시지를 그대로 보이지 않는다). 원래 오류는 cause로 남긴다.
 // 인증 오류(401) 로그아웃은 useTemplateActions가 먼저 처리한다.
-function orFail<T>(call: Promise<T>): Promise<T> {
+function orFail<T>(call: Promise<T>, message: string): Promise<T> {
   return call.catch((err: unknown) => {
-    throw new Error(SAVE_FAILED, { cause: err })
+    throw new Error(message, { cause: err })
   })
 }
 
@@ -211,7 +214,7 @@ export function TemplatesPage() {
               </LoadError>
             </div>
           ) : rows.length === 0 ? (
-            <EmptyState>{EMPTY}</EmptyState>
+            <EmptyState>{view === 'archived' ? ARCHIVED_EMPTY : EMPTY}</EmptyState>
           ) : (
             <div className="divide-y divide-border">
               {groups.map(({ stage, items }) => (
@@ -370,19 +373,19 @@ function TemplatePanel({
   async function submit() {
     const input = cleanInput(formValue)
     await action.run(async () => {
-      const saved = await orFail(save(template?.id ?? null, input))
+      const saved = await orFail(save(template?.id ?? null, input), SAVE_FAILED)
       onSaved(saved, template === null)
     })
   }
 
   async function runArchive() {
     if (!template) return
-    if (await action.run(() => orFail(archive(template.id)))) onArchived()
+    if (await action.run(() => orFail(archive(template.id), ARCHIVE_FAILED))) onArchived()
   }
 
   async function runRestore() {
     if (!template) return
-    if (await action.run(() => orFail(restore(template.id)))) onRestored()
+    if (await action.run(() => orFail(restore(template.id), RESTORE_FAILED))) onRestored()
   }
 
   return (

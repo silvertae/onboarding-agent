@@ -239,6 +239,13 @@ describe('TemplatesPage (S12) 목록', () => {
     renderPage({ active: [] })
     expect(within(list()).getByText('아직 과제가 없어요. "과제 추가"로 첫 과제를 만들어 보세요.')).toBeInTheDocument()
   })
+
+  it('보관 보기가 비었으면 "보관한 과제가 없어요."', async () => {
+    renderPage({ archived: [] })
+    await userEvent.click(screen.getByRole('radio', { name: '보관' }))
+    expect(within(list()).getByText('보관한 과제가 없어요.')).toBeInTheDocument()
+    expect(within(list()).queryByText('아직 과제가 없어요. "과제 추가"로 첫 과제를 만들어 보세요.')).not.toBeInTheDocument()
+  })
 })
 
 describe('TemplatesPage 과제 추가', () => {
@@ -545,6 +552,31 @@ describe('TemplatesPage 보관·다시 사용', () => {
     // 보관한 과제는 사용 중 보기에서 빠지므로 첫 과제를 고르고, 포커스는 결과 알림으로 옮긴다
     expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-01')
     expect(screen.getByText('보관했어요').closest('[role="status"]')).toHaveFocus()
+  })
+
+  it('보관에 실패하면 "보관하지 못했어요…"를 보이고 패널을 그대로 둔다', async () => {
+    const user = userEvent.setup()
+    actions.archive.mockRejectedValue(new DbError(500, 'boom'))
+    renderPage({ path: '/tasks?template=AI-11' })
+    await user.click(screen.getByRole('button', { name: '보관' }))
+    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: '보관' }))
+
+    expect(await screen.findByText('보관하지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.queryByText('저장하지 못했어요. 잠시 후 다시 시도해 주세요.')).not.toBeInTheDocument()
+    expect(screen.queryByText('보관했어요')).not.toBeInTheDocument()
+    expect(panel('사내 위키 둘러보기')).toBeInTheDocument()
+  })
+
+  it('다시 사용에 실패하면 "다시 사용하지 못했어요…"를 보인다', async () => {
+    const user = userEvent.setup()
+    actions.restore.mockRejectedValue(new DbError(500, 'boom'))
+    renderPage()
+    await user.click(screen.getByRole('radio', { name: '보관' }))
+    await user.click(within(panel('프린터 사용')).getByRole('button', { name: '다시 사용' }))
+
+    expect(await screen.findByText('다시 사용하지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.queryByText('저장하지 못했어요. 잠시 후 다시 시도해 주세요.')).not.toBeInTheDocument()
+    expect(within(panel('프린터 사용')).getByRole('button', { name: '다시 사용' })).toBeEnabled()
   })
 
   it('확인 창에서 취소하면 보관하지 않는다', async () => {
