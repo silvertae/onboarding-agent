@@ -55,18 +55,11 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="px-6 py-12 text-center text-sm text-muted-foreground">{children}</p>
 }
 
+// 저장·처리 같은 동작 오류의 인라인 문구. 목록을 불러오지 못한 오류는 components/LoadError를 쓴다.
 export function ErrorText({ children }: { children: ReactNode }) {
   return (
     <p role="alert" className="text-sm text-destructive">
       {children}
-    </p>
-  )
-}
-
-export function LoadingText() {
-  return (
-    <p role="status" className="px-6 py-12 text-center text-sm text-muted-foreground">
-      불러오는 중…
     </p>
   )
 }

@@ -250,6 +250,13 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .spin{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+/* Loading skeleton: 데이터가 올 자리와 같은 크기로 그린다. 움직임 줄이기 설정이면 멈춘다 */
+.skel{display:block;background:var(--fill);border-radius:6px;animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
+.skel-line{height:12px}
+.skel-pill{border-radius:var(--radius-pill)}
+.skel-circle{border-radius:50%;flex:none}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
 
 /* Footer note */
 .foot{max-width:1376px;margin:0 auto;padding:8px 32px 32px;font-size:12px;color:var(--muted)}

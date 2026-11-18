@@ -1,6 +1,8 @@
 import { Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +18,7 @@ import {
   type UnansweredQuestion,
 } from './knowledge'
 import { KnowledgeForm, type KnowledgeValues } from './KnowledgeForm'
-import { EmptyState, ErrorText, LoadingText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
+import { EmptyState, ErrorText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 type Tab = 'unanswered' | 'knowledge'
@@ -116,10 +118,23 @@ export function KnowledgePage() {
             </div>
             <SegmentTabPanel value="unanswered">
               {unansweredQuery.isLoading ? (
-                <LoadingText />
+                <LoadingStatus>
+                  <TableSkeleton
+                    headClassName="border-b"
+                    rows={4}
+                    columns={[
+                      { label: '질문' },
+                      { label: '물은 시각' },
+                      { label: '물은 사람의 팀' },
+                      { label: '', cell: 'button' },
+                    ]}
+                  />
+                </LoadingStatus>
               ) : unansweredQuery.isError ? (
-                <div className="px-6 py-10">
-                  <ErrorText>미답변 질문을 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
+                <div className="p-6">
+                  <LoadError retrying={unansweredQuery.isFetching} onRetry={() => void unansweredQuery.refetch()}>
+                    미답변 질문을 불러오지 못했어요. 다시 시도해 주세요.
+                  </LoadError>
                 </div>
               ) : unanswered.length === 0 ? (
                 <EmptyState>미답변 질문이 없어요</EmptyState>
@@ -168,10 +183,25 @@ export function KnowledgePage() {
                 </div>
               )}
               {knowledgeQuery.isLoading ? (
-                <LoadingText />
+                <LoadingStatus>
+                  <TableSkeleton
+                    headClassName="border-b"
+                    columns={[
+                      { label: '질문' },
+                      { label: '답변' },
+                      { label: '분류' },
+                      { label: '범위' },
+                      { label: '상태', cell: 'badge' },
+                      { label: '수정일' },
+                      { label: '', cell: 'button' },
+                    ]}
+                  />
+                </LoadingStatus>
               ) : knowledgeQuery.isError ? (
-                <div className="px-6 py-10">
-                  <ErrorText>지식 목록을 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
+                <div className="p-6">
+                  <LoadError retrying={knowledgeQuery.isFetching} onRetry={() => void knowledgeQuery.refetch()}>
+                    지식 목록을 불러오지 못했어요. 다시 시도해 주세요.
+                  </LoadError>
                 </div>
               ) : (
                 <table aria-label="지식 목록" className="w-full text-sm">
