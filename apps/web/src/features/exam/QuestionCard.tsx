@@ -149,7 +149,7 @@ export function QuestionCard({ number, total, question, startEditing = false, di
         </div>
       ) : (
         <div className="mt-4 grid gap-3 text-sm">
-          <p className="font-mono text-[13px] leading-6 whitespace-pre-wrap">{question.prompt || '(문제를 입력해 주세요)'}</p>
+          <p className="font-mono text-label leading-6 whitespace-pre-wrap">{question.prompt || '(문제를 입력해 주세요)'}</p>
           <dl className="grid gap-2 rounded-xl bg-muted p-3">
             <div>
               <dt className="text-xs font-semibold text-[var(--text-secondary)]">모범 답안</dt>

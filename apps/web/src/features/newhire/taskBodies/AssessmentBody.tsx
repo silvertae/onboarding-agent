@@ -14,7 +14,7 @@ export function AssessmentBody({ task, children }: BodyProps) {
   return (
     <>
       <div className="flex flex-col gap-3 border-t border-border px-5 py-6 sm:px-7">
-        <h3 className="text-[15px] font-semibold">평가 정보</h3>
+        <h3 className="text-row font-semibold">평가 정보</h3>
         <dl className="grid grid-cols-[3rem_1fr] gap-x-3 gap-y-1.5 text-sm">
           {rows.map((row) => (
             <div key={row.label} className="contents">
@@ -29,7 +29,7 @@ export function AssessmentBody({ task, children }: BodyProps) {
             </div>
           )}
         </dl>
-        <p className="rounded-lg bg-accent px-3.5 py-2.5 text-[13px] text-accent-foreground">
+        <p className="rounded-lg bg-accent px-3.5 py-2.5 text-label text-accent-foreground">
           교육 담당자가 결과(통과 / 보충 필요)와 메모를 기록해요.
         </p>
       </div>

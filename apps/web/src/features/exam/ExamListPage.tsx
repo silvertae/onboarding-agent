@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react'
 import { Link } from 'react-router'
+import { PageHeader } from '@/components/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -11,16 +12,16 @@ export function ExamListPage() {
 
   return (
     <main className="mx-auto grid max-w-[1376px] gap-6 p-6 lg:p-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight">시험 출제</h1>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">주제와 난이도를 넣으면 문제·모범 답안·채점 기준 초안을 만들어 드려요.</p>
-        </div>
-        <Link to="/team/exams/new" className={cn(buttonVariants({ size: 'lg' }), 'h-11 px-5 text-white hover:text-white')}>
-          <Plus />
-          새 시험 만들기
-        </Link>
-      </div>
+      <PageHeader
+        title="시험 출제"
+        description="주제와 난이도를 넣으면 문제·모범 답안·채점 기준 초안을 만들어 드려요."
+        actions={
+          <Link to="/team/exams/new" className={cn(buttonVariants({ size: 'lg' }), 'h-11 px-5 text-white hover:text-white')}>
+            <Plus />
+            새 시험 만들기
+          </Link>
+        }
+      />
 
       <section className="rounded-[18px] border border-border bg-card">
         {exams.isLoading ? (

@@ -18,17 +18,7 @@ export function Panel({ className, ...props }: ComponentProps<'section'>) {
   return <section className={cn('rounded-[18px] border border-border bg-card', className)} {...props} />
 }
 
-export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-[28px] font-bold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-[var(--text-secondary)]">{description}</p>}
-      </div>
-      {actions}
-    </div>
-  )
-}
+export { PageHeader } from '@/components/PageHeader'
 
 type TabItem<K extends string> = { key: K; label: string; count?: number }
 
@@ -60,7 +50,7 @@ export function SegmentTabList<K extends string>({ items, label }: { items: TabI
           {item.label}
           {item.count !== undefined && ' '}
           {item.count !== undefined && (
-            <span className="grid min-w-5 place-items-center rounded-full bg-disabled-foreground px-1.5 text-[11px] font-semibold text-white group-data-[state=active]/tab:bg-foreground">
+            <span className="grid min-w-5 place-items-center rounded-full bg-disabled-foreground px-1.5 text-micro font-semibold text-white group-data-[state=active]/tab:bg-foreground">
               {item.count}
             </span>
           )}

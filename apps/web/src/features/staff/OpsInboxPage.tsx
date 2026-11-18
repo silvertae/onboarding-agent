@@ -41,7 +41,7 @@ function SummaryCard({ label, value, caption }: { label: string; value: number; 
   return (
     <Panel aria-label={label} className="px-6 py-5">
       <p className="text-sm text-[var(--text-secondary)]">{label}</p>
-      <p className="mt-1 text-[28px] font-semibold">{value}</p>
+      <p className="mt-1 text-page font-semibold tabular-nums">{value}</p>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">{caption}</p>
     </Panel>
   )

@@ -25,7 +25,7 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
           {initials(hire.full_name)}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[17px] font-semibold">{hire.full_name}</p>
+          <p className="text-lead font-semibold">{hire.full_name}</p>
           <p className="text-xs text-muted-foreground">
             {[hire.job_title, hire.hire_date && `입사 ${formatKoreanDate(hire.hire_date)}`, hireDayLabel(hire.hire_date)]
               .filter(Boolean)
@@ -45,7 +45,7 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
       <div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-[var(--text-secondary)]">팀 과제 진행률</span>
-          <b>
+          <b className="tabular-nums">
             {finished} / {total} · {percent}%
           </b>
         </div>

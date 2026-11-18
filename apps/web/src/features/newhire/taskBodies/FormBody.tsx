@@ -25,7 +25,7 @@ function BusinessCardPreview({ englishName }: { englishName: string }) {
   return (
     <figure aria-label="명함 자동 채움 미리보기" className="m-0 flex min-w-0 flex-[1_1_280px] flex-col gap-3">
       <figcaption className="flex items-baseline justify-between">
-        <span className="text-[15px] font-semibold">자동 채움 미리보기</span>
+        <span className="text-row font-semibold">자동 채움 미리보기</span>
         <span className="text-xs text-muted-foreground">프로필 기준</span>
       </figcaption>
       <BusinessCard
@@ -52,7 +52,7 @@ export function FormBody({ task, disabled, children }: BodyProps) {
     <>
       <div className="flex flex-wrap gap-7 border-t border-border px-5 py-6 sm:px-7">
         <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-4">
-          <h3 className="text-[15px] font-semibold">입력</h3>
+          <h3 className="text-row font-semibold">입력</h3>
           {fields.map((f) => {
             const id = `${idPrefix}-${f.key}`
             const common = {

@@ -27,7 +27,7 @@ export function FilterChips<V extends string>({
             aria-pressed={on}
             onClick={() => onChange(item.value)}
             className={cn(
-              'rounded-full border border-input bg-card px-3 py-1 text-[13px] text-[var(--text-secondary)] outline-none',
+              'rounded-full border border-input bg-card px-3 py-1 text-label text-[var(--text-secondary)] outline-none',
               'hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               on && 'border-foreground bg-foreground text-white hover:border-foreground hover:text-white',
             )}

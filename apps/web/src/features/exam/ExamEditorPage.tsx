@@ -248,7 +248,7 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
           placeholder="시험 제목(비우면 주제로 저장)"
           maxLength={200}
           onChange={(e) => setTitle(e.target.value)}
-          className="h-10 max-w-md flex-1 border-transparent bg-transparent text-xl font-bold shadow-none hover:border-input"
+          className="h-10 max-w-md flex-1 border-transparent bg-transparent text-title font-semibold shadow-none hover:border-input md:text-title"
         />
         <Badge variant={status === 'final' ? 'done' : 'todo'}>{EXAM_STATUS_LABEL[status]}</Badge>
         <div className="ml-auto flex flex-wrap gap-2">
@@ -359,7 +359,7 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
 
         <section aria-label="문항" className="grid gap-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--text-secondary)]">
+            <p className="text-sm text-[var(--text-secondary)] tabular-nums">
               문항 {items.length} · 총 {totalPoints}점
             </p>
             <Button type="button" variant="outline" size="lg" className="px-4" disabled={busy} onClick={() => setItems((prev) => [...prev, withKey({ prompt: '', model_answer: '', rubric: '', points: 10 }, true)])}>

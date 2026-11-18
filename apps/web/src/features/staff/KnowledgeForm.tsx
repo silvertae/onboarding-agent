@@ -32,7 +32,7 @@ export function KnowledgeForm({ mode, initial, scopeLabel, busy, error, onSubmit
   return (
     <aside aria-label="지식 작성" className="flex flex-col rounded-[18px] border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="text-[17px] font-semibold">지식 작성</h2>
+        <h2 className="text-lead font-semibold">지식 작성</h2>
         <span className="text-xs text-muted-foreground">{SOURCE_LABEL[mode]}</span>
       </div>
 

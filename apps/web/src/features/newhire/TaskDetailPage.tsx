@@ -128,7 +128,7 @@ export function TaskDetailPage() {
           </Alert>
         )}
         {t.completion_mode === 'staff_only' && t.kind !== 'assessment' && (
-          <p className="rounded-lg bg-accent px-3.5 py-2.5 text-[13px] text-accent-foreground">담당자가 처리하면 완료됩니다</p>
+          <p className="rounded-lg bg-accent px-3.5 py-2.5 text-label text-accent-foreground">담당자가 처리하면 완료됩니다</p>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="outline" onClick={() => askAboutTask(t.title)}>
@@ -168,8 +168,8 @@ export function TaskDetailPage() {
             <OwnerBadge department={t.department} teamName={teamName} />
             <StatusBadge status={task.status} completionMode={t.completion_mode} />
           </div>
-          <h1 className="text-2xl font-semibold sm:text-[28px] sm:leading-9">{t.title}</h1>
-          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-[var(--text-secondary)]">
+          <h1 className="text-title font-semibold sm:text-page">{t.title}</h1>
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-label text-[var(--text-secondary)]">
             {task.due_date && (
               <span className="inline-flex items-center gap-1.5">
                 <CalendarDays className="size-4" aria-hidden />
@@ -199,8 +199,8 @@ export function TaskDetailPage() {
           )}
         </div>
         <div className="flex flex-col gap-2 border-t border-border px-5 py-6 sm:px-7">
-          <h3 className="text-[15px] font-semibold">안내</h3>
-          <p className="text-[15px] leading-[23px] whitespace-pre-wrap text-[var(--text-secondary)]">{t.description}</p>
+          <h3 className="text-row font-semibold">안내</h3>
+          <p className="text-row leading-[23px] whitespace-pre-wrap text-[var(--text-secondary)]">{t.description}</p>
         </div>
         <Body key={`${task.id}-${task.status}`} task={task} disabled={!actionable || pending}>
           {renderActions}

@@ -78,7 +78,7 @@ export function TaskRow({ task, all, teamName, today, highlight }: Props) {
         </span>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span data-task-title className="text-[15px] font-medium">
+        <span data-task-title className="text-row font-medium">
           {task.template.title}
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
