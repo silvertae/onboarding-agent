@@ -24,9 +24,9 @@
 | 충돌 지점 | 결정 |
 |---|---|
 | S12 화면·주소·메뉴 | 화면 하나. 주소 `/tasks`, 메뉴 "온보딩 과제". 오른쪽 패널에 편집 칸 아래 "서식" 영역(S12-forms 시안의 파일 목록·업로드 영역). `/forms` 주소는 배포된 적이 없으므로 만들지 않고 리다이렉트도 두지 않는다(설계 5.4의 해당 문장을 Task 0에서 고친다) |
-| 마이그레이션 번호 | `0009_task_template_admin` → `0010_task_template_rpc` → `0011_task_template_files` → `0012_demo_reset_templates_forms`. `0008`은 함께 진행 중인 규정 문서 브랜치(`docs/policy-docs-rag`)가 쓰기로 해 `0009`부터 쓴다(로컬 DB 공유 시 같은 번호는 건너뛰어진다). 시작할 때 `origin/main`에 `0009`가 이미 있으면 전부 뒤로 민다 |
+| 마이그레이션 번호 | `0009_task_template_admin` → `0010_task_template_rpc` → `0011_task_template_files`(서식 + `reset_demo` 교체). `0008`은 비워 둔다(공유 로컬 DB에 `0009`·`0010`이 먼저 적용됨). 함께 진행 중인 규정 문서 작업(`docs/policy-docs-rag`)은 `0012`·`0013`을 쓴다. 시작할 때 `origin/main`에 `0009` 이상이 이미 있으면 전부 뒤로 민다 |
 | pgTAP 번호 | `07_task_templates.sql`(템플릿), `08_template_files.sql`(서식) |
-| `reset_demo` | 한 번만 교체(`0012`). 템플릿 되돌리기 + 담당자가 올린 서식 행 삭제를 함께 넣는다 |
+| `reset_demo` | 한 번만 교체(`0011`, Task 3과 같은 파일). 템플릿 되돌리기 + 담당자가 올린 서식 행 삭제를 함께 넣는다 |
 | 한 사람용 과제의 서식 | 이번에는 올리는 화면을 만들지 않는다(Leo 결정). DB 권한은 막지 않는다(담당자면 올릴 수 있음). 서식 조회는 템플릿 조회 정책을 따르므로 다른 신입에게 보이지 않는다 |
 | 보관된 과제의 서식 | 목록·내려받기만. 올리기는 DB 정책과 화면 둘 다 막는다. 지우기는 허용 |
 | 사용 중 잠금과 서식 | 서식은 잠금 대상이 아니다. 진행 중인 신입이 있어도 올리고 지울 수 있다 |
@@ -155,7 +155,7 @@
 ### Task 4: 데모 초기화 (템플릿 + 서식)
 
 **Files:**
-- Create: `supabase/migrations/0012_demo_reset_templates_forms.sql`
+- Modify: `supabase/migrations/0011_task_template_files.sql`(Task 3과 같은 파일 끝에 `reset_demo` 교체를 더한다. Task 3·4는 한 번에 작성해 한 번만 적용한다)
 - Modify: `supabase/tests/04_demo_data.sql`
 
 **Interfaces:**
