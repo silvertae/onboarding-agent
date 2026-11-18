@@ -51,7 +51,7 @@
 - Produces:
   - `create type public.bank_item_status as enum ('active','hidden')`
   - `create type public.bank_item_source as enum ('exam','manual','migrated','seed')`
-  - `private.prompt_key(p text) returns text immutable` = `md5(regexp_replace(btrim(p), '\s+', ' ', 'g'))`. 생성 컬럼이 insert하는 사용자 권한으로 이 함수를 부르므로, 다른 private 함수처럼 `revoke all ... from public` 한 뒤 `grant execute ... to authenticated, service_role`을 명시한다(빠지면 교육 담당자 insert가 42501).
+  - `private.prompt_key(p text) returns text immutable` = `md5(btrim(regexp_replace(p, '\s+', ' ', 'g')))` (먼저 줄바꿈·탭을 포함한 연속 공백을 한 칸으로 바꾼 뒤 앞뒤를 지운다. `btrim`은 일반 공백만 지우므로 순서가 반대면 `\n문제\n`과 `문제`가 다른 키가 된다). 생성 컬럼이 insert하는 사용자 권한으로 이 함수를 부르므로, 다른 private 함수처럼 `revoke all ... from public` 한 뒤 `grant execute ... to authenticated, service_role`을 명시한다(빠지면 교육 담당자 insert가 42501).
   - `public.question_bank_items(id uuid pk, org_id uuid not null → orgs, team_id uuid not null → teams, topic text not null check (btrim(topic) <> ''), difficulty public.exam_difficulty not null, prompt text not null, model_answer text not null, rubric text not null, points int not null check 1..100, status bank_item_status not null default 'active', source bank_item_source not null, created_by uuid → profiles on delete set null, created_at timestamptz default now(), updated_at timestamptz default now(), prompt_key text generated always as (private.prompt_key(prompt)) stored, topic_key text generated always as (lower(btrim(topic))) stored, unique (team_id, prompt_key))`, 인덱스 `(team_id, topic_key, difficulty)`. 주제 비교는 RPC와 웹 모두 `topic_key`로만 한다(`ilike`는 `_`·`%`를 와일드카드로 읽으므로 쓰지 않는다).
   - `alter table public.exam_questions add column bank_item_id uuid references public.question_bank_items (id) on delete set null`
   - `exam_questions`에 restrictive 정책(insert·update): `bank_item_id is null or exists (select 1 from public.question_bank_items b where b.id = bank_item_id)`. FK 검사는 RLS를 우회하므로, 이 정책이 없으면 다른 팀 은행 id를 연결해 등록·제외·스냅샷을 오염시킬 수 있다. pgTAP: T 담당자가 T2 은행 id로 insert·update → `42501`.
@@ -65,6 +65,7 @@
   - 교육 담당자2(T2), 신입A, 총무, 관리자: `select 1 from question_bank_items` · `exam_sittings` → `is_empty`
   - 교육 담당자(T): `insert into exam_sittings` → `throws_ok` (권한 없음)
   - 같은 팀에 `prompt`가 `'a  b'`, `' a b '`인 두 행 insert → 두 번째가 `throws_ok(..., '23505')`
+  - 같은 팀에 `'문제'`와 `E'\n문제\t'` → 두 번째가 `23505`(앞뒤 줄바꿈·탭도 공백으로 본다)
   - 다른 팀에 같은 문제 → 성공
 - [ ] **Step 2: 실패 확인** — `npm run db:test` → `06_question_bank.sql` 실패(테이블 없음).
 - [ ] **Step 3: 마이그레이션 작성** — 위 Interfaces 그대로. RLS 정책은 `exams`의 "우리 팀 trainer" 정책과 같은 조건(`org_id = my_org()`, `my_role() = 'team_trainer'`, `team_id = my_team()`)을 `for select`/`for insert`/`for update`로. `exam_sittings` select 정책: 연결된 `exams`가 보이면 보인다(`exists (select 1 from public.exams e where e.id = exam_id)`).
@@ -190,8 +191,8 @@
 - Consumes: Task 5의 `pickBankItems`, `bankPrompts`, `registerExamToBank`, `useBankTopics`, `toDraft`
 - 동작 (`need = 문항 수 − items.length`):
   - 주제 칸에 `useBankTopics()`를 `<datalist>`로 연결.
-  - "문제은행에서 채우기"(아이콘 `Library`): `need ≤ 0`이거나 주제가 비었거나 작업 중이면 비활성. `pickBankItems({ topic, difficulty, count: need, exclude: 편집기의 bank_item_id들, excludePrompts: 편집기 문항 중 bank_item_id 없는 것의 prompt(빈 문장 제외), newHireId: hireId || undefined })` 결과를 `toDraft`로 뒤에 붙인다. 한도를 쓰지 않는다.
-  - 생성 버튼: 문항이 없으면 지금처럼 "초안 만들기"(전체 교체), 있으면 "부족분 AI로 만들기"로 `question_count: need`를 요청하고 결과를 뒤에 붙인다. `need ≤ 0`이면 비활성. 두 경우 모두 `avoid_prompts = buildAvoidPrompts(편집기 문항 prompt, await bankPrompts(topic, difficulty))`(편집기 우선). `bankPrompts`가 실패하면 회피 목록 없이 생성한다(생성은 막지 않는다).
+  - "문제은행에서 채우기"(아이콘 `Library`): `need ≤ 0`이거나 주제가 비었거나 작업 중이면 비활성. `pickBankItems({ topic, difficulty, count: need, exclude: 편집기의 bank_item_id들, excludePrompts: 편집기의 모든 문항 prompt(출처 유무와 무관, 빈 문장 제외 — 은행 문항을 고쳐 다른 은행 문항과 같아진 경우도 막는다), newHireId: hireId || undefined })` 결과를 `toDraft`로 뒤에 붙인다. 한도를 쓰지 않는다.
+  - 생성 버튼: 문항이 없으면 지금처럼 "초안 만들기"(전체 교체), 있으면 "부족분 AI로 만들기"로 `question_count: need`를 요청하고 결과를 뒤에 붙인다. `need ≤ 0`이면 비활성. 두 경우 모두 `avoid_prompts = buildAvoidPrompts(편집기 문항 prompt, await bankPrompts(topic, difficulty))`(편집기 우선). `bankPrompts`가 실패하면 은행 목록만 빈 배열로 두고 `buildAvoidPrompts(편집기 문항 prompt, [])`로 생성한다(생성은 막지 않고, 편집기 문장 회피는 유지한다).
   - 문항 다시 만들기: 변경 없음(기존 `existing_prompts`).
   - 문항 카드: `bank_item_id`가 있으면 "문제은행" 배지(`Badge variant="secondary"`). 편집해도 배지와 `bank_item_id`는 유지.
   - 출처 보존: 지금 `draftOf`(`ExamEditorPage.tsx`)는 `prompt·model_answer·rubric·points`만 남겨, 불러올 때와 저장 스냅샷에서 `bank_item_id`가 사라진다. `bank_item_id`를 함께 남기도록 고친다. 문항 다시 만들기(`regenerateAt`)는 내용이 새로 바뀌므로 `bank_item_id`를 비운다.
@@ -216,6 +217,8 @@
   - 카드 5개면 두 버튼 모두 비활성
   - 참고할 신입을 고르고 채우면 `newHireId: 'h1'`
   - 은행 배지 없는 카드(직접 입력) 1개가 있는 상태에서 채우면 `excludePrompts`에 그 문장이 들어간다
+  - 은행에서 가져온 카드의 문제를 고친 뒤 다시 채우면 `exclude`에 그 출처 id가, `excludePrompts`에 고친 문장이 모두 들어간다
+  - 카드 2개 있는 상태에서 `bankPrompts`가 거절되면 생성 요청의 `avoid_prompts`가 카드 문장 2개다(생성은 진행)
   - 확정 → `saveExam` 후 `registerExamToBank('e1')`, 반환 2면 "확정했어요. 새 문항 2개를 문제은행에 넣었어요."; 거절되면 등록 실패 문구, "다시 시도" 누르면 다시 호출
   - 저장 시 `saveExam` 인자의 문항에 `bank_item_id`가 남아 있다
   - `bank_item_id`가 있는 문항으로 불러온 시험을 저장해도 `bank_item_id`가 남는다; 그 문항을 다시 만들면 `bank_item_id`가 `null`이 되고 배지가 사라진다
