@@ -1,7 +1,7 @@
 -- 규정 문서·조항 스키마, RLS, 버킷 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(105);
+select plan(107);
 
 -- ── 픽스처 (postgres 권한) ───────────────────────────────────────────
 -- 조직 O(팀 T·T2)와 다른 조직 O2. 사람·문서는 모두 가상.
@@ -398,6 +398,16 @@ select results_eq(
       from public.knowledge_items k where question = '경조사 휴가'$$,
   $$values ('manual'::text, 0::bigint)$$,
   'trainer: origin manual, 연결 0');
+select is(
+  (select public.resolve_unanswered_with_sources('a9000000-0000-0000-0000-0000000000f3', '경조사 휴가', '다른 답', '휴가',
+      array['a9000000-0000-0000-0000-000000000c01']::uuid[], 'ai_draft')),
+  (select id from public.knowledge_items where question = '경조사 휴가'),
+  'trainer: 이미 해결된 질문을 다시 해결하면 기존 지식 id를 돌려준다');
+select results_eq(
+  $$select origin, answer, (select count(*) from public.knowledge_sources where knowledge_id = k.id)
+      from public.knowledge_items k where question = '경조사 휴가'$$,
+  $$values ('manual'::text, '경조사 답'::text, 0::bigint)$$,
+  'trainer: 이미 해결된 질문에는 뒤늦은 요청의 origin·답·근거가 붙지 않는다');
 
 -- 교육 담당자의 지식 초안: 팀 범위
 select is(

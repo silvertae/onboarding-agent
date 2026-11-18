@@ -6,14 +6,15 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { ROW_FOCUS, ROW_HOVER, ROW_SELECTED } from '@/components/tableRow'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
+import { AddTaskButton } from '@/features/templates/AddTaskDialog'
 import { OWNER_LABEL } from '@/lib/labels'
 import { useTaskActions, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
 import { formatDateTime, formatMonthDay, isOverdue } from './format'
 import { useHires, type Hire } from './hires'
-import { reviewActions } from './reviewActions'
+import { isOneOff, reviewActions } from './reviewActions'
 import { TaskReviewPanel } from './TaskReviewPanel'
-import { EmptyState, ErrorText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
+import { EmptyState, ErrorText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs, TaskTitle } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 type Tab = 'submitted' | 'mine' | 'all'
@@ -88,6 +89,8 @@ export function OpsInboxPage() {
     .sort(byTab(tab, hireName))
 
   const selected = deptTasks.find((t) => t.id === selectedId) ?? null
+  // "이 신입에게 과제 추가"는 입사자 필터로 한 명을 고른 상태에서만 보인다
+  const filteredHire = hireFilter ? hireById.get(hireFilter) : undefined
 
   if (!department) return null
   const deptLabel = OWNER_LABEL[department]
@@ -117,18 +120,22 @@ export function OpsInboxPage() {
                   { key: 'all', label: '전체' },
                 ]}
               />
-              <div className="flex items-center gap-2">
-                <label htmlFor="ops-hire-filter" className="text-sm text-[var(--text-secondary)]">
-                  입사자
-                </label>
-                <NativeSelect id="ops-hire-filter" className="w-40" value={hireFilter} onChange={(e) => setHireFilter(e.target.value)}>
-                  <option value="">전체</option>
-                  {hireOptions.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name}
-                    </option>
-                  ))}
-                </NativeSelect>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="ops-hire-filter" className="text-sm text-[var(--text-secondary)]">
+                    입사자
+                  </label>
+                  <NativeSelect id="ops-hire-filter" className="w-40" value={hireFilter} onChange={(e) => setHireFilter(e.target.value)}>
+                    <option value="">전체</option>
+                    {hireOptions.map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+                {/* 입사자를 바꾸면 결과 문구("추가했어요")가 다른 입사자에게 남지 않게 새로 그린다 */}
+                {filteredHire && <AddTaskButton key={filteredHire.id} hire={filteredHire} allowAssessment={false} />}
               </div>
             </div>
 
@@ -205,7 +212,9 @@ export function OpsInboxPage() {
                             <b className="block">{hire?.full_name ?? '이름 없음'}</b>
                             <span className="text-xs text-muted-foreground">{hire?.team?.name ?? ''}</span>
                           </td>
-                          <td className="px-4 py-3">{task.template.title}</td>
+                          <td className="px-4 py-3">
+                            <TaskTitle title={task.template.title} oneOff={isOneOff(task)} />
+                          </td>
                           <td className="px-4 py-3">
                             <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
                           </td>

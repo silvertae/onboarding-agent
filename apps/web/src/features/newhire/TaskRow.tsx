@@ -1,4 +1,4 @@
-import { AlertCircle, ChevronRight, Lock } from 'lucide-react'
+import { AlertCircle, ChevronRight, Lock, Paperclip } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { OwnerBadge } from '@/components/OwnerBadge'
@@ -16,6 +16,8 @@ type Props = {
   today: string
   // "지금 할 일" 묶음에서는 보완 요청을 강조하고 사유를 보여 준다.
   highlight?: boolean
+  // 이 과제 템플릿에 붙은 서식 수. 0이거나 없으면 표시하지 않는다.
+  formCount?: number
 }
 
 // 신입이 할 차례인 과제만 기한 지남을 알린다(확인 대기·담당자 처리·잠김은 신입이 할 수 있는 게 없다)
@@ -61,7 +63,7 @@ function Meta({ task, all, highlight, today }: Pick<Props, 'task' | 'all' | 'hig
   )
 }
 
-export function TaskRow({ task, all, teamName, today, highlight }: Props) {
+export function TaskRow({ task, all, teamName, today, highlight, formCount }: Props) {
   const rework = highlight && task.status === 'rework'
   return (
     <Link
@@ -84,6 +86,12 @@ export function TaskRow({ task, all, teamName, today, highlight }: Props) {
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <OwnerBadge department={task.template.department} teamName={teamName} />
           <Meta task={task} all={all} highlight={highlight} today={today} />
+          {formCount ? (
+            <span className="inline-flex items-center gap-1">
+              <Paperclip className="size-3.5" aria-hidden />
+              서식 {formCount}
+            </span>
+          ) : null}
         </span>
       </div>
       <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
