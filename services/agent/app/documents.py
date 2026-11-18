@@ -8,6 +8,8 @@ from typing import Literal
 
 import pypdf
 from docx import Document
+from docx.oxml.ns import qn
+from docx.table import _Cell
 from docx.text.paragraph import Paragraph
 
 UNREADABLE = "글자를 읽을 수 없는 파일이에요"
@@ -16,6 +18,7 @@ TOO_LARGE = "문서가 너무 커요. 나눠서 올려 주세요."
 MAX_DOCX_UNCOMPRESSED = 30 * 1024 * 1024  # docx(zip) 압축을 풀었을 때 합계 바이트
 MAX_PDF_PAGES = 300
 MAX_TEXT_CHARS = 1_000_000
+MAX_DOCX_CELLS = 20_000  # 표 칸 수(읽은 w:tc 개수) 상한
 
 ARTICLE_MAX = 2000  # 조항 하나(조각)의 최대 글자 수
 CHUNK_TARGET = 800  # 조항 표시가 없을 때 단락 묶음의 목표 글자 수
@@ -50,20 +53,41 @@ class Clause:
 
 
 def _docx_text(doc) -> str:
-    """본문을 문서 순서대로 읽는다. 표의 행은 셀 글자를 " | "로 이은 한 줄이다."""
+    """본문을 문서 순서대로 읽는다. 표의 행은 셀 글자를 " | "로 이은 한 줄이다.
+
+    셀은 실제 w:tc 요소를 한 번씩만 읽는다(gridSpan은 무시, 세로 병합의 이어지는 칸은 건너뜀).
+    글자 수와 셀 수는 읽는 도중에 세어 상한을 넘으면 바로 멈춘다.
+    """
     lines: list[str] = []
+    total = 0
+    cells_seen = 0
+
+    def add(line: str) -> None:
+        nonlocal total
+        total += len(line) + 1
+        if total > MAX_TEXT_CHARS:
+            raise DocumentTooLarge(TOO_LARGE)
+        lines.append(line)
+
     for block in doc.iter_inner_content():
         if isinstance(block, Paragraph):
-            lines.append(block.text)
+            add(block.text)
             continue
         for row in block.rows:
             cells: list[str] = []
-            for cell in row.cells:
-                t = cell.text.strip()
-                if t and (not cells or cells[-1] != t):  # 가로로 합친 셀은 같은 글자가 반복된다
+            for tc in row._tr.tc_lst:
+                cells_seen += 1
+                if cells_seen > MAX_DOCX_CELLS:
+                    raise DocumentTooLarge(TOO_LARGE)
+                tcPr = tc.tcPr
+                v_merge = tcPr.find(qn("w:vMerge")) if tcPr is not None else None
+                if v_merge is not None and v_merge.get(qn("w:val")) != "restart":
+                    continue
+                t = _Cell(tc, block).text.strip()
+                if t and (not cells or cells[-1] != t):
                     cells.append(t)
             if cells:
-                lines.append(" | ".join(cells))
+                add(" | ".join(cells))
     return "\n".join(lines)
 
 

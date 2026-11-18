@@ -257,3 +257,67 @@ def test_real_article_forms_still_split():
 def test_full_width_parentheses_heading():
     c = split_clauses("제2조（경조금） 본문")[0]
     assert (c.label, c.heading, c.body) == ("제2조", "경조금", "본문")
+
+
+def _table_docx(build) -> bytes:
+    doc = Document()
+    build(doc)
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def test_huge_grid_span_is_read_once_and_fast():
+    from docx.oxml import parse_xml
+
+    def build(doc):
+        t = doc.add_table(rows=1, cols=1)
+        t.cell(0, 0).text = "가상 항목"
+        tcPr = t.cell(0, 0)._tc.get_or_add_tcPr()
+        tcPr.append(parse_xml(
+            '<w:gridSpan xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" w:val="10000"/>'
+        ))
+
+    data = _table_docx(build)
+    start = time.perf_counter()
+    text = extract_text(data, "docx")
+    assert time.perf_counter() - start < 3.0
+    assert text.strip() == "가상 항목"
+
+
+def test_vertically_merged_text_appears_once():
+    def build(doc):
+        t = doc.add_table(rows=3, cols=2)
+        t.cell(0, 0).text = "구분"
+        t.cell(0, 1).text = "a"
+        t.cell(1, 1).text = "b"
+        t.cell(2, 1).text = "c"
+        t.cell(0, 0).merge(t.cell(2, 0))
+
+    text = extract_text(_table_docx(build), "docx")
+    assert text.count("구분") == 1
+
+
+def test_table_text_cap_applies_while_accumulating(monkeypatch):
+    monkeypatch.setattr(documents, "MAX_TEXT_CHARS", 50)
+
+    def build(doc):
+        t = doc.add_table(rows=20, cols=1)
+        for r in t.rows:
+            r.cells[0].text = "가" * 10
+
+    with pytest.raises(DocumentTooLarge):
+        extract_text(_table_docx(build), "docx")
+
+
+def test_table_cell_count_cap(monkeypatch):
+    monkeypatch.setattr(documents, "MAX_DOCX_CELLS", 5)
+
+    def build(doc):
+        t = doc.add_table(rows=4, cols=2)
+        for r in t.rows:
+            for c in r.cells:
+                c.text = "x"
+
+    with pytest.raises(DocumentTooLarge):
+        extract_text(_table_docx(build), "docx")
