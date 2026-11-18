@@ -220,6 +220,9 @@
     /* 시안 ui.css body: 본문 자간 -0.2px, macOS 글자 두께 보정 */
     letter-spacing: -0.2px;
     -webkit-font-smoothing: antialiased;
+    /* 한글은 낱말 사이에서만 줄을 바꾼다("보완 요/청" 방지). 메일·주소처럼 긴 낱말은 넘칠 때만 끊는다 */
+    word-break: keep-all;
+    overflow-wrap: break-word;
     -moz-osx-font-smoothing: grayscale;
     }
   h1, h2, h3 {
