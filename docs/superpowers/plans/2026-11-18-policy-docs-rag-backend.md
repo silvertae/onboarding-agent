@@ -212,7 +212,7 @@
 - Create: `services/agent/tests/test_document_index.py`
 
 **Interfaces:**
-- Consumes: `extract_text`, `split_clauses`, `UnreadableDocument`(Task 4), `embed`(Task 3), RPC `can_manage_document`·`replace_document_clauses`(Task 2)
+- Consumes: `extract_text`, `split_clauses`, `UnreadableDocument`·`DocumentTooLarge`, `DocumentRejected`(둘의 부모, Task 4), `embed`(Task 3), RPC `can_manage_document`·`replace_document_clauses`(Task 2)
 - Produces
   - `POST /documents/{document_id}/index` → `200 {"status":"ready"|"failed","clause_count":int,"error":str|null}`
   - 역할은 `require_role("team_trainer","ops_staff")`, 한도는 `document`
@@ -223,13 +223,14 @@
   - 준비: 픽스처가 담당자 토큰으로 storage에 가상 docx를 올리고 문서 행을 만든다. 정리는 service 픽스처로 한다.
   - `test_index_docx_creates_clauses_and_ready`: 200, `clause_count`가 조항 수와 같다. DB의 status는 `ready`다.
   - `test_reindex_replaces_clauses`: 두 번 호출해도 조항 수가 같다.
-  - `test_unreadable_file_marks_failed`: 빈 pdf → 200, status `failed`, error `"글자를 읽을 수 없는 파일이에요"`
+  - `test_unreadable_file_marks_failed`: 빈 pdf → 200, failed, error "글자를 읽을 수 없는 파일이에요"
+  - `test_too_large_file_marks_failed`: extract_text를 DocumentTooLarge로 바꾸면 → 200, failed, error "문서가 너무 커요. 나눠서 올려 주세요."
   - `test_other_team_trainer_gets_404`: Review Focus 4. 조항 수가 바뀌지 않는다.
   - `test_trainer_indexing_company_doc_gets_404`: 교육 담당자가 회사 공통 ready 문서를 색인하면 404이고, storage 다운로드를 시도하지 않으며 조항 수가 바뀌지 않는다.
   - `test_new_hire_forbidden`: 403
   - `test_embedding_failure_returns_502_and_keeps_processing`
 - [ ] **Step 2: 실패 확인.** `npm run test:agent -- tests/test_document_index.py`
-- [ ] **Step 3: 구현.** rpc `can_manage_document` → user_client로 문서 행 select → storage `download(file_path)` → `extract_text` → `split_clauses` → `embed([label+" "+heading+"\n"+body ...])` → rpc `replace_document_clauses` 순서다. 동기 supabase 호출은 `run_in_threadpool`로 감싼다.
+- [ ] **Step 3: 구현.** rpc `can_manage_document` → user_client로 문서 행 select → storage `download(file_path)` → `extract_text` → `split_clauses` → `embed([label+" "+heading+"\n"+body ...])` → rpc `replace_document_clauses` 순서다. 동기 supabase 호출은 `run_in_threadpool`로 감싼다. `except DocumentRejected as e`로 받아 `p_error=str(e)`. `extract_text`·`split_clauses`는 CPU를 쓰는 동기 함수라 `run_in_threadpool`로 실행한다(같은 인스턴스의 채팅 스트림이 멈추지 않게).
 - [ ] **Step 4: 통과 확인.** `tests/test_service_client_usage.py`도 통과해야 한다.
 - [ ] **Step 5: 커밋.** `feat(agent): index uploaded policy documents into clauses`
 
