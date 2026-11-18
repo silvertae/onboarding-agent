@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { vi } from 'vitest'
+import { afterEach, beforeEach, vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { makeTask, PROFILE, TEAM_ID } from './testFixtures'
 
@@ -53,12 +53,28 @@ const ga08 = makeTask({ code: 'GA-08', title: '웰컴키트 수령', stage: 'day
 
 const all = [hr02, hr03, ga07, ai01, ai02, ac04, ga08]
 
+// 오늘을 2026-11-18(수)로 고정한다. 픽스처 기한은 모두 11-20이라 처음에는 "입사일" 단계가 진행 중이다.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 10, 18, 9, 0))
+})
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+// 접힌 단계를 모두 편다(단계 머리는 h3 안의 버튼)
+async function expandAllStages() {
+  for (const button of screen.getAllByRole('button', { expanded: false })) {
+    if (button.closest('h3')) await userEvent.click(button)
+  }
+}
+
 describe('신입 홈 타임라인', () => {
   it('세 단계 제목 "입사일", "첫 주", "첫 달"이 보인다', () => {
     renderHome(all)
-    expect(screen.getByRole('heading', { name: '입사일' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '첫 주' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '첫 달' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^입사일/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^첫 주/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^첫 달/ })).toBeInTheDocument()
   })
 
   it('"지금 할 일"에 todo·rework 과제만 있고 rework가 먼저', () => {
@@ -70,8 +86,9 @@ describe('신입 홈 타임라인', () => {
     expect(titles).toEqual(['명함 신청', '사무실 돌며 인사하기'])
   })
 
-  it('blocked 과제 행에 "근태·결재 시스템 가입 완료 후 열림" 문구', () => {
+  it('blocked 과제 행에 "근태·결재 시스템 가입 완료 후 열림" 문구', async () => {
     renderHome(all)
+    await expandAllStages()
     const row = screen.getByRole('link', { name: /인사정보 업데이트/ })
     expect(within(row).getByText('근태·결재 시스템 가입 완료 후 열림')).toBeInTheDocument()
     expect(within(row).getByText('선행 과제 대기')).toBeInTheDocument()
@@ -125,5 +142,107 @@ describe('신입 홈 타임라인', () => {
   it('모두 완료 → 축하 문구', () => {
     renderHome([ai02, ga08, ac04])
     expect(screen.getByText(/온보딩 과제를 모두 마쳤어요/)).toBeInTheDocument()
+  })
+})
+
+describe('신입 홈 — 지금 할 일 초점', () => {
+  // 입사 2일째(11-18) 시연 상황: 입사일 기한 11-17, 첫 주 11-22, 첫 달 12-17
+  const day1 = (code: string, title: string, sort: number, status: TaskView['status'] = 'todo') =>
+    makeTask({ code, title, stage: 'day1', sort_order: sort }, { status, due_date: '2026-11-17' })
+  const week1 = (code: string, title: string, sort: number, instance: Partial<TaskView> = {}) =>
+    makeTask({ code, title, stage: 'week1', sort_order: sort }, { status: 'todo', due_date: '2026-11-22', ...instance })
+  const demo = [
+    day1('D1', '근태·결재 시스템 가입', 10),
+    day1('D2', '복리후생 규정 열람', 20),
+    day1('D3', '사무실 돌며 인사하기', 30),
+    day1('D4', '웰컴키트 수령', 40, 'done'),
+    week1('W1', '피부양자 등록', 110),
+    week1('W2', '소득세 감면 신청', 120),
+    week1('W3', '법인카드 신청서 작성', 130, { due_date: '2026-11-19' }),
+    week1('W4', '명함 신청', 140, { status: 'rework', rework_reason: '여권 표기와 맞춰 주세요' }),
+    week1('W5', '기술스택·경력 조사', 150, { status: 'submitted', due_date: '2026-11-17' }),
+    makeTask(
+      { code: 'W6', title: '복지포인트 등록', stage: 'week1', completion_mode: 'staff_only', sort_order: 160 },
+      { status: 'todo', due_date: '2026-11-17' },
+    ),
+    makeTask({ code: 'M1', title: '카드 분실 대응 안내', stage: 'month1', sort_order: 210 }, { status: 'todo', due_date: '2026-12-17' }),
+  ]
+
+  function nowTitles() {
+    const now = screen.getByRole('region', { name: '지금 할 일' })
+    return within(now)
+      .getAllByRole('link')
+      .map((a) => a.querySelector('[data-task-title]')?.textContent)
+  }
+
+  it('보완 요청 → 기한 이른 순으로 5건만 보이고, "나머지 N건 보기"로 모두 펼친다', async () => {
+    renderHome(demo)
+    expect(nowTitles()).toEqual(['명함 신청', '근태·결재 시스템 가입', '복리후생 규정 열람', '사무실 돌며 인사하기', '법인카드 신청서 작성'])
+
+    const more = screen.getByRole('button', { name: '나머지 3건 보기' })
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(more)
+
+    expect(nowTitles()).toEqual([
+      '명함 신청',
+      '근태·결재 시스템 가입',
+      '복리후생 규정 열람',
+      '사무실 돌며 인사하기',
+      '법인카드 신청서 작성',
+      '피부양자 등록',
+      '소득세 감면 신청',
+      '카드 분실 대응 안내',
+    ])
+    expect(screen.getByRole('button', { name: '접기' })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('5건 이하면 펼치기 버튼이 없다', () => {
+    renderHome(all)
+    expect(screen.queryByRole('button', { name: /나머지 \d+건 보기/ })).not.toBeInTheDocument()
+  })
+
+  it('신입이 할 차례인데 기한이 지난 과제에만 "지남"을 붙인다', () => {
+    renderHome(demo)
+    const now = screen.getByRole('region', { name: '지금 할 일' })
+    expect(within(within(now).getByRole('link', { name: /근태·결재 시스템 가입/ })).getByText('지남')).toBeInTheDocument()
+    expect(within(within(now).getByRole('link', { name: /법인카드 신청서 작성/ })).queryByText('지남')).not.toBeInTheDocument()
+  })
+
+  it('확인 대기·담당자 처리 과제는 기한이 지나도 "지남"을 붙이지 않는다', async () => {
+    renderHome(demo)
+    const list = screen.getByRole('region', { name: '전체 과제' })
+    expect(within(within(list).getByRole('link', { name: /기술스택·경력 조사/ })).queryByText('지남')).not.toBeInTheDocument()
+    expect(within(within(list).getByRole('link', { name: /복지포인트 등록/ })).queryByText('지남')).not.toBeInTheDocument()
+  })
+
+  it('전체 과제는 날짜상 진행 중인 단계만 펼치고, 단계 머리를 눌러 다른 단계를 편다', async () => {
+    renderHome(demo)
+    const list = screen.getByRole('region', { name: '전체 과제' })
+    const dayHeader = within(list).getByRole('button', { name: /^입사일/ })
+    const weekHeader = within(list).getByRole('button', { name: /^첫 주/ })
+    expect(dayHeader).toHaveAttribute('aria-expanded', 'false')
+    expect(weekHeader).toHaveAttribute('aria-expanded', 'true')
+    expect(within(list).getByRole('button', { name: /^첫 달/ })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(list).queryByRole('link', { name: /웰컴키트 수령/ })).not.toBeInTheDocument()
+
+    await userEvent.click(dayHeader)
+    expect(dayHeader).toHaveAttribute('aria-expanded', 'true')
+    expect(within(list).getByRole('link', { name: /웰컴키트 수령/ })).toBeInTheDocument()
+  })
+
+  it('단계 머리에 날짜·완료 수와 남은 일 요약을 보여 준다', () => {
+    renderHome(demo)
+    const list = screen.getByRole('region', { name: '전체 과제' })
+    const dayHeader = within(list).getByRole('button', { name: /^입사일/ })
+    expect(dayHeader).toHaveTextContent('11월 17일 · 4개 중 1개 완료')
+    expect(dayHeader).toHaveTextContent('할 일 3')
+    const weekHeader = within(list).getByRole('button', { name: /^첫 주/ })
+    expect(weekHeader).toHaveTextContent('~ 11월 22일 · 6개 중 0개 완료')
+    expect(weekHeader).toHaveTextContent('할 일 3 · 보완 요청 1 · 확인 대기 1')
+  })
+
+  it('인사말은 진행 중인 단계를 말한다', () => {
+    renderHome(demo)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('가상하늘 님, 첫 주를 보내고 있어요')
   })
 })

@@ -32,3 +32,22 @@ export function daysSinceHire(hireDate: string, now: Date): number {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   return Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1
 }
+
+const MONTH_DAY = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' })
+
+// 브라우저 날짜 기준 'YYYY-MM-DD'. due_date와 문자열로 비교할 수 있다.
+export function toDateOnly(now: Date): string {
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${m}-${d}`
+}
+
+// "11월 17일"
+export function formatMonthDay(value: string): string {
+  return MONTH_DAY.format(parseDateOnly(value))
+}
+
+// 기한이 오늘보다 앞이면 지난 것이다. 오늘이 기한이면 아직 지나지 않았다.
+export function isPastDue(dueDate: string | null, today: string): boolean {
+  return dueDate !== null && dueDate < today
+}

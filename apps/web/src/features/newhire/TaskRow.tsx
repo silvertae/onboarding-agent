@@ -1,21 +1,29 @@
 import { AlertCircle, ChevronRight, Lock } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { OwnerBadge } from '@/components/OwnerBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import type { TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
-import { formatDateTime, formatDay } from './format'
+import { formatDateTime, formatDay, isPastDue } from './format'
 import { lockedHint } from './locked'
 
 type Props = {
   task: TaskView
   all: TaskView[]
   teamName: string | null
+  // 'YYYY-MM-DD'. 기한 지남 판단용
+  today: string
   // "지금 할 일" 묶음에서는 보완 요청을 강조하고 사유를 보여 준다.
   highlight?: boolean
 }
 
-function Meta({ task, all, highlight }: Pick<Props, 'task' | 'all' | 'highlight'>) {
+// 신입이 할 차례인 과제만 기한 지남을 알린다(확인 대기·담당자 처리·잠김은 신입이 할 수 있는 게 없다)
+function isHiresTurn(task: TaskView): boolean {
+  return (task.status === 'todo' || task.status === 'rework') && task.template.completion_mode !== 'staff_only'
+}
+
+function Meta({ task, all, highlight, today }: Pick<Props, 'task' | 'all' | 'highlight' | 'today'>) {
   const locked = lockedHint(task, all)
   if (locked) {
     return (
@@ -27,17 +35,25 @@ function Meta({ task, all, highlight }: Pick<Props, 'task' | 'all' | 'highlight'
   }
   if (task.status === 'na' && task.na_reason) return <span>사유: {task.na_reason}</span>
 
-  const parts: string[] = []
+  let when: ReactNode = null
   if (task.template.kind === 'assessment' && task.scheduled_at) {
-    parts.push([formatDateTime(task.scheduled_at), task.location].filter(Boolean).join(' · '))
+    when = [formatDateTime(task.scheduled_at), task.location].filter(Boolean).join(' · ')
   } else if (task.due_date && task.status !== 'done') {
-    parts.push(`기한 ${formatDay(task.due_date)}`)
+    when = (
+      <>
+        기한 {formatDay(task.due_date)}
+        {isHiresTurn(task) && isPastDue(task.due_date, today) && (
+          <>
+            {' · '}
+            <b className="font-semibold text-st-rework-fg">지남</b>
+          </>
+        )}
+      </>
+    )
   }
   return (
     <>
-      {parts.map((p) => (
-        <span key={p}>{p}</span>
-      ))}
+      {when && <span>{when}</span>}
       {highlight && task.status === 'rework' && task.rework_reason && (
         <span className="text-st-rework-fg">사유: {task.rework_reason}</span>
       )}
@@ -45,7 +61,7 @@ function Meta({ task, all, highlight }: Pick<Props, 'task' | 'all' | 'highlight'
   )
 }
 
-export function TaskRow({ task, all, teamName, highlight }: Props) {
+export function TaskRow({ task, all, teamName, today, highlight }: Props) {
   const rework = highlight && task.status === 'rework'
   return (
     <Link
@@ -67,7 +83,7 @@ export function TaskRow({ task, all, teamName, highlight }: Props) {
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <OwnerBadge department={task.template.department} teamName={teamName} />
-          <Meta task={task} all={all} highlight={highlight} />
+          <Meta task={task} all={all} highlight={highlight} today={today} />
         </span>
       </div>
       <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
