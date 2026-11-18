@@ -3,8 +3,10 @@ import { Collapsible } from 'radix-ui'
 import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { FilterChips } from '@/components/FilterChips'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus } from '@/components/LoadingStatus'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { STAGE_LABEL } from '@/lib/labels'
 import { groupByStage, progress, useMyTasks, type TaskStage, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
@@ -63,9 +65,65 @@ function CenterMessage({ children }: { children: ReactNode }) {
   return <main className="mx-auto max-w-[960px] px-4 py-10 text-center text-muted-foreground sm:px-8">{children}</main>
 }
 
+const PAGE = 'mx-auto flex w-full max-w-[960px] flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-8 sm:py-8'
+
+// 로딩: 인사·진행률 카드와 "지금 할 일" 5행 자리(시안 S0 "상태")
+function HomeSkeleton() {
+  return (
+    <main className={PAGE}>
+      <LoadingStatus className="flex flex-col gap-5 sm:gap-6">
+        <Card className="flex flex-wrap items-center justify-between gap-6 p-5 sm:p-7">
+          <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-7 w-full max-w-sm sm:h-8" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <div className="flex min-w-[240px] flex-[0_1_320px] flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-6 w-12" />
+            </div>
+            <Skeleton className="h-2 rounded-full" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </Card>
+        <Card>
+          <div className="border-b border-border px-4 py-4 sm:px-6">
+            <Skeleton className="h-6 w-28" />
+          </div>
+          <div>
+            {Array.from({ length: NOW_LIMIT }, (_, i) => (
+              <TaskRowSkeleton key={i} index={i} />
+            ))}
+          </div>
+        </Card>
+      </LoadingStatus>
+    </main>
+  )
+}
+
+const ROW_WIDTHS = ['w-3/5', 'w-2/5', 'w-1/2', 'w-2/3', 'w-1/3']
+
+// TaskRow와 같은 여백·높이: 제목, (담당 배지 + 기한), 오른쪽 상태 배지
+function TaskRowSkeleton({ index }: { index: number }) {
+  return (
+    <div className="flex items-center gap-3 border-t border-border px-4 py-3.5 first:border-t-0 sm:px-6">
+      <span className="hidden w-5 shrink-0 sm:block" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <Skeleton className={cn('h-[18px]', ROW_WIDTHS[index % ROW_WIDTHS.length])} />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-12" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+      </div>
+      <Skeleton className="h-[22px] w-16 shrink-0 rounded-full" />
+    </div>
+  )
+}
+
 export function HomePage() {
   const { profile } = useAuth()
-  const { data: tasks, isPending, isError } = useMyTasks()
+  const { data: tasks, isPending, isError, isFetching, refetch } = useMyTasks()
   const teamName = useTeamName(profile?.team_id)
   const [filter, setFilter] = useState<OwnerFilter>('all')
   const [today] = useState(() => new Date())
@@ -78,13 +136,13 @@ export function HomePage() {
   const stages = useMemo(() => groupByStage((tasks ?? []).filter((t) => matchesOwner(t, filter))), [tasks, filter])
   const activeStage = useMemo(() => currentStage(groupByStage(tasks ?? []), todayKey), [tasks, todayKey])
 
-  if (isPending) return <CenterMessage><p role="status">불러오는 중…</p></CenterMessage>
+  if (isPending) return <HomeSkeleton />
   if (isError || !tasks) {
     return (
-      <main className="mx-auto max-w-[960px] px-4 py-10 sm:px-8">
-        <Alert variant="destructive">
-          <AlertDescription>과제를 불러오지 못했어요. 잠시 후 새로고침해 주세요.</AlertDescription>
-        </Alert>
+      <main className={PAGE}>
+        <LoadError size="lg" retrying={isFetching} onRetry={() => void refetch()}>
+          과제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+        </LoadError>
       </main>
     )
   }
@@ -113,7 +171,7 @@ export function HomePage() {
   ]
 
   return (
-    <main className="mx-auto flex w-full max-w-[960px] flex-col gap-5 px-4 py-6 sm:gap-6 sm:px-8 sm:py-8">
+    <main className={PAGE}>
       <Card className="flex flex-wrap items-center justify-between gap-6 p-5 sm:p-7">
         <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-xs text-muted-foreground">
