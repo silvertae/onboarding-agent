@@ -53,11 +53,15 @@ def test_welfare_clauses(welfare_text):
     c9 = clauses["제9조"]
     assert c9.heading == "조위금"
     assert "50만 원" in c9.body
+    assert "배우자 또는 부모" in c9.body
+    assert "특별휴가 5일" in c9.body
     c12 = clauses["제12조"]
     assert c12.heading == "복지포인트"
     assert "100만 원" in c12.body
+    assert "남은 달 수에 비례" in c12.body
     c14 = clauses["제14조"]
     assert "1만 2천 원" in c14.body
+    assert "오후 8시" in c14.body
 
 
 def test_work_rules_clauses(work_text):
@@ -81,7 +85,7 @@ def test_no_real_names_and_amounts_are_virtual(welfare_text, work_text):
     for text in (welfare_text, work_text):
         for line in text.splitlines():
             assert "님" not in line, line
-            if re.search(r"\d\s*원", line):
+            if re.search(r"[\d천만백]\s*원", line):
                 assert "가상" in line, line
 
 
