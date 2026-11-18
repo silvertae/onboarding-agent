@@ -105,6 +105,9 @@
 - **`StatusBadge`:** `Badge`의 variant 6종을 쓴다. 상태 문구는 `lib/labels.ts`에서만 가져온다.
 - **`OwnerBadge`:** 팀이면 own-team 토큰, 부서면 테두리형이다.
 - **출처 배지:** 문항이 어디서 왔는지는 `Badge variant="secondary"`(회색 pill)로 둔다. S7 문항 카드의 "문제은행"은 `Library` 아이콘을 앞에 붙여 바로 옆 점수 칩과 구분하고, S13 출처(시험·직접 추가·이관·기본)는 글자만 쓴다. 시안 클래스는 `.badge`다.
+- **채팅 출처 줄(S4):** 답변 아래에 줄 단위로 둔다. 순서는 "규정 원문"(담당자가 올린 문서의 조항) → "근거"(검토된 지식) → "관련 과제"다. 칩 모양은 셋 다 같다(`text-xs`, `rounded-md`, `bg-background`, 12px 아이콘). 규정 원문은 `FileText` 아이콘에 본문색 글자이고 누르면 조항 창(데스크톱 `Dialog`, 모바일 아래 시트)을 연다(`aria-haspopup="dialog"`, 누르는 영역을 위아래로 넓힌다). 지식은 `BookOpen`, 과제는 `ListChecks` + 링크색이다. 조항 본문은 텍스트로만 그린다. 시안 `S4-chat-sources`.
+- **AI 작성 배지(S10):** 에이전트가 만든 지식은 질문 아래 `Badge variant="secondary"`에 `Sparkles` 아이콘을 붙인 "AI 작성"을 둔다(출처 배지와 같은 회색 pill, 글자 폭만큼). AI 동작 버튼("지식 초안 만들기", "규정에서 답 초안 찾기")도 같은 `Sparkles` 아이콘을 쓴다. AI가 만든 내용을 폼에 채우면 `Alert variant="warning"`(`role="note"`)으로 검토를 안내한다.
+- **문서 상태 배지(S14):** 새 색을 만들지 않고 과제 상태 배지 variant를 빌린다. 처리 중 = submitted, 사용 중 = done, 처리 실패 = rework.
 - **`Alert`:** 의미 4종 variant를 쓰고 직접 색을 칠한 상자를 만들지 않는다. `role`은 상황에 맞게 지정한다.
   - 오류: `alert`
   - 한도·결과 알림: `status`
