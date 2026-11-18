@@ -39,7 +39,7 @@ POST /admin/users     {email, password(8자 이상), full_name, job_title,
                        department?: ops_staff면 필수, team_id?: new_hire·team_trainer면 필수,
                        hire_date?: new_hire면 필수(YYYY-MM-DD), needs_hq_access?: 기본 true}
   → 201 {id: uuid}    # new_hire면 온보딩 과제까지 생성된 상태
-오류: 401 토큰 없음/만료, 403 역할 불일치, 404 문서 없음·범위 밖, 409 이미 있는 메일, 422 입력 오류,
+오류: 401 토큰 없음/만료, 403 역할 불일치, 404 문서 없음·관리 범위 밖, 409 이미 있는 메일, 422 입력 오류,
       429 {"detail":"오늘 사용 한도를 넘었어요"}, 502 모델 출력 오류 {"detail":"..."}
 ```
 
@@ -95,6 +95,7 @@ RPC       match_document_clauses(p_embedding, p_count=6)          invoker. 조�
           replace_document_clauses(p_document_id, p_clauses jsonb, p_error=null)   definer, 함수 안에서 조직·관리 범위 검사. 조항 교체 + status
           resolve_unanswered_with_sources(p_id, p_question, p_answer, p_category, p_clause_ids uuid[], p_origin)
           save_knowledge_drafts(p_items jsonb)                    invoker. draft·ai_draft로 최대 10개
+          can_manage_document(p_document_id) → boolean            invoker. 관리 범위인지. 색인·문서 초안이 다운로드 전에 확인(읽기 범위와 다르다)
           consume_quota kind 추가: document, draft
 올리기    1) 형식·크기 확인 2) 행 insert(processing) 3) storage upload 4) POST /documents/{id}/index
 지우기    1) storage remove(정책이 문서 행으로 범위를 확인하므로 행이 남아 있을 때) 2) 테이블 delete(조항 cascade)

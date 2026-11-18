@@ -125,6 +125,9 @@
     - `p_items`는 `[{question, answer, category, clause_ids:[uuid]}]` 형식, 최대 10개
     - 호출자 역할로 범위를 정하고(`manageScope`와 같은 규칙), status draft와 origin `ai_draft`로 넣는다. 근거 연결도 함께 넣는다.
   - `consume_quota`가 받는 kind: `chat`, `exam`, `document`, `draft`
+  - `public.can_manage_document(p_document_id uuid) returns boolean`
+    - security invoker. 문서가 없거나(RLS로 안 보이면) false, 있으면 `private.can_manage_scope(org_id, scope, team_id)` 결과
+    - 에이전트의 색인(Task 5)과 문서 초안(Task 8)이 storage 다운로드나 조항 조회 전에 부른다. 읽기 범위(교육 담당자가 보는 회사 공통 ready 문서)와 관리 범위가 다르므로, 문서 select 성공만으로 판단하지 않는다.
 
 - [ ] **Step 1: 실패하는 pgTAP 추가**
   - 09에 넣을 단언
@@ -135,6 +138,7 @@
     - 신입A로 `match_document_clauses`를 부르면 팀T2 조항은 나오지 않는다. 같은 벡터의 조항이 similarity 1로 첫째에 온다.
     - trainer가 `resolve_unanswered_with_sources`를 부르면 published 지식, origin, 연결 수, 미답변 resolved가 맞다. 읽을 수 없는 조항 id는 연결되지 않는다.
     - ga가 `save_knowledge_drafts`(2개)를 부르면 company draft `ai_draft` 2행과 연결이 생긴다. 신입은 이 행을 볼 수 없다.
+  - 09에 넣을 단언(`can_manage_document`): trainer → 회사 ready 문서 false, 팀T 문서 true, 팀T2 문서 false. ga → 회사 문서 true, 팀T 문서 false. 다른 조직 문서는 모두 false. 신입 → 모두 false.
   - 03에 넣을 단언: `consume_quota('document', 1)`과 `consume_quota('draft', 1)`은 true다. `'unknown'`은 22023이다.
 
 - [ ] **Step 2: `npm run db:test`로 실패 확인**
@@ -208,11 +212,11 @@
 - Create: `services/agent/tests/test_document_index.py`
 
 **Interfaces:**
-- Consumes: `extract_text`, `split_clauses`, `UnreadableDocument`(Task 4), `embed`(Task 3), RPC `replace_document_clauses`(Task 2)
+- Consumes: `extract_text`, `split_clauses`, `UnreadableDocument`(Task 4), `embed`(Task 3), RPC `can_manage_document`·`replace_document_clauses`(Task 2)
 - Produces
   - `POST /documents/{document_id}/index` → `200 {"status":"ready"|"failed","clause_count":int,"error":str|null}`
   - 역할은 `require_role("team_trainer","ops_staff")`, 한도는 `document`
-  - 문서를 user_client로 읽지 못하면 404 `"문서를 찾을 수 없어요"`
+  - 다운로드 전에 RPC `can_manage_document(document_id)`가 false면 404 `"문서를 찾을 수 없어요"`. 문서를 읽을 수 있어도(교육 담당자가 보는 회사 공통 ready 문서) 관리 범위가 아니면 404다.
   - 임베딩이 실패하면 502 `"문서를 처리하지 못했어요. 잠시 후 다시 시도해 주세요."`. 이때 문서는 `processing` 상태로 남아 다시 누를 수 있다.
 
 - [ ] **Step 1: 실패하는 테스트**(로컬 Supabase, `embed` 가짜)
@@ -221,10 +225,11 @@
   - `test_reindex_replaces_clauses`: 두 번 호출해도 조항 수가 같다.
   - `test_unreadable_file_marks_failed`: 빈 pdf → 200, status `failed`, error `"글자를 읽을 수 없는 파일이에요"`
   - `test_other_team_trainer_gets_404`: Review Focus 4. 조항 수가 바뀌지 않는다.
+  - `test_trainer_indexing_company_doc_gets_404`: 교육 담당자가 회사 공통 ready 문서를 색인하면 404이고, storage 다운로드를 시도하지 않으며 조항 수가 바뀌지 않는다.
   - `test_new_hire_forbidden`: 403
   - `test_embedding_failure_returns_502_and_keeps_processing`
 - [ ] **Step 2: 실패 확인.** `npm run test:agent -- tests/test_document_index.py`
-- [ ] **Step 3: 구현.** user_client로 문서 행 select → storage `download(file_path)` → `extract_text` → `split_clauses` → `embed([label+" "+heading+"\n"+body ...])` → rpc `replace_document_clauses` 순서다. 동기 supabase 호출은 `run_in_threadpool`로 감싼다.
+- [ ] **Step 3: 구현.** rpc `can_manage_document` → user_client로 문서 행 select → storage `download(file_path)` → `extract_text` → `split_clauses` → `embed([label+" "+heading+"\n"+body ...])` → rpc `replace_document_clauses` 순서다. 동기 supabase 호출은 `run_in_threadpool`로 감싼다.
 - [ ] **Step 4: 통과 확인.** `tests/test_service_client_usage.py`도 통과해야 한다.
 - [ ] **Step 5: 커밋.** `feat(agent): index uploaded policy documents into clauses`
 
@@ -249,11 +254,13 @@
   - `test_chat.py::test_document_sources_event`: ScriptedLlm이 `search_documents(query="경조금")` → `cite_sources(clause_ids=[반환된 id, "가짜id"])` → 텍스트 순서로 진행한다. sources.documents에는 반환된 id 하나만 있고 label과 document_title이 맞다.
   - `test_chat.py::test_document_search_failure_does_not_break_chat`: `embed`가 `EmbeddingError`를 낸다. 도구 응답이 `unavailable: True`이고, 스트림은 token → done으로 끝나며 error 이벤트가 없다.
   - `test_chat.py::test_uncited_clauses_not_in_sources`: 검색은 했지만 cite하지 않았다. documents가 없다(sources 이벤트가 없다).
-  - `test_instruction_rules_and_no_company_name`에 넣을 단언: 지시문에 `"search_documents"`, `"문서명과 조항"`, `"지식과 조항이 다르면 조항을 따르고"`, `"문서 조항"`(규칙 6)이 들어 있다.
+  - `test_instruction_rules_and_no_company_name`에 넣을 단언: 지시문에 `"search_documents"`, `"문서명과 조항"`, `"지식과 조항이 다르면 조항을 따르고"`, `"문서 조항"`(규칙 6), `"지식, 과제, 문서 조항에만 근거해"`(규칙 1), `"지식·과제·조항 id"`(진행 순서 2)가 들어 있다. 예전 문구 `"지식과 과제에만 근거해"`와 `"실제로 쓴 지식·과제 id만"`은 없다.
 - [ ] **Step 2: 실패 확인**
 - [ ] **Step 3: 구현.** 지시문을 고친다.
   - 도구 목록에 `search_documents`를 추가한다.
   - 진행 순서 1: "search_knowledge, get_my_tasks, search_documents를 함께 호출"
+  - 진행 순서 2: "cite_sources를 한 번 호출해 실제로 쓴 지식·과제·조항 id만 표시"(`assistant.py:53`)
+  - 규칙 1: "도구가 돌려준 지식, 과제, 문서 조항에만 근거해 답한다"(`assistant.py:57`). 기존 문구가 남으면 조항으로 답하라는 규칙과 충돌한다.
   - 규칙 추가: "조항을 근거로 쓰면 '복리후생 규정 제5조에 따르면'처럼 문서명과 조항을 말한다. 지식과 조항이 다르면 조항을 따르고 다르다고 알린다."
   - 규칙 6에 "문서 조항"을 넣는다.
   - `MAX_LLM_CALLS`는 6을 유지한다(병렬 도구 호출이라 횟수는 늘지 않는다).
@@ -308,13 +315,14 @@
   - 응답: `{"drafts":[{"question","answer","category","clause_ids":[uuid]}]}`
   - 웹은 이 응답을 `save_knowledge_drafts`로 저장한다.
   - 스키마: `KnowledgeDraft(question≤300, answer≤2000, category≤50, clause_ids: list[UUID] min 1)`, `KnowledgeDrafts(drafts: list[KnowledgeDraft] max 10)`
-  - 조항은 user_client로 그 문서의 조항(관리 범위라 RLS 통과)만 읽는다. 기존 지식 질문은 `search_knowledge`로 읽어 "피할 질문"으로 넘긴다.
+  - 먼저 RPC `can_manage_document(document_id)`가 false면 404다(교육 담당자의 회사 공통 문서 포함, S14 시안에서 교육 담당자에게 회사 문서의 "지식 초안 만들기"는 없다). 그다음 user_client로 그 문서의 조항만 읽는다. 기존 지식 질문은 `search_knowledge`로 읽어 "피할 질문"으로 넘긴다.
   - 출력 중 그 문서 조항이 아닌 clause_id는 버리고, 근거가 0개가 된 초안은 뺀다.
 
 - [ ] **Step 1: 실패하는 테스트**
   - `test_drafts_from_document_filters_foreign_clause_ids`
   - `test_drafts_from_document_passes_existing_questions_to_avoid`: 가짜 call_model이 받은 message에 기존 지식 질문이 들어 있다.
   - `test_drafts_from_other_team_document_404`
+  - `test_drafts_from_company_document_by_trainer_404`
   - `test_drafts_from_document_invalid_output_502`
 - [ ] **Step 2: 실패 확인**
 - [ ] **Step 3: 구현.** 조항과 기존 질문은 사용자 메시지의 "참고 자료" 블록에 넣는다(`exam_agent` 규칙 5와 같은 방식). 지시문에는 중괄호를 쓰지 않는다.
