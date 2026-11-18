@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,17 +20,26 @@ export function ClauseDialog({
   clause,
   open,
   onOpenChange,
+  returnFocusRef,
 }: {
   clause: ClauseSource | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  // 트리거가 없어서 Radix가 포커스를 돌려줄 곳을 모른다. 연 칩을 직접 알려 준다.
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {clause && (
         <DialogContent
+          showCloseButton={false}
+          onCloseAutoFocus={(event) => {
+            if (!returnFocusRef?.current) return
+            event.preventDefault()
+            returnFocusRef.current.focus()
+          }}
           className={cn(
-            'max-h-[85dvh] overflow-y-auto',
+            'max-h-[85dvh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4',
             // 모바일: 아래 시트(꽉 찬 너비, 위쪽만 둥근 모서리)
             'top-auto bottom-0 left-0 max-w-none translate-x-0 translate-y-0 rounded-t-xl rounded-b-none',
             // sm부터: 가운데 창
@@ -47,7 +57,7 @@ export function ClauseDialog({
           <Alert variant="info" role="note">
             <AlertDescription>{CLAUSE_NOTE}</AlertDescription>
           </Alert>
-          <DialogFooter>
+          <DialogFooter className="rounded-b-none sm:rounded-b-xl">
             <DialogClose asChild>
               <Button variant="outline" size="lg">
                 닫기

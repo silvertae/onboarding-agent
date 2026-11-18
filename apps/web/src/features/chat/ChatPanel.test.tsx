@@ -151,12 +151,29 @@ describe('ChatPanel', () => {
       expect(within(dialog).getByRole('note')).toHaveTextContent(
         '담당자가 검토한 답이 아니라 규정 원문에서 찾은 내용이에요. 정확한 적용은 담당 부서에 확인해 주세요.',
       )
-      const close = within(dialog).getAllByRole('button', { name: '닫기' }).find((b) => b.textContent === '닫기')!
+      const close = within(dialog).getByRole('button', { name: '닫기' })
       expect(close).toHaveClass('h-11')
 
       await userEvent.click(close)
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it.each([
+      ['닫기 버튼', async () => userEvent.click(screen.getByRole('button', { name: '닫기' }))],
+      ['Escape', async () => userEvent.keyboard('{Escape}')],
+    ])('%s로 닫으면 포커스가 칩으로 돌아온다', async (_name, close) => {
+      agent.agentFetch.mockResolvedValueOnce(withDocuments())
+      renderPanel()
+      await ask('경조금 얼마야?')
+      const chip = await chat().findByRole('button', { name: '복리후생 규정(가상) 제8조 경조금' })
+      await userEvent.click(chip)
+      await screen.findByRole('dialog')
+
+      await close()
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(chip).toHaveFocus()
     })
 
     it('조항 본문은 글자로만 보인다', async () => {

@@ -324,6 +324,7 @@ function AssistantMessage({
 function ClauseSources({ documents }: { documents: ClauseSource[] }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [shown, setShown] = useState<ClauseSource | null>(null)
+  const opener = useRef<HTMLElement | null>(null)
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs text-muted-foreground">
       <span>규정 원문</span>
@@ -332,7 +333,8 @@ function ClauseSources({ documents }: { documents: ClauseSource[] }) {
           key={d.id}
           type="button"
           aria-haspopup="dialog"
-          onClick={() => {
+          onClick={(e) => {
+            opener.current = e.currentTarget
             setShown(d)
             setOpenId(d.id)
           }}
@@ -342,7 +344,7 @@ function ClauseSources({ documents }: { documents: ClauseSource[] }) {
           {`${d.document_title} ${clauseTitle(d)}`.trim()}
         </button>
       ))}
-      <ClauseDialog clause={shown} open={openId !== null} onOpenChange={(o) => !o && setOpenId(null)} />
+      <ClauseDialog returnFocusRef={opener} clause={shown} open={openId !== null} onOpenChange={(o) => !o && setOpenId(null)} />
     </div>
   )
 }
