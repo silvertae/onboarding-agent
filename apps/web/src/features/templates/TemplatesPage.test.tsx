@@ -360,7 +360,8 @@ describe('TemplatesPage 과제 추가', () => {
     call.resolve(created)
 
     expect(await screen.findByText('과제를 추가했어요. 이후 온보딩을 시작하는 신입부터 들어가요.')).toBeInTheDocument()
-    expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-13')
+    // 주소는 효과에서 옮기므로 문구가 그려진 직후에는 아직 바뀌기 전일 수 있다
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/tasks?template=AI-13'))
     expect(panel('사내 위키 정리')).toBeInTheDocument()
     expect(within(list()).getByRole('link', { name: /AI-13/ })).toHaveAttribute('aria-current', 'true')
     // 저장 버튼이 있던 새 과제 패널이 사라지므로 새 과제의 패널 머리로 포커스를 옮긴다
