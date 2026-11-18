@@ -12,14 +12,20 @@
 <style>
 body{margin:0}
 a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
+.state-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 24px;align-items:start}
+.state-label{font-size:13px;font-weight:600;color:var(--secondary)}
+/* 주제 자동완성: 브라우저 기본 datalist 목록을 흉내 낸 그림(실제 구현은 <datalist>) */
+.dl{position:absolute;top:66px;left:0;right:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-control);padding:4px;z-index:1}
+.dl span{padding:7px 10px;border-radius:6px;font-size:14px}
+.dl span:first-child{background:var(--selected)}
 </style>
 
-<div style="min-height: 1380px; background: var(--canvas)">
+<div style="background: var(--canvas)">
   <header class="topbar">
     <div class="topbar-in">
       <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
       <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
-      <nav class="nav" aria-label="주 메뉴"><a href="S5-team.html">팀 신입 현황</a><a class="on" href="#">시험 출제</a><a href="S10-knowledge.html">지식 관리</a></nav>
+      <nav class="nav" aria-label="주 메뉴"><a href="S5-team.html">팀 신입 현황</a><a class="on" href="#" aria-current="page">시험 출제</a><a href="S13-bank.html">문제은행</a><a href="S10-knowledge.html">지식 관리</a></nav>
       <div class="user">
         <span class="avatar">서준</span>
         <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">박서준</b><span class="caption">AI팀</span></div>
@@ -53,16 +59,20 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       <aside style="flex: 1 1 340px; max-width: 380px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
         <form class="card card-pad col" style="gap: 16px">
           <h2 style="font-size: 16px">출제 조건</h2>
-          <div class="field"><label class="label" for="topic">주제</label><input class="input" id="topic" value="비동기 처리(Promise, async/await), 클로저와 스코프"></div>
+          <div class="field"><label class="label" for="topic">주제</label><input class="input" id="topic" list="bank-topics" value="JavaScript 기초"><datalist id="bank-topics"><option value="JavaScript 기초"></option><option value="JavaScript 비동기"></option><option value="배열·문자열 다루기"></option></datalist></div>
           <div class="field"><span class="label">난이도</span><div class="tabs"><button type="button" class="on" aria-pressed="true">입문</button><button type="button">중급</button></div></div>
-          <div class="field"><label class="label" for="cnt">문항 수 <span class="hint" style="font-weight: 400">1~10</span></label><input class="input" id="cnt" type="number" value="5" min="1" max="10" style="max-width: 120px"></div>
+          <div class="field"><label class="label" for="cnt">문항 수 <span class="hint" style="font-weight: 400">1~10</span></label><input class="input" id="cnt" type="number" value="6" min="1" max="10" style="max-width: 120px"></div>
           <div class="field"><label class="label" for="style">문항 스타일</label><input class="input" id="style" value="손으로 푸는 코드 읽기 — 출력 결과 예측"></div>
           <div class="field">
             <label class="label" for="ref">참고할 신입 <span class="hint" style="font-weight: 400">선택</span></label>
             <select class="select" id="ref"><option>김하늘 — 기술스택·경력 조사 반영</option><option>선택 안 함</option></select>
             <span class="hint">"비동기 처리를 제대로 이해하고 싶어요" 응답을 반영해요.</span>
           </div>
-          <button class="btn btn-primary btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"></path></svg>초안 다시 만들기</button>
+          <!-- 문항 수 6 · 카드 5 → 부족분 1. 문항이 있으면 생성 버튼은 "부족분 AI로 만들기"(뒤에 붙임), 없으면 "초안 만들기"(상태 ⑥) -->
+          <div class="col" style="gap: 8px">
+            <button class="btn btn-outline btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행에서 채우기</button>
+            <button class="btn btn-primary btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4"></path></svg>부족분 AI로 만들기</button>
+          </div>
           <span class="caption" style="text-align: center">오늘 남은 생성 횟수 8회</span>
         </form>
 
@@ -81,7 +91,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
 
         <article class="card">
           <div class="card-hd" style="padding: 14px 20px">
-            <div class="row" style="gap: 10px"><span aria-hidden="true" style="color: var(--tertiary); cursor: grab">⋮⋮</span><b>1번</b><span class="tag">20점</span></div>
+            <div class="row" style="gap: 10px"><span aria-hidden="true" style="color: var(--tertiary); cursor: grab">⋮⋮</span><b>1번</b><span class="tag">20점</span><span class="badge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행</span></div>
             <div class="row" style="gap: 4px">
               <button class="btn btn-ghost btn-sm" type="button" style="background: transparent">수정</button>
               <button class="btn btn-ghost btn-sm" type="button" style="background: transparent">다시 만들기</button>
@@ -103,7 +113,7 @@ console.log('D');</pre>
 
         <article class="card">
           <div class="card-hd" style="padding: 14px 20px">
-            <div class="row" style="gap: 10px"><span aria-hidden="true" style="color: var(--tertiary)">⋮⋮</span><b>2번</b><span class="tag">20점</span></div>
+            <div class="row" style="gap: 10px"><span aria-hidden="true" style="color: var(--tertiary)">⋮⋮</span><b>2번</b><span class="tag">20점</span><span class="badge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행</span></div>
             <div class="row" style="gap: 4px"><button class="btn btn-ghost btn-sm" type="button" style="background: transparent">수정</button><button class="btn btn-ghost btn-sm" type="button" style="background: transparent">다시 만들기</button><button class="icon-btn" type="button" aria-label="2번 문항 삭제"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div>
           </div>
           <div class="card-bd col" style="gap: 14px">
@@ -145,7 +155,7 @@ console.log('D');</pre>
 
         <article class="card">
           <div class="card-hd" style="padding: 14px 20px">
-            <div class="row" style="gap: 10px"><span aria-hidden="true" style="color: var(--tertiary)">⋮⋮</span><b>5번</b><span class="tag">20점</span></div>
+            <div class="row" style="gap: 10px"><span aria-hidden="true" style="color: var(--tertiary)">⋮⋮</span><b>5번</b><span class="tag">20점</span><span class="badge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행</span></div>
             <div class="row" style="gap: 4px"><button class="btn btn-ghost btn-sm" type="button" style="background: transparent">수정</button><button class="btn btn-ghost btn-sm" type="button" style="background: transparent">다시 만들기</button><button class="icon-btn" type="button" aria-label="5번 문항 삭제"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button></div>
           </div>
           <div class="card-bd col" style="gap: 8px">
@@ -155,6 +165,85 @@ console.log('D');</pre>
         </article>
       </section>
     </div>
+    <!-- 상태별 화면: 왼쪽 출제 조건 카드의 버튼 자리(①~⑥)와 머리 아래 알림(⑦·⑧) -->
+    <section style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px">
+      <div class="between"><h2 style="font-size: 18px">상태별 화면</h2><span class="caption">은행 채우기·부족분 생성·확정 등록</span></div>
+      <div class="state-grid">
+        <div class="col" style="gap: 8px">
+          <span class="state-label">① 주제 칸 — 팀 문제은행의 주제를 자동완성</span>
+          <div class="card card-pad col" style="gap: 14px; padding: 20px; max-width: 340px">
+            <div class="field" style="position: relative"><span class="label">주제</span><input class="input" value="java" aria-label="주제" style="border-color: var(--primary); box-shadow: 0 0 0 2px rgba(6,71,154,.25)">
+              <div class="dl" aria-hidden="true"><span>JavaScript 기초</span><span>JavaScript 비동기</span></div>
+            </div>
+            <div class="field"><span class="label">난이도</span><div class="tabs"><button type="button" class="on" tabindex="-1">입문</button><button type="button" tabindex="-1">중급</button></div></div>
+          </div>
+          <span class="caption">브라우저 기본 목록(&lt;datalist&gt;). 은행 채우기는 대소문자·앞뒤 공백만 무시하고 같은 주제만 찾는다.</span>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">② 문제은행에서 가져오는 중</span>
+          <div class="card card-pad col" style="gap: 14px; padding: 20px; max-width: 340px">
+            <div class="field"><span class="label">주제</span><input class="input" value="JavaScript 기초" aria-label="주제"></div>
+            <div class="col" style="gap: 8px"><button class="btn btn-outline btn-block" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행에서 채우기</button><button class="btn btn-primary btn-block" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4"></path></svg>부족분 AI로 만들기</button></div>
+            <p role="status" style="font-size: 14px; color: var(--primary)">문제은행에서 가져오는 중…</p>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">③ 은행 부족 — 2개만 채움(카드 2개 뒤에 붙음)</span>
+          <div class="card card-pad col" style="gap: 14px; padding: 20px; max-width: 340px">
+            <div class="field"><span class="label">주제</span><input class="input" value="JavaScript 기초" aria-label="주제"></div>
+            <div class="col" style="gap: 8px"><button class="btn btn-outline btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행에서 채우기</button><button class="btn btn-primary btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4"></path></svg>부족분 AI로 만들기</button></div>
+            <div class="alert alert-info" role="status" style="padding: 10px 12px; font-size: 13px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg><span>문제은행에 맞는 문항이 2개뿐이에요. 나머지는 AI로 만들어 주세요.</span></div>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">④ 은행에 없음 — 편집기는 빈 채로</span>
+          <div class="card card-pad col" style="gap: 14px; padding: 20px; max-width: 340px">
+            <div class="field"><span class="label">주제</span><input class="input" value="React 기초" aria-label="주제"></div>
+            <div class="col" style="gap: 8px"><button class="btn btn-outline btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행에서 채우기</button><button class="btn btn-primary btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4"></path></svg>초안 만들기</button></div>
+            <div class="alert alert-info" role="status" style="padding: 10px 12px; font-size: 13px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg><span>문제은행에 이 주제·난이도 문항이 아직 없어요. AI로 만들어 주세요.</span></div>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">⑤ 은행 불러오기 실패 — 버튼 아래 인라인 문구</span>
+          <div class="card card-pad col" style="gap: 14px; padding: 20px; max-width: 340px">
+            <div class="field"><span class="label">주제</span><input class="input" value="JavaScript 기초" aria-label="주제"></div>
+            <div class="col" style="gap: 8px"><button class="btn btn-outline btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행에서 채우기</button><button class="btn btn-primary btn-block" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4"></path></svg>초안 만들기</button></div>
+            <p role="alert" style="font-size: 14px; color: var(--destructive)">문제은행을 불러오지 못했어요. 다시 시도해 주세요.</p>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">⑥ 문항 수만큼 찼을 때 — 두 버튼 모두 비활성</span>
+          <div class="card card-pad col" style="gap: 14px; padding: 20px; max-width: 340px">
+            <div class="field"><span class="label">주제</span><input class="input" value="JavaScript 기초" aria-label="주제"></div>
+            <div class="col" style="gap: 8px"><button class="btn btn-outline btn-block" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"></path></svg>문제은행에서 채우기</button><button class="btn btn-primary btn-block" type="button" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4"></path></svg>부족분 AI로 만들기</button></div>
+            <span class="caption" style="text-align: center">오늘 남은 생성 횟수 8회</span>
+          </div>
+        </div>
+      </div>
+      <div class="state-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+        <div class="col" style="gap: 8px">
+          <span class="state-label">⑦ 확정 + 은행 등록 — 머리 아래(초안 검토 안내 자리)</span>
+          <div class="card card-pad col" style="gap: 16px; padding: 20px 24px">
+            <div class="between">
+              <div class="row" style="gap: 8px; min-width: 0"><h2 style="font-size: var(--fs-title); line-height: 28px">JS 기본기 — 비동기·스코프</h2><span class="st st-done">확정</span></div>
+              <div class="row" style="gap: 8px"><button class="btn btn-ghost btn-sm" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"></path></svg>시험지 인쇄</button><button class="btn btn-outline btn-sm" type="button">저장</button><button class="btn btn-primary btn-sm" type="button" disabled>확정</button></div>
+            </div>
+            <div class="alert alert-ok" role="status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><path d="M20 6 9 17l-5-5"></path></svg><span>확정했어요. 새 문항 2개를 문제은행에 넣었어요.</span></div>
+          </div>
+          <span class="caption">새로 넣은 문항이 0개면 "확정했어요."만 보여요. 확정된 시험을 다시 "저장"할 때도 같은 등록을 해요.</span>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">⑧ 은행 등록 실패 — 시험은 확정된 채로, 다시 시도</span>
+          <div class="card card-pad col" style="gap: 16px; padding: 20px 24px">
+            <div class="between">
+              <div class="row" style="gap: 8px; min-width: 0"><h2 style="font-size: var(--fs-title); line-height: 28px">JS 기본기 — 비동기·스코프</h2><span class="st st-done">확정</span></div>
+              <div class="row" style="gap: 8px"><button class="btn btn-ghost btn-sm" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"></path></svg>시험지 인쇄</button><button class="btn btn-outline btn-sm" type="button">저장</button><button class="btn btn-primary btn-sm" type="button" disabled>확정</button></div>
+            </div>
+            <div class="alert alert-err" role="alert" style="align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg><span style="flex: 1">확정했지만 문제은행에 넣지 못했어요. 다시 시도해 주세요.</span><button class="btn btn-danger btn-sm" type="button">다시 시도</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 

@@ -30,6 +30,7 @@ Claude Code에 이 폴더를 컨텍스트로 주고 구현을 요청할 때 쓰�
 | S10-knowledge | `/knowledge` | 교육 담당자·경영지원 |
 | S11-admin-users | `/admin/users` | 관리자 |
 | S12-forms | `/forms` | 교육 담당자·경영지원 |
+| S13-bank (S13-bank-mobile은 좁은 화면 확인용) | `/team/bank` | 교육 담당자 |
 
 ## 디자인 토큰 (Blueward CI)
 
