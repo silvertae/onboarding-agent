@@ -1,7 +1,12 @@
 """어시스턴트 조회 도구 (로컬 Supabase + 부트스트랩 계정 필요). 모두 사용자 토큰으로 읽는다(RLS 적용)."""
 
-from app.assistant_tools import get_my_tasks, search_knowledge
+import uuid
+
+import pytest
+
+from app.assistant_tools import get_my_tasks, search_documents, search_knowledge
 from app.auth import CurrentUser, _load_user
+from app.embeddings import EMBEDDING_DIM
 
 
 def as_user(token: str) -> CurrentUser:
@@ -54,3 +59,68 @@ def test_search_knowledge_scope(newhire_token, service):
     ids = [i["id"] for i in items]
     statuses = service.table("knowledge_items").select("status").in_("id", ids).execute().data
     assert {s["status"] for s in statuses} == {"published"}
+
+
+# 다른 시드 조항보다 먼저 나오도록 픽스처 조항만 이 벡터를 쓴다(코사인 유사도 1)
+PROBE = [1.0] + [0.0] * (EMBEDDING_DIM - 1)
+
+
+@pytest.fixture
+def clause_fixture(service, newhire_token):
+    """신입 조직의 회사 공통 ready 문서와 다른 팀 ready 문서에 조항 하나씩. 끝나면 지운다(조항은 cascade)."""
+    hire = as_user(newhire_token)
+    suffix = uuid.uuid4().hex[:8]
+    other_team = service.table("teams").insert({"org_id": hire.org_id, "name": f"테스트팀 {suffix}"}).execute().data[0]
+    doc_ids: list[str] = []
+    try:
+        docs = (
+            service.table("policy_documents")
+            .insert(
+                [
+                    {
+                        "org_id": hire.org_id, "scope": "company", "team_id": None, "title": f"회사 규정 {suffix}",
+                        "file_path": f"{hire.org_id}/{suffix}-c.pdf", "file_type": "pdf", "status": "ready",
+                    },
+                    {
+                        "org_id": hire.org_id, "scope": "team", "team_id": other_team["id"],
+                        "title": f"다른 팀 규정 {suffix}", "file_path": f"{hire.org_id}/{suffix}-t.pdf",
+                        "file_type": "pdf", "status": "ready",
+                    },
+                ]
+            )
+            .execute()
+            .data
+        )
+        doc_ids = [d["id"] for d in docs]
+        clauses = (
+            service.table("document_clauses")
+            .insert(
+                [
+                    {
+                        "org_id": hire.org_id, "document_id": doc["id"], "ord": 1, "label": "제1조", "heading": "목적",
+                        "body": f"{doc['title']} 본문", "embedding": PROBE,
+                    }
+                    for doc in docs
+                ]
+            )
+            .execute()
+            .data
+        )
+        yield {"company": (docs[0], clauses[0]), "other": (docs[1], clauses[1])}
+    finally:
+        if doc_ids:
+            service.table("policy_documents").delete().in_("id", doc_ids).execute()
+        service.table("teams").delete().eq("id", other_team["id"]).execute()
+
+
+def test_search_documents_scoped_by_rls(newhire_token, clause_fixture):
+    found = search_documents(as_user(newhire_token), PROBE)
+
+    company_doc, company_clause = clause_fixture["company"]
+    _, other_clause = clause_fixture["other"]
+    assert found[0] == {
+        "id": company_clause["id"], "document_title": company_doc["title"], "label": "제1조", "heading": "목적",
+        "body": f"{company_doc['title']} 본문",
+    }
+    assert other_clause["id"] not in [c["id"] for c in found]
+    assert len(found) <= 6
