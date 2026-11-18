@@ -26,6 +26,10 @@ export function makeTemplate(overrides: Partial<TaskTemplate> = {}): TaskTemplat
     form_schema: null,
     due_offset_days: 5,
     sort_order: seq,
+    archived_at: null,
+    assigned_to: null,
+    created_by: null,
+    is_seed: true,
     ...overrides,
   }
 }

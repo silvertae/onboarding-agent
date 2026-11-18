@@ -1,7 +1,7 @@
 -- 데모 조직 데이터·초기화 테스트. 시드 조직(Blueward)에 픽스처 사용자를 더해 확인하고 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(42);
 
 -- ── 시드 데이터 ─────────────────────────────────────────────────────
 select is((select name from public.orgs where id = '00000000-0000-0000-0000-000000000001'), 'Blueward',
@@ -28,11 +28,12 @@ select is(public.seed_demo_bank('00000000-0000-0000-0000-000000000001'), 0,
 select ok(not has_function_privilege('authenticated', 'public.seed_demo_bank(uuid)', 'execute'),
   'seed_demo_bank: authenticated 실행 불가');
 
--- ── 픽스처: 시드 신입(is_seed), 관리자가 만든 신입, 관리자, 교육 담당자 ───
+-- ── 픽스처: 시드 신입(is_seed), 관리자가 만든 신입, 관리자, 교육 담당자, 경영지원(hr) ───
 insert into auth.users (id, email) values
   ('a4000000-0000-0000-0000-000000000101', 'seed-new@demo-data.test'),
   ('a4000000-0000-0000-0000-000000000102', 'made-new@demo-data.test'),
   ('a4000000-0000-0000-0000-000000000201', 'trainer@demo-data.test'),
+  ('a4000000-0000-0000-0000-000000000301', 'hr@demo-data.test'),
   ('a4000000-0000-0000-0000-000000000401', 'admin@demo-data.test');
 insert into public.profiles (id, org_id, email, full_name, role, team_id, hire_date, is_seed) values
   ('a4000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', 'seed-new@demo-data.test', '시드 신입',
@@ -41,9 +42,11 @@ insert into public.profiles (id, org_id, email, full_name, role, team_id, hire_d
    'new_hire', '00000000-0000-0000-0000-000000000002', date '2026-11-01', false),
   ('a4000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000001', 'trainer@demo-data.test', '교육',
    'team_trainer', '00000000-0000-0000-0000-000000000002', null, true);
-insert into public.profiles (id, org_id, email, full_name, role, is_seed) values
+insert into public.profiles (id, org_id, email, full_name, role, department, is_seed) values
+  ('a4000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000001', 'hr@demo-data.test', '인사',
+   'ops_staff', 'hr', true),
   ('a4000000-0000-0000-0000-000000000401', '00000000-0000-0000-0000-000000000001', 'admin@demo-data.test', '관리자',
-   'admin', true);
+   'admin', null, true);
 
 create function pg_temp.st(p_code text, p_hire uuid) returns text language sql security definer as $$
   select i.status::text from public.task_instances i join public.task_templates t on t.id = i.template_id
@@ -89,6 +92,51 @@ update public.task_instances set status = 'done'
                where t.code = 'GA-08' and i.new_hire_id in ('a4000000-0000-0000-0000-000000000101',
                                                              'a4000000-0000-0000-0000-000000000102'));
 
+-- 과제 템플릿·서식: 새 템플릿, 시드 제목 변경·보관, 한 사람용 과제, 담당자 서식, 기본 서식
+-- 예전에 보관한 비시드 템플릿(보관 시각이 그대로인지 본다)
+insert into public.task_templates (id, org_id, code, title, stage, team_id, kind, completion_mode, archived_at) values
+  ('a4000000-0000-0000-0000-000000000701', '00000000-0000-0000-0000-000000000001', 'DEMO-OLD', '예전에 보관한 과제', 'day1',
+   '00000000-0000-0000-0000-000000000002', 'read', 'self', timestamptz '2026-01-02 09:00+09');
+
+set local role authenticated;
+set local request.jwt.claim.sub = 'a4000000-0000-0000-0000-000000000201';  -- trainer
+select lives_ok($$select public.save_task_template(null, '심사위원이 만든 과제', '', 'practice', 'self', 'week1', 2, false,
+                  null, '{}')$$,
+  '교육 담당자: 새 템플릿 저장');
+select lives_ok($$select public.save_task_template(t.id, '심사위원이 바꾼 제목', t.description, t.kind, t.completion_mode,
+                  t.stage, t.due_offset_days - private.stage_start_days(t.stage), t.allow_na, t.checklist,
+                  t.prerequisite_codes)
+                  from public.task_templates t
+                 where t.org_id = '00000000-0000-0000-0000-000000000001' and t.code = 'AI-02'$$,
+  '교육 담당자: 시드 AI-02 제목 변경');
+select lives_ok($$select public.archive_task_template(t.id) from public.task_templates t
+                 where t.org_id = '00000000-0000-0000-0000-000000000001' and t.code = 'AI-03'$$,
+  '교육 담당자: 시드 AI-03 보관');
+select lives_ok($$insert into public.task_template_files (org_id, template_id, file_name, storage_path, size_bytes, uploaded_by)
+                  select t.org_id, t.id, '심사위원 서식.pdf',
+                         t.org_id || '/' || t.id || '/a4000000-0000-0000-0000-00000000c001.pdf', 1000,
+                         'a4000000-0000-0000-0000-000000000201'
+                    from public.task_templates t
+                   where t.org_id = '00000000-0000-0000-0000-000000000001' and t.code = 'AI-01'$$,
+  '교육 담당자: AI-01에 서식 추가');
+set local request.jwt.claim.sub = 'a4000000-0000-0000-0000-000000000301';  -- 경영지원(hr)
+select lives_ok($$select public.add_task_for_hire('a4000000-0000-0000-0000-000000000101', '시드 신입 한 사람용', '', 'ops',
+                  'self', 'day1', 0, false, null)$$,
+  '경영지원: 시드 신입에게 한 사람용 과제 추가');
+select lives_ok($$select public.add_task_for_hire('a4000000-0000-0000-0000-000000000102', '등록 신입 한 사람용', '', 'ops',
+                  'self', 'day1', 0, false, null)$$,
+  '경영지원: 등록 신입에게 한 사람용 과제 추가');
+reset role;
+
+set local role service_role;  -- 기본 서식은 service_role로 넣는다
+select lives_ok($$insert into public.task_template_files (org_id, template_id, file_name, storage_path, size_bytes, is_seed)
+                  select t.org_id, t.id, '기본 서식.pdf',
+                         t.org_id || '/' || t.id || '/a4000000-0000-0000-0000-00000000c002.pdf', 2000, true
+                    from public.task_templates t
+                   where t.org_id = '00000000-0000-0000-0000-000000000001' and t.code = 'AI-01'$$,
+  'service_role: AI-01에 기본 서식 추가');
+reset role;
+
 -- ── 권한: 관리자만 초기화 ───────────────────────────────────────────
 set local role authenticated;
 set local request.jwt.claim.sub = 'a4000000-0000-0000-0000-000000000201';  -- trainer
@@ -126,6 +174,54 @@ select results_eq(
   '시드 신입: 인스턴스 31개, done 0, 입사일이 오늘로 바뀌어 기한도 오늘 이후');
 select is(pg_temp.st('GA-08', 'a4000000-0000-0000-0000-000000000102'), 'done',
   '관리자가 만든 신입(is_seed=false)의 done 과제는 그대로');
+
+-- ── 과제 템플릿 초기화 ──────────────────────────────────────────────
+select is_empty(
+  $$select 1 from public.task_templates t join private.task_template_seed s on s.template_id = t.id
+     where t.archived_at is not null
+        or (t.title, t.description, t.kind, t.completion_mode, t.stage, t.due_offset_days, t.allow_na,
+            t.requires_hq_access, t.prerequisite_codes, t.checklist, t.form_schema, t.sort_order)
+           is distinct from
+           (s.title, s.description, s.kind, s.completion_mode, s.stage, s.due_offset_days, s.allow_na,
+            s.requires_hq_access, s.prerequisite_codes, s.checklist, s.form_schema, s.sort_order)$$,
+  '시드 템플릿은 모두 시드 값으로 돌아가고 보관 아님');
+select is((select count(*)::int from public.task_templates
+            where org_id = '00000000-0000-0000-0000-000000000001' and is_seed and archived_at is null), 31,
+  '보관되지 않은 시드 템플릿 31개');
+select is((select t.title from public.task_templates t
+            where t.org_id = '00000000-0000-0000-0000-000000000001' and t.code = 'AI-02'),
+          (select s.title from private.task_template_seed s join public.task_templates t on t.id = s.template_id
+            where t.org_id = '00000000-0000-0000-0000-000000000001' and t.code = 'AI-02'),
+  'AI-02 제목이 원래대로');
+select is((select t.archived_at from public.task_templates t
+            where t.org_id = '00000000-0000-0000-0000-000000000001' and t.code = 'AI-03'), null,
+  'AI-03 보관 해제');
+select is_empty(
+  $$select 1 from public.task_templates
+     where org_id = '00000000-0000-0000-0000-000000000001' and not is_seed and archived_at is null$$,
+  '시드가 아닌 템플릿(한 사람용 포함)은 모두 보관됨');
+select ok((select archived_at is not null from public.task_templates
+            where org_id = '00000000-0000-0000-0000-000000000001' and title = '심사위원이 만든 과제'
+              and created_by = 'a4000000-0000-0000-0000-000000000201'),
+  '새로 만든 템플릿은 보관됨(지우지 않음)');
+select is((select count(*)::int from public.task_templates
+            where org_id = '00000000-0000-0000-0000-000000000001' and archived_at is not null
+              and assigned_to in ('a4000000-0000-0000-0000-000000000101', 'a4000000-0000-0000-0000-000000000102')), 2,
+  '한 사람용 템플릿 2개 보관됨');
+select is((select archived_at from public.task_templates where id = 'a4000000-0000-0000-0000-000000000701'),
+  timestamptz '2026-01-02 09:00+09', '이미 보관된 템플릿은 보관 시각 그대로');
+select is((select i.status::text from public.task_instances i join public.task_templates t on t.id = i.template_id
+            where i.new_hire_id = 'a4000000-0000-0000-0000-000000000102'
+              and t.assigned_to = 'a4000000-0000-0000-0000-000000000102'), 'todo',
+  '관리자가 만든 신입의 한 사람용 과제 인스턴스는 그대로');
+
+-- ── 서식 초기화(객체는 웹이 Storage API로 먼저 지운다) ───────────────
+select is((select count(*)::int from public.task_template_files
+            where org_id = '00000000-0000-0000-0000-000000000001' and not is_seed), 0,
+  '담당자가 올린 서식 행 0');
+select is((select count(*)::int from public.task_template_files
+            where org_id = '00000000-0000-0000-0000-000000000001' and is_seed and file_name = '기본 서식.pdf'), 1,
+  '기본 서식 행은 그대로');
 
 select * from finish();
 rollback;
