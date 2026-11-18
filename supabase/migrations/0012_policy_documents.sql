@@ -11,11 +11,14 @@ create function private.can_manage_scope(p_org uuid, p_scope public.knowledge_sc
 returns boolean
 language sql stable security definer set search_path = ''
 as $$
-  select p_org = (select private.my_org())
+  -- 호출자 정보나 팀이 null이면 비교가 null이 되므로 항상 true/false로 돌려준다(RPC의 `if not ...`가 null을 지나치지 않게).
+  select coalesce(
+    p_org = (select private.my_org())
     and (
       ((select private.my_role()) = 'team_trainer' and p_scope = 'team' and p_team = (select private.my_team()))
       or ((select private.my_role()) = 'ops_staff' and p_scope = 'company')
-    )
+    ),
+    false)
 $$;
 
 revoke execute on function private.can_manage_scope(uuid, public.knowledge_scope, uuid) from public, anon;
@@ -93,8 +96,15 @@ create policy "관리 범위 또는 읽기 범위의 ready 문서" on public.pol
     )
   );
 
+-- 문서는 항상 processing으로 만들고 본인 이름으로 올린다. 상태 변경은 replace_document_clauses(security definer)만 한다.
 create policy "관리 범위 추가" on public.policy_documents for insert to authenticated
-  with check (private.can_manage_scope(org_id, scope, team_id));
+  with check (
+    private.can_manage_scope(org_id, scope, team_id)
+    and status = 'processing'
+    and clause_count = 0
+    and error is null
+    and uploaded_by = (select auth.uid())
+  );
 
 create policy "관리 범위 삭제" on public.policy_documents for delete to authenticated
   using (private.can_manage_scope(org_id, scope, team_id));
@@ -123,6 +133,8 @@ create policy "관리 범위 문서에 추가" on public.document_clauses for in
     )
   );
 
+-- 열 조건이 붙은 DELETE는 SELECT 정책도 통과해야 하므로, invoker 삭제는 ready 문서의 조항에만 닿는다.
+-- processing·failed 문서의 조항은 replace_document_clauses(definer)가 바꾸거나 문서 삭제의 cascade로 지워진다.
 create policy "관리 범위 문서에서 삭제" on public.document_clauses for delete to authenticated
   using (
     exists (

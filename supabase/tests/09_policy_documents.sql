@@ -1,7 +1,7 @@
 -- 규정 문서·조항 스키마, RLS, 버킷 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(43);
+select plan(54);
 
 -- ── 픽스처 (postgres 권한) ───────────────────────────────────────────
 -- 조직 O(팀 T·T2)와 다른 조직 O2. 사람·문서는 모두 가상.
@@ -90,6 +90,11 @@ select results_eq('select id from public.policy_documents order by id',
 select is_empty('select 1 from public.knowledge_sources', '신입A: knowledge_sources 0행');
 select is_empty($$select 1 from storage.objects where bucket_id = 'policy-docs'$$, '신입A: 원본 파일은 받을 수 없다');
 
+select throws_ok(
+  $$insert into public.document_clauses (org_id, document_id, ord, body)
+    values ('a9000000-0000-0000-0000-000000000001', 'a9000000-0000-0000-0000-0000000000d3', 9, '신입의 조항 추가')$$,
+  '42501', null, '신입A: 조항 insert 불가');
+
 -- ── 교육 담당자(T) ──────────────────────────────────────────────────
 set local request.jwt.claim.sub = 'a9000000-0000-0000-0000-000000000201';
 
@@ -110,10 +115,33 @@ select throws_ok(
             'a9000000-0000-0000-0000-000000000001/a9000000-0000-0000-0000-0000000000e1.pdf', 'pdf')$$,
   '42501', null, 'trainer: 회사 문서 insert 불가');
 select lives_ok(
-  $$insert into public.policy_documents (id, org_id, scope, team_id, title, file_path, file_type)
+  $$insert into public.policy_documents (id, org_id, scope, team_id, title, file_path, file_type, uploaded_by)
     values ('a9000000-0000-0000-0000-0000000000e2', 'a9000000-0000-0000-0000-000000000001', 'team', 'a9000000-0000-0000-0000-0000000000a1', '팀T 새 문서',
-            'a9000000-0000-0000-0000-000000000001/a9000000-0000-0000-0000-0000000000e2.pdf', 'pdf')$$,
-  'trainer: 팀T 문서 insert');
+            'a9000000-0000-0000-0000-000000000001/a9000000-0000-0000-0000-0000000000e2.pdf', 'pdf', 'a9000000-0000-0000-0000-000000000201')$$,
+  'trainer: 팀T 문서 insert(processing, 본인 이름)');
+select throws_ok(
+  $$insert into public.policy_documents (id, org_id, scope, team_id, title, file_path, file_type, status, uploaded_by)
+    values ('a9000000-0000-0000-0000-0000000000e5', 'a9000000-0000-0000-0000-000000000001', 'team', 'a9000000-0000-0000-0000-0000000000a1', '바로 ready',
+            'a9000000-0000-0000-0000-000000000001/a9000000-0000-0000-0000-0000000000e5.pdf', 'pdf', 'ready', 'a9000000-0000-0000-0000-000000000201')$$,
+  '42501', null, 'trainer: status ready로 insert 불가');
+select throws_ok(
+  $$insert into public.policy_documents (id, org_id, scope, team_id, title, file_path, file_type, uploaded_by)
+    values ('a9000000-0000-0000-0000-0000000000e6', 'a9000000-0000-0000-0000-000000000001', 'team', 'a9000000-0000-0000-0000-0000000000a1', '남의 이름',
+            'a9000000-0000-0000-0000-000000000001/a9000000-0000-0000-0000-0000000000e6.pdf', 'pdf', 'a9000000-0000-0000-0000-000000000202')$$,
+  '42501', null, 'trainer: 다른 사람 이름(uploaded_by)으로 insert 불가');
+select is(private.can_manage_scope('a9000000-0000-0000-0000-000000000001', 'team', null), false,
+  'can_manage_scope: 팀 범위에 team null이면 null이 아니라 false');
+select throws_ok(
+  $$insert into public.document_clauses (org_id, document_id, ord, body)
+    values ('a9000000-0000-0000-0000-000000000001', 'a9000000-0000-0000-0000-0000000000d1', 9, '회사 문서에 조항 추가')$$,
+  '42501', null, 'trainer: 회사 문서에 조항 insert 불가');
+select lives_ok(
+  $$insert into public.document_clauses (org_id, document_id, ord, body)
+    values ('a9000000-0000-0000-0000-000000000001', 'a9000000-0000-0000-0000-0000000000d3', 9, '팀T 문서에 조항 추가')$$,
+  'trainer: 팀T 문서에 조항 insert');
+select results_eq(
+  $$delete from public.document_clauses where document_id = 'a9000000-0000-0000-0000-0000000000d4' returning 1$$,
+  'select 1 where false', 'trainer: 팀T2 문서 조항 delete는 0행');
 select throws_ok(
   $$insert into public.policy_documents (id, org_id, scope, team_id, title, file_path, file_type)
     values ('a9000000-0000-0000-0000-0000000000e3', 'a9000000-0000-0000-0000-000000000001', 'team', 'a9000000-0000-0000-0000-0000000000a2', '팀T2 새 문서',
@@ -158,6 +186,25 @@ select is_empty($$select 1 from public.policy_documents where id in ('a9000000-0
   'trainer2: 팀T 문서는 안 보인다');
 select results_eq('delete from public.policy_documents where id = ''a9000000-0000-0000-0000-0000000000e2'' returning 1', 'select 1 where false',
   'trainer2: 팀T 문서 delete는 0행');
+select results_eq(
+  $$delete from public.knowledge_sources where knowledge_id = 'a9000000-0000-0000-0000-0000000000b1' returning 1$$,
+  'select 1 where false', 'trainer2: 팀T 지식 연결 delete는 0행');
+-- storage의 직접 삭제 방지 트리거(origin 모드에서만 동작)를 이 단언에서만 끄고 삭제 정책 자체를 확인한다.
+reset role;
+set local session_replication_role = replica;
+set local role authenticated;
+set local request.jwt.claim.sub = 'a9000000-0000-0000-0000-000000000202';
+select results_eq(
+  $$delete from storage.objects where bucket_id = 'policy-docs'
+      and name = 'a9000000-0000-0000-0000-000000000001/a9000000-0000-0000-0000-0000000000d3.docx' returning 1$$,
+  'select 1 where false', 'trainer2: 팀T 원본 파일 delete는 0행');
+reset role;
+set local session_replication_role = origin;
+select is((select count(*) from storage.objects where bucket_id = 'policy-docs'
+            and name = 'a9000000-0000-0000-0000-000000000001/a9000000-0000-0000-0000-0000000000d3.docx'), 1::bigint,
+  '팀T 원본 파일은 그대로 남아 있다');
+set local role authenticated;
+set local request.jwt.claim.sub = 'a9000000-0000-0000-0000-000000000202';
 
 -- ── 총무(ops) ───────────────────────────────────────────────────────
 set local request.jwt.claim.sub = 'a9000000-0000-0000-0000-000000000301';
@@ -172,6 +219,10 @@ select throws_ok(
     values ('a9000000-0000-0000-0000-0000000000e4', 'a9000000-0000-0000-0000-0000000000f1', 'company', '남의 조직',
             'a9000000-0000-0000-0000-0000000000f1/a9000000-0000-0000-0000-0000000000e4.pdf', 'pdf')$$,
   '42501', null, 'ga: 다른 조직에 회사 문서 insert 불가');
+select throws_ok(
+  $$insert into public.document_clauses (org_id, document_id, ord, body)
+    values ('a9000000-0000-0000-0000-0000000000f1', 'a9000000-0000-0000-0000-0000000000d5', 9, '남의 조직 조항 추가')$$,
+  '42501', null, 'ga: 다른 조직 문서에 조항 insert 불가');
 select results_eq(
   $$delete from public.policy_documents where id in ('a9000000-0000-0000-0000-0000000000d5', 'a9000000-0000-0000-0000-0000000000d6') returning 1$$,
   'select 1 where false', 'ga: 다른 조직 문서 delete는 0행');
