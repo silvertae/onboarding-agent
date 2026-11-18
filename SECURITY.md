@@ -58,6 +58,7 @@
 - `task-forms`, `policy-docs` 외의 버킷이나 업로드 경로를 만든다. 신입이 파일을 올리는 경로를 만든다.
 - `task-forms`나 `policy-docs` 버킷이 공개(public)로 바뀐다. 내려받기에 서명 URL이 아닌 공개 URL을 쓴다.
 - 버킷이나 정책이 정한 형식(`task-forms`는 docx·xlsx·pdf, `policy-docs`는 docx·pdf) 외의 파일이나 10MB를 넘는 파일을 받는다. 형식·크기 검사를 브라우저에서만 한다.
+- 규정 문서 파싱에 크기 상한이 없다(압축을 푼 docx 30MB, pdf 300쪽, 글자 100만 자) — 압축 폭탄·거대 PDF로 서비스를 멈출 수 있다.
 - `storage.objects` 정책이 테이블(`task_template_files`, `policy_documents`) 정책보다 넓다(경로의 조직·템플릿·문서를 확인하지 않는다).
 - 서식 파일이나 규정 문서 파일을 화면에서 열어 그린다(서식은 내려받기만 허용). 규정 조항 본문과 파일 이름을 텍스트가 아닌 HTML로 그린다.
 

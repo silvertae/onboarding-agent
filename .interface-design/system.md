@@ -83,6 +83,7 @@
 
 - **높이 덮어쓰기 금지:** `className="h-11 px-5"`처럼 높이·좌우 여백을 덮어쓰지 않고 `size`를 고른다.
 - **비활성 주 버튼:** 흐린 파랑이 아니라 회색(`bg-track`, `text-disabled-foreground`)이다.
+- **읽기 전용 칸:** 잠기거나 보관돼 고칠 수 없는 칸(S12 사용 중 잠금·보관 보기)은 값이 읽혀야 하므로 흐리게(`opacity`) 하지 않는다. 입력·select·textarea는 `bg-muted` 바탕에 글자를 `text-foreground` 그대로 두고, `SegmentedRadio`는 고른 값만 그대로 두고 고르지 않은 값만 흐리게 한다. 커서는 `cursor-not-allowed`. 시안 `S12-tasks` ③·④.
 - **칩:** 보이는 높이는 36(`h-9`)이고, `after:-inset-y-1`로 누르는 영역을 44까지 넓힌다. 칩 사이 줄 간격은 8 이상으로 두어 누르는 영역이 겹치지 않게 한다. 가로 스크롤 상자 안이면 상자에 `py-1`을 줘서 넓힌 영역이 잘리지 않게 한다.
 - **폼 컨트롤:** `components/ui`의 `Input`, `NativeSelect`, `Textarea`, `Checkbox`만 쓴다. `NativeSelect`는 브라우저 기본 select에 Input과 같은 테두리와 화살표를 입힌 것이고, `className`은 바깥 상자(너비)에 붙는다. 입력 스타일 문자열을 화면 파일에 복사하지 않는다.
 - **체크리스트 행:** 신입 화면에서는 한 줄 높이를 44(`min-h-11`), 체크박스를 18px로 한다.
