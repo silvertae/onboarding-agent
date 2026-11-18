@@ -32,6 +32,7 @@
 | 사용 중 잠금과 서식 | 서식은 잠금 대상이 아니다. 진행 중인 신입이 있어도 올리고 지울 수 있다 |
 | 저장 전 새 과제 | 서식 영역 자리에 "과제를 저장하면 서식을 올릴 수 있어요." |
 | 기존 계획 Task 6의 "서식 영역은 없으면 렌더링하지 않는다" | 삭제. 이 계획 Task 9가 서식 영역을 넣는다 |
+| 리뷰 반영(2026-11-18) | A 한 사람용 템플릿 조회 정책은 대상 신입·`is_handler`·같은 조직 admin(서식도 따름), D `_start_onboarding` 재호출은 이미 시작한 신입에게 0(둘 다 `0009`) · B 선행은 바뀐 집합만 검사(새 코드에만 존재·범위·보관 검사, 조직 잠금), C `mark_na`로 담당자가 한 사람용 과제를 해당 없음 처리·`restore_task_template`은 한 사람용 거부, E `private.next_task_code` authenticated 실행 권한 회수(셋 다 `0010`) · E 서식 Storage 올리기 정책이 경로 모양(폴더 2단계, uuid 파일 이름)을 강제(`0011`) |
 | 시안 | `S12-tasks.html`이 `S12-forms.html`을 대체한다(옛 파일과 png 삭제). S3 서식 시안 2개는 그대로 쓴다 |
 
 ## Global Constraints
@@ -128,7 +129,7 @@
     - delete: `is_seed = false` 그리고 (`exists (… private.is_handler(t))` 또는 (`my_role() = 'admin'` 그리고 `org_id = my_org()`)).
   - `storage.objects` 정책(모두 `bucket_id = 'task-forms'`, `to authenticated`; 경로는 `storage.foldername(name)`의 `[1]` 조직, `[2]` 템플릿):
     - select: `[1] = my_org()::text` 그리고 보이는 템플릿 중 `id::text = [2]`가 있음.
-    - insert: `[1] = my_org()::text` 그리고 `id::text = [2]`인 템플릿이 보관되지 않았고 `is_handler`.
+    - insert: `[1] = my_org()::text` 그리고 `id::text = [2]`인 템플릿이 보관되지 않았고 `is_handler`. 경로 모양도 강제한다: `storage.foldername(name)`이 정확히 2단계이고 파일 이름(`storage.filename(name)`)이 `^[0-9a-f-]{36}\.(pdf|docx|xlsx)$`.
     - delete: (`is_handler`인 템플릿 또는 같은 조직 admin) 그리고 `not exists (select 1 from public.task_template_files f where f.storage_path = name and f.is_seed)`.
     - update 정책 없음.
 
@@ -143,8 +144,8 @@
   - 기본 서식(`is_seed`, service_role로 넣음)을 담당자·관리자가 delete → 0행
   - 관리자가 담당자 서식 delete → 1행; 신입A가 delete → 0행
   - 신입A·B 모두 일반 템플릿의 서식 select → 보임; 다른 조직 사용자 → 0행
-  - `assigned_to = 신입A`인 템플릿의 서식: 신입A 보임, 신입B 0행, 교육 담당자 보임  *(Review Focus 1)*
-  - `storage.objects`: 신입A insert 거부; 교육 담당자(T)가 `{org}/{T 템플릿}/…` insert 성공, `{org}/{ga 템플릿}/…` 거부, `{다른 org}/…` 거부; 신입B가 신입A 전용 템플릿 폴더 객체 select 0행; 다른 조직 사용자 select 0행
+  - `assigned_to = 신입A`인 템플릿의 서식: 신입A 보임, 신입B 0행, 같은 팀 교육 담당자 보임, 다른 팀 교육 담당자 0행  *(Review Focus 1)*
+  - `storage.objects`: 신입A insert 거부; 교육 담당자(T)가 `{org}/{T 템플릿}/…` insert 성공, `{org}/{ga 템플릿}/…` 거부, `{다른 org}/…` 거부; 경로 모양이 어긋난 insert(폴더 3단계, 파일 이름이 uuid 아님·허용 확장자 아님) 거부; 신입B가 신입A 전용 템플릿 폴더 객체 select 0행; 다른 조직 사용자 select 0행
   - `storage.objects` delete: 담당자가 기본 서식 객체 → 0행, 자기가 올린 객체 → 1행  *(Review Focus 2)*
   - `anon`으로 테이블 select → 권한 오류
 - [ ] **Step 2: 실패 확인** — `npm run db:test` → 테이블 없음으로 실패.

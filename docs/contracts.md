@@ -58,7 +58,7 @@ POST /admin/users     {email, password(8자 이상), full_name, job_title,
           application/pdf
           application/vnd.openxmlformats-officedocument.wordprocessingml.document   (.docx)
           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet         (.xlsx)
-경로      {org_id}/{template_id}/{uuid}.{pdf|docx|xlsx}     ASCII만. 원본 이름은 테이블에 둔다
+경로      {org_id}/{template_id}/{uuid}.{pdf|docx|xlsx}     ASCII만. 원본 이름은 테이블에 둔다 (Storage 정책이 폴더 2단계·uuid 파일 이름을 강제)
 테이블    task_template_files
           id uuid, org_id uuid, template_id uuid → task_templates, file_name text(원본 이름),
           storage_path text unique, size_bytes int, uploaded_by uuid → profiles, is_seed bool, created_at

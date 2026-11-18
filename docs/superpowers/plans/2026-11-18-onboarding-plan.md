@@ -83,8 +83,8 @@ docs/screens.md, docs/contracts.md, docs/architecture.md, docs/demo-script.md, d
   - `teams.task_code_prefix text null` — 마이그레이션에서 `name = 'AI팀'`인 팀에 `'AI'`
 - Produces: `private.task_template_seed` — 기존 시드 템플릿의 사본 테이블(`template_id` PK, `title`, `description`, `kind`, `completion_mode`, `stage`, `due_offset_days`, `allow_na`, `requires_hq_access`, `prerequisite_codes`, `checklist`, `form_schema`, `sort_order`). 마이그레이션이 `is_seed` 행에서 채운다. `authenticated`·`anon` 권한 없음.
 - Produces: `private.stage_start_days(public.task_stage) returns int` — immutable. `day1` 0, `week1` 5, `month1` 30.
-- Produces (RLS 교체): `task_templates`의 "같은 조직" select 정책을 지우고 새 정책 "같은 조직, 한 사람용은 본인·담당자" — `org_id = my_org()` 그리고 (`assigned_to is null` 또는 `assigned_to = auth.uid()` 또는 `my_role() in ('team_trainer','ops_staff','admin')`). 정책 교체는 테이블·컬럼 변경이 아니므로 허용, PR에 이유를 적는다.
-- Produces: `create or replace function public._start_onboarding` — 기존 본문에서 템플릿 조건에 `and t.archived_at is null and t.assigned_to is null`만 더한다.
+- Produces (RLS 교체): `task_templates`의 "같은 조직" select 정책을 지우고 새 정책 "같은 조직, 한 사람용은 본인·담당자" — `org_id = my_org()` 그리고 (`assigned_to is null` 또는 `assigned_to = auth.uid()` 또는 `private.is_handler(t)`(같은 부서 경영지원·같은 팀 교육 담당자) 또는 같은 조직 `admin`(데모 초기화의 서식 정리용)). 서식(`task_template_files`·`task-forms`)은 템플릿 공개 범위를 따르므로 담당 범위 밖 담당자는 그 서식도 목록·내려받기를 할 수 없다. 정책 교체는 테이블·컬럼 변경이 아니므로 허용, PR에 이유를 적는다.
+- Produces: `create or replace function public._start_onboarding` — 기존 본문에서 템플릿 조건에 `and t.archived_at is null and t.assigned_to is null`을 더하고, 신입별 잠금 뒤 그 신입에게 일반 템플릿(`assigned_to is null`)의 인스턴스가 하나라도 있으면 0을 돌려준다(배포 부트스트랩이 매번 부르므로, 이미 시작한 신입에게 새 템플릿이 들어가지 않게 한다).
 
 - [ ] **Step 1: 실패하는 pgTAP 작성** (`07_task_templates.sql`, 픽스처: 조직 1, 팀 T(AI팀)·T2, 신입A·B(팀 T), 교육 담당자(T)·(T2), 경영지원(hr)·(ga), 관리자)
   - 기존 시드 템플릿 31개가 모두 `is_seed = true`, `private.task_template_seed` 31행
@@ -92,10 +92,11 @@ docs/screens.md, docs/contracts.md, docs/architecture.md, docs/demo-script.md, d
   - 팀 T 템플릿 하나에 `archived_at = now()`를 넣은 뒤 신입C를 만들고 `_start_onboarding` → 그 템플릿의 인스턴스 없음, 생성 수 30
   - `assigned_to = 신입A`인 템플릿을 직접 넣은 뒤 신입C `_start_onboarding` → 그 템플릿 인스턴스 없음
   - 보관한 템플릿을 선행(`prerequisite_codes`)으로 둔 템플릿의 신입C 인스턴스가 `todo`(잠기지 않음)
-  - 신입B로 `task_templates` select → `assigned_to = 신입A`인 행 0개, 일반 템플릿은 보임; 신입A로 → 그 행 보임; 교육 담당자·경영지원으로 → 보임
+  - 신입B로 `task_templates` select → `assigned_to = 신입A`인 행 0개, 일반 템플릿은 보임; 신입A로 → 그 행 보임; 담당자(같은 팀 교육 담당자·같은 부서 경영지원)·관리자로 → 보임; 다른 팀 교육 담당자·다른 부서 경영지원으로 → 그 행 0개
+  - 시작 → 새 템플릿 저장 → `_start_onboarding` 재호출 0, 새 템플릿 인스턴스 없음; 시작 전에 한 사람용 과제를 추가한 신입은 시작하면 기본 과제가 생성됨
   - `anon`으로 `task_templates` select → 권한 오류
 - [ ] **Step 2: 실패 확인** — `npm run db:test` → 컬럼·함수 없음으로 실패.
-- [ ] **Step 3: 마이그레이션 작성** — Interfaces 그대로. `_start_onboarding`은 최신 본문을 복사해 조건 두 개만 더한다.
+- [ ] **Step 3: 마이그레이션 작성** — Interfaces 그대로. `_start_onboarding`은 최신 본문을 복사해 조건 두 개와 재호출 가드만 더한다.
 - [ ] **Step 4: 적용·통과 확인** — `supabase migration up` 후 `npm run db:test` PASS(기존 테스트 포함).
 - [ ] **Step 5: 커밋** — `feat(db): add template archive, one-off assignment and seed snapshot`
 
@@ -108,15 +109,17 @@ docs/screens.md, docs/contracts.md, docs/architecture.md, docs/demo-script.md, d
 **Interfaces:**
 - Consumes: Task 1의 컬럼, `private.stage_start_days`, 기존 `private.my_role()`·`my_team()`·`my_department()`·`my_org()`·`private.lock_hire_of_task`·`private.hire_lock_key`·`private.unlock_ready`.
 - Produces (모두 security definer, `set search_path = ''`, `revoke ... from public, anon`, `grant execute ... to authenticated`):
-  - `private.next_task_code(p_org uuid, p_prefix text, p_one_off boolean) returns text` — 같은 조직에서 `^<prefix>-(\d+)$`(한 사람용은 `^<prefix>-P(\d+)$`) 최대 번호 + 1, 두 자리 이상 0 채움. 예: `AI-11`, `GA-09`, `HR-P01`. 접두어: 부서 `hr`→`HR`, `ga`→`GA`, `accounting`→`AC`, 팀은 `teams.task_code_prefix`, 없으면 `TM`. 같은 조직 템플릿 생성은 `pg_advisory_xact_lock`으로 직렬화해 번호 충돌을 막는다.
+  - `private.next_task_code(p_org uuid, p_prefix text, p_one_off boolean) returns text` — 같은 조직에서 `^<prefix>-(\d+)$`(한 사람용은 `^<prefix>-P(\d+)$`) 최대 번호 + 1, 두 자리 이상 0 채움. 예: `AI-11`, `GA-09`, `HR-P01`. 접두어: 부서 `hr`→`HR`, `ga`→`GA`, `accounting`→`AC`, 팀은 `teams.task_code_prefix`, 없으면 `TM`. 같은 조직 템플릿 생성은 `pg_advisory_xact_lock`으로 직렬화해 번호 충돌을 막는다. definer 함수 안에서만 쓰므로 `authenticated` 실행 권한을 회수한다(아래 공통 grant의 예외).
   - `public.save_task_template(p_id uuid, p_title text, p_description text, p_kind public.task_kind, p_completion_mode public.completion_mode, p_stage public.task_stage, p_days_in_stage int, p_allow_na boolean, p_checklist jsonb, p_prerequisite_codes text[]) returns public.task_templates`
     - `p_id is null`이면 새 템플릿(담당은 호출자의 팀 또는 부서, `created_by = auth.uid()`, `sort_order` = 같은 담당·단계의 최댓값 + 10, 없으면 10, `requires_hq_access = false`, `form_schema = null`).
     - `p_id`가 있으면 수정. 없거나 범위 밖·한 사람용이면 `P0002` / `42501`. 보관된 템플릿이면 `22023`.
-    - 검증(`22023`): 제목 앞뒤 공백 제거 1~60자, 안내문 2000자 이하, `p_days_in_stage` 0~60, 새 템플릿의 `p_kind = 'input'` 거부, `assessment`는 `team_trainer`만(아니면 `42501`)이고 `p_completion_mode = 'staff_only'`여야 함, `setup`이면 `p_checklist`가 1~20개의 문자열 배열이고 각 항목 공백 제거 1~60자, `setup`이 아니면 `p_checklist`는 null, 선행 0~3개이며 각 코드가 같은 담당 범위의 보관되지 않은 일반 템플릿이고 자기 자신이 아니며 순환하지 않음.
+    - 검증(`22023`): 제목 앞뒤 공백 제거 1~60자, 안내문 2000자 이하, `p_days_in_stage` 0~60, 새 템플릿의 `p_kind = 'input'` 거부, `assessment`는 `team_trainer`만(아니면 `42501`)이고 `p_completion_mode = 'staff_only'`여야 함, `setup`이면 `p_checklist`가 1~20개의 문자열 배열이고 각 항목 공백 제거 1~60자, `setup`이 아니면 `p_checklist`는 null, 선행 0~3개(아래 선행 검사 규칙).
+    - 선행 검사: 선행 집합이 기존과 같으면 선행 검사를 하지 않는다(선행이 나중에 보관된 사용 중 과제도 제목·안내문은 고칠 수 있다). 바뀌면 개수(0~3)·자기 자신·순환은 전체 집합에, 존재·담당 범위·보관 여부(같은 담당 범위의 보관되지 않은 일반 템플릿)는 새로 더한 코드에만 검사한다. 선행 집합이 바뀔 때는 조직 잠금으로 직렬화해 동시 순환을 막는다.
     - `due_offset_days = stage_start_days(p_stage) + p_days_in_stage`.
     - 사용 중 잠금: 그 템플릿의 `task_instances`가 있으면 `kind`·`completion_mode`·`stage`·`due_offset_days`·`allow_na`·`checklist`·`prerequisite_codes` 중 하나라도 기존 값과 다르면 `22023`(메시지 `진행 중인 신입이 있어 제목·안내문만 고칠 수 있습니다`). 시드의 `input` 템플릿은 이 규칙으로 제목·안내문만 고쳐진다.
   - `public.archive_task_template(p_id uuid) returns public.task_templates` — 범위 확인 후 `archived_at = coalesce(archived_at, now())`. 한 사람용은 `22023`(해당 없음으로 처리하라는 메시지).
-  - `public.restore_task_template(p_id uuid) returns public.task_templates` — 범위 확인 후 `archived_at = null`.
+  - `public.restore_task_template(p_id uuid) returns public.task_templates` — 범위 확인 후 `archived_at = null`. 한 사람용은 `22023`(보관과 대칭).
+  - `public.mark_na` 교체 — 그 과제의 담당자(`private.is_handler`)는 한 사람용 과제를 `allow_na`와 관계없이 해당 없음 처리할 수 있다(사유 필수). 신입 본인은 지금처럼 `allow_na`가 켜진 과제만. 일반 템플릿은 담당자도 `allow_na`를 따른다.
   - `public.add_task_for_hire(p_new_hire uuid, p_title text, p_description text, p_kind public.task_kind, p_completion_mode public.completion_mode, p_stage public.task_stage, p_days_in_stage int, p_allow_na boolean, p_checklist jsonb) returns public.task_instances`
     - `pg_advisory_xact_lock(private.hire_lock_key(p_new_hire))` 먼저.
     - 대상이 같은 조직 `new_hire`가 아니면 `P0002`. 호출자가 `team_trainer`면 대상이 같은 팀이어야 하고, `ops_staff`면 조직의 신입 누구나. 그 외 `42501`.
@@ -129,13 +132,15 @@ docs/screens.md, docs/contracts.md, docs/architecture.md, docs/demo-script.md, d
   - 교육 담당자(T2)가 T 템플릿 수정 → `42501`; 경영지원(hr)이 ga 템플릿 보관 → `42501`; 관리자·신입A가 저장 → `42501`  *(Review Focus 2)*
   - 경영지원이 `assessment` 저장 → `42501`; 교육 담당자가 `assessment` + `confirm` → `22023`; 새 `input` → `22023`
   - `setup`에 체크리스트 0개·21개·빈 항목 → `22023`; `read`에 체크리스트 → `22023`; 제목 공백 → `22023`; 61자 → `22023`; `p_days_in_stage` 61 → `22023`
-  - 선행: 다른 담당 범위 코드·보관된 코드·자기 코드·4개 → `22023`; A→B 선행인 상태에서 B를 A 선행으로 → `22023`(순환)
+  - 선행: 다른 담당 범위 코드·보관된 코드·자기 코드·4개 → `22023`; A→B 선행인 상태에서 B를 A 선행으로 → `22023`(순환); 새 템플릿에 보관된 선행 → `22023`
+  - 선행 검사 범위: 보관된 선행을 그대로 두고 제목만 저장 → 성공; 보관된 선행 + 새 코드 → 성공(새 코드만 검사)
   - 사용 중 잠금: 신입A가 진행 중인 AI-09(setup)의 체크리스트 항목 추가 → `22023`, 템플릿 `checklist` 그대로; `completion_mode`·`stage`·`p_days_in_stage` 변경 → 각각 `22023`; 제목·안내문만 변경 → 성공, 신입A 인스턴스 조회에 새 제목  *(Review Focus 1)*
   - 사용 전 템플릿은 모든 칸 변경 성공
   - 보관 → 다시 보관(같은 결과), 보관된 템플릿 수정 → `22023`, 복원 후 수정 성공; 신입A의 그 과제는 보관 뒤에도 `submit_task` 성공  *(Review Focus 4)*
   - `add_task_for_hire(신입A, …)` 교육 담당자(T) → 인스턴스 `todo`, 템플릿 `assigned_to = 신입A`; 교육 담당자(T2) → `42501`; 경영지원(hr) → 성공; 신입B 인스턴스 수 변화 없음; 이후 신입C `_start_onboarding`에 그 템플릿 없음  *(Review Focus 3)*
   - 입사일이 40일 전인 신입에게 `day1`·0일 과제 추가 → `due_date = 오늘`
-  - 한 사람용 템플릿을 `save_task_template`·`archive_task_template`로 → `42501` / `22023`
+  - 한 사람용 템플릿을 `save_task_template`·`archive_task_template`·`restore_task_template`로 → `42501` / `22023` / `22023`
+  - 한 사람용 취소: 담당자가 `allow_na = false`인 한 사람용 과제를 `mark_na`(사유 포함) → 성공; 같은 과제를 신입이 → 거부; `allow_na = false`인 일반 템플릿을 담당자가 → 거부; 다른 팀 교육 담당자 → 거부
 - [ ] **Step 2: 실패 확인** — `npm run db:test`.
 - [ ] **Step 3: 함수 작성** — Interfaces 그대로.
 - [ ] **Step 4: 적용·통과 확인** — `supabase migration up` 후 `npm run db:test` PASS.
