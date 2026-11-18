@@ -8,62 +8,16 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
-from google.adk.models.base_llm import BaseLlm
 from google.adk.models.llm_request import LlmRequest
-from google.adk.models.llm_response import LlmResponse
-from google.genai import types
-from pydantic import Field
 
 from app import assistant, embeddings
 from app.config import Settings, get_settings
 from app.main import create_app
 
 from .conftest import sign_in
+from .llm_fakes import ScriptedLlm, chunk_turn, text_turn
 
 # ---------------------------------------------------------------- 가짜 모델
-
-
-class ScriptedLlm(BaseLlm):
-    """턴마다 정해 둔 응답을 돌려준다. Exception이 들어 있으면 그 턴에서 던진다."""
-
-    model: str = "scripted"
-    turns: list = Field(default_factory=list)
-    requests: list[LlmRequest] = Field(default_factory=list)
-
-    async def generate_content_async(self, llm_request: LlmRequest, stream: bool = False):
-        self.requests.append(llm_request)
-        turn = self.turns[len(self.requests) - 1]
-        if callable(turn):
-            turn = turn(llm_request)
-        if isinstance(turn, Exception):
-            raise turn
-        for response in turn:
-            yield response
-
-
-def text_turn(text: str) -> list[LlmResponse]:
-    """실제 스트리밍처럼 조각(partial) 두 개 뒤에 합친 응답 하나."""
-    half = len(text) // 2
-    parts = [text[:half], text[half:]]
-    chunks = [
-        LlmResponse(content=types.Content(role="model", parts=[types.Part(text=p)]), partial=True)
-        for p in parts
-    ]
-    final = LlmResponse(
-        content=types.Content(role="model", parts=[types.Part(text=text)]), partial=False, turn_complete=True
-    )
-    return [*chunks, final]
-
-
-def chunk_turn(*chunks: str) -> list[LlmResponse]:
-    """정해 둔 조각대로 흘려보낸 뒤 합친 응답 하나."""
-    partials = [
-        LlmResponse(content=types.Content(role="model", parts=[types.Part(text=c)]), partial=True) for c in chunks
-    ]
-    final = LlmResponse(
-        content=types.Content(role="model", parts=[types.Part(text="".join(chunks))]), partial=False, turn_complete=True
-    )
-    return [*partials, final]
 
 
 def instruction_of(request: LlmRequest) -> str:
