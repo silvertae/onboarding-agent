@@ -82,3 +82,12 @@ async def test_embed_rejects_count_mismatch(embedding_env, monkeypatch):
     monkeypatch.setattr(embeddings.litellm, "aembedding", short)
     with pytest.raises(EmbeddingError):
         await embed(["a", "b"])
+
+
+async def test_embed_malformed_response_raises_embedding_error(embedding_env, monkeypatch):
+    async def no_data(**kwargs):
+        return object()
+
+    monkeypatch.setattr(embeddings.litellm, "aembedding", no_data)
+    with pytest.raises(EmbeddingError):
+        await embed(["a"])

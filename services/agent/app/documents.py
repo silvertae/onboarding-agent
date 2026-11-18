@@ -8,11 +8,12 @@ from typing import Literal
 
 import pypdf
 from docx import Document
+from docx.text.paragraph import Paragraph
 
 UNREADABLE = "글자를 읽을 수 없는 파일이에요"
 
 TOO_LARGE = "문서가 너무 커요. 나눠서 올려 주세요."
-MAX_DOCX_UNCOMPRESSED = 50 * 1024 * 1024  # docx(zip) 압축을 풀었을 때 합계 바이트
+MAX_DOCX_UNCOMPRESSED = 30 * 1024 * 1024  # docx(zip) 압축을 풀었을 때 합계 바이트
 MAX_PDF_PAGES = 300
 MAX_TEXT_CHARS = 1_000_000
 
@@ -20,17 +21,23 @@ ARTICLE_MAX = 2000  # 조항 하나(조각)의 최대 글자 수
 CHUNK_TARGET = 800  # 조항 표시가 없을 때 단락 묶음의 목표 글자 수
 CHUNK_CAP = 1000  # 같은 경우의 상한
 
-_ARTICLE_RE = re.compile(r"^[ \t]*(제[ \t]*\d+[ \t]*조(?:의[ \t]*\d+)?)[ \t]*(?:\(([^)\n]*)\))?", re.M)
+_ARTICLE_RE = re.compile(
+    r"^[ \t]*(제[ \t]*\d+[ \t]*조(?:의[ \t]*\d+)?)(?![가-힣])[ \t]*(?:[(（]([^)）\n]*)[)）])?", re.M
+)
 _SENTENCE_END_RE = re.compile(r"(?<=[.!?。])\s+")
 # pdf 글꼴에 따라 공백이 제어 문자로 나오는 경우가 있다(줄바꿈·탭은 둔다)
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
-class UnreadableDocument(Exception):
+class DocumentRejected(Exception):
+    """처리할 수 없는 문서. 호출자는 이 예외를 받아 str(e)를 문서의 실패 사유로 저장한다."""
+
+
+class UnreadableDocument(DocumentRejected):
     """글자를 읽을 수 없는 문서. 메시지에 문서 내용을 담지 않는다."""
 
 
-class DocumentTooLarge(Exception):
+class DocumentTooLarge(DocumentRejected):
     """문서가 너무 크다. 메시지에 문서 내용을 담지 않는다."""
 
 
@@ -42,13 +49,31 @@ class Clause:
     body: str
 
 
+def _docx_text(doc) -> str:
+    """본문을 문서 순서대로 읽는다. 표의 행은 셀 글자를 " | "로 이은 한 줄이다."""
+    lines: list[str] = []
+    for block in doc.iter_inner_content():
+        if isinstance(block, Paragraph):
+            lines.append(block.text)
+            continue
+        for row in block.rows:
+            cells: list[str] = []
+            for cell in row.cells:
+                t = cell.text.strip()
+                if t and (not cells or cells[-1] != t):  # 가로로 합친 셀은 같은 글자가 반복된다
+                    cells.append(t)
+            if cells:
+                lines.append(" | ".join(cells))
+    return "\n".join(lines)
+
+
 def extract_text(data: bytes, file_type: Literal["pdf", "docx"]) -> str:
     try:
         if file_type == "docx":
             with zipfile.ZipFile(io.BytesIO(data)) as archive:
                 if sum(i.file_size for i in archive.infolist()) > MAX_DOCX_UNCOMPRESSED:
                     raise DocumentTooLarge(TOO_LARGE)
-            text = "\n".join(p.text for p in Document(io.BytesIO(data)).paragraphs)
+            text = _docx_text(Document(io.BytesIO(data)))
         else:
             reader = pypdf.PdfReader(io.BytesIO(data))
             if len(reader.pages) > MAX_PDF_PAGES:

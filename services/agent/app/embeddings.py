@@ -27,10 +27,10 @@ async def embed(texts: list[str]) -> list[list[float]]:
                 input=batch,
                 api_key=settings.openai_api_key,
             )
+            batch_vectors = [item["embedding"] for item in response.data]
         except Exception as e:
             # litellm 오류 메시지는 입력 텍스트를 담을 수 있어 타입 이름만 남긴다.
             raise EmbeddingError(f"임베딩 API 호출에 실패했습니다({type(e).__name__})") from None
-        batch_vectors = [item["embedding"] for item in response.data]
         if len(batch_vectors) != len(batch) or any(len(v) != EMBEDDING_DIM for v in batch_vectors):
             raise EmbeddingError(f"임베딩 결과가 올바르지 않습니다(기대 차원 {EMBEDDING_DIM})")
         vectors.extend(batch_vectors)
