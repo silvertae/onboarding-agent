@@ -277,6 +277,10 @@ gh variable set ALLOWED_ORIGIN_REGEX --repo "$REPO" --env staging \
   --body "^https://$STAGING_SITE--pr-[0-9]+-[a-z0-9]+\\.web\\.app\$"
 # (선택) 관리자 메일. 없으면 admin@demo.test
 # gh variable set ADMIN_EMAIL --repo "$REPO" --env <환경> --body "<관리자 메일>"
+# (선택, 스테이징만) 테스트 기간에 하루 한도를 올린다. 없으면 채팅 50, 시험 10. 다음 main 배포부터 적용된다
+# gh variable set CHAT_DAILY_LIMIT --repo "$REPO" --env staging --body 1000
+# gh variable set EXAM_DAILY_LIMIT --repo "$REPO" --env staging --body 1000
+# 테스트가 끝나면 지운다: gh variable delete CHAT_DAILY_LIMIT --repo "$REPO" --env staging (EXAM도 같다)
 ```
 
 | 이름 | 위치 | 종류 |
@@ -285,6 +289,7 @@ gh variable set ALLOWED_ORIGIN_REGEX --repo "$REPO" --env staging \
 | `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT` | 환경 `staging`·`production` (각 환경의 프로젝트 값) | 변수 |
 | `SUPABASE_PROJECT_REF`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AGENT_URL`, `WEB_URL`, `OPENAI_MODEL`, (`ADMIN_EMAIL`) | 환경 `staging`·`production` | 변수 |
 | `ALLOWED_ORIGIN_REGEX` | 환경 `staging`만 | 변수 |
+| (`CHAT_DAILY_LIMIT`, `EXAM_DAILY_LIMIT`) | 환경 `staging`만, 선택. 양의 정수 | 변수 |
 | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, `DEMO_PASSWORD` | 환경 `staging`·`production` | 비밀값 |
 
 공개 값 파일: 다음 값을 채워 PR로 올린다(Claude Code에 값만 알려 주면 된다. 모두 공개 값이다). 배포 워크플로는 파일 값과 GitHub 변수가 다르면 멈춘다.
