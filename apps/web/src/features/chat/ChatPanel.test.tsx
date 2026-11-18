@@ -239,4 +239,12 @@ describe('ChatPanel', () => {
 
     expect(agent.agentFetch).toHaveBeenCalledWith('/chat', { message: '첫 줄\n둘째 줄', history: [] })
   })
+
+  it('모바일에서는 떠 있는 "에이전트에게 묻기" 버튼만큼 본문 아래에 여백을 둬서 마지막 버튼을 가리지 않는다', () => {
+    renderPanel()
+    expect(screen.getByRole('button', { name: '에이전트에게 묻기' })).toHaveClass('fixed', 'bottom-6', 'lg:hidden')
+    // 버튼: 바닥에서 24 + 높이 44 = 68. 본문 아래 여백 64 + 페이지 자체 아래 여백(24~32)으로 그 위에서 끝난다
+    const page = screen.getByText('페이지 본문').parentElement
+    expect(page).toHaveClass('pb-16', 'lg:pb-0')
+  })
 })
