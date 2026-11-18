@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -108,14 +109,14 @@ export function QuestionCard({ number, total, question, startEditing = false, di
       )}
 
       {regenError && (
-        <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-[#fde8e6] px-3 py-2 text-sm text-[#a1261c]">
+        <Alert variant="destructive" className="mt-3 flex flex-wrap items-center gap-2 py-2">
           {regenError.text}
           {regenError.retry && (
-            <Button type="button" variant="outline" size="sm" className="ml-auto" disabled={busy} onClick={() => void regenerate()}>
+            <Button type="button" variant="outline" size="sm" className="ml-auto bg-card" disabled={busy} onClick={() => void regenerate()}>
               다시 시도
             </Button>
           )}
-        </div>
+        </Alert>
       )}
 
       {editing ? (

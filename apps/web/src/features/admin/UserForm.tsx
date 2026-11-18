@@ -25,8 +25,8 @@ function todayInSeoul(): string {
 }
 
 const selectClass =
-  'h-10 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30'
-const inputClass = 'h-10 bg-white'
+  'h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30'
+const inputClass = 'h-10 bg-card'
 
 export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user: CreatedUser) => void }) {
   const ids = useId()
@@ -127,7 +127,7 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
                 onClick={() => setRole(r)}
                 className={cn(
                   'flex-1 rounded-lg px-3 py-1.5 text-sm text-[var(--text-secondary)]',
-                  role === r && 'bg-white font-semibold text-foreground shadow-sm',
+                  role === r && 'bg-card font-semibold text-foreground shadow-sm',
                 )}
               >
                 {ROLE_LABEL[r]}

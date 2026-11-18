@@ -48,7 +48,7 @@ function ChecklistCard({ task }: { task: TaskView }) {
         </b>
       </div>
       <div className="px-6 py-5">
-        <div className="h-1.5 overflow-hidden rounded-full bg-[#e8e8ed]">
+        <div className="h-1.5 overflow-hidden rounded-full bg-track">
           <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
         </div>
         <ul className="mt-4 flex flex-col gap-2.5 text-sm">
@@ -115,7 +115,7 @@ export function HireDetailPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className="grid size-14 place-items-center rounded-full bg-[#e8eef8] text-base font-semibold text-primary" aria-hidden>
+          <span className="grid size-14 place-items-center rounded-full bg-avatar text-base font-semibold text-primary" aria-hidden>
             {initials(hire.full_name)}
           </span>
           <div>
@@ -145,7 +145,7 @@ export function HireDetailPage() {
               <span className="text-xs text-muted-foreground">경영지원 과제는 표시되지 않아요</span>
             </div>
             <table aria-label="팀 과제" className="w-full text-sm">
-              <thead className="border-y border-border bg-[#fafafc] text-left text-xs text-[var(--text-secondary)]">
+              <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                 <tr>
                   <th className="px-4 py-3 font-semibold">단계</th>
                   <th className="px-4 py-3 font-semibold">과제</th>

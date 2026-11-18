@@ -3,6 +3,7 @@ import { Check } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Profile } from '@/app/AuthProvider'
 import type { Enums } from '@/lib/database.types'
+import { Alert } from '@/components/ui/alert'
 import { OWNER_LABEL, ROLE_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/utils'
 import { ResetDemoDialog } from './ResetDemoDialog'
@@ -31,22 +32,19 @@ function placement(p: Profile, teams: Map<string, string>): string {
 
 function NoticeBanner({ notice }: { notice: Notice }) {
   return (
-    <div
-      role="status"
-      className="flex items-center gap-3 rounded-[14px] border border-[#bfe3c9] bg-[#e4f3e8] px-5 py-4 text-sm text-[#1b6530]"
-    >
-      <Check aria-hidden className="size-4 shrink-0" />
+    <Alert variant="success" role="status">
+      <Check aria-hidden />
       {notice.kind === 'created' ? (
-        <p>
+        <p className="self-center">
           <strong>계정을 만들었어요. 메일과 비밀번호를 전달해 주세요.</strong> — {notice.user.fullName} (
           {ROLE_LABEL[notice.user.role]}
           {notice.user.where && ` · ${notice.user.where}`})
           {notice.user.role === 'new_hire' && ' · 온보딩 과제가 준비됐어요.'}
         </p>
       ) : (
-        <p>데모 데이터를 초기화했어요.</p>
+        <p className="self-center">데모 데이터를 초기화했어요.</p>
       )}
-    </div>
+    </Alert>
   )
 }
 
@@ -133,7 +131,7 @@ export function UsersPage() {
           ) : (
             <div className="overflow-x-auto">
               <table aria-label="사용자 목록" className="w-full text-sm">
-                <thead className="border-b border-border bg-[#fafafc] text-left text-xs text-[var(--text-secondary)]">
+                <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                   <tr>
                     <th className="px-4 py-3 font-medium">이름</th>
                     <th className="px-4 py-3 font-medium">메일</th>
@@ -151,7 +149,7 @@ export function UsersPage() {
                         <td className="px-4 py-3 font-semibold">
                           {u.full_name}
                           {isNew && (
-                            <span className="ml-2 rounded bg-[#e7eef8] px-1.5 py-0.5 text-xs font-medium text-primary">
+                            <span className="ml-2 rounded bg-st-todo-bg px-1.5 py-0.5 text-xs font-medium text-primary">
                               새로 만듦
                             </span>
                           )}

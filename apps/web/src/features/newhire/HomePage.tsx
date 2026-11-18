@@ -96,7 +96,7 @@ export function HomePage() {
             {profile?.full_name} 님, 온보딩을 함께 챙길게요
           </h1>
           {allDone ? (
-            <p className="inline-flex items-center gap-1.5 text-sm text-[#1b6530]">
+            <p className="inline-flex items-center gap-1.5 text-sm text-st-done-fg">
               <PartyPopper className="size-4" aria-hidden />
               축하해요! 온보딩 과제를 모두 마쳤어요.
             </p>
@@ -117,7 +117,7 @@ export function HomePage() {
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={percent}
-            className="h-2 overflow-hidden rounded-full bg-[#e8e8ed]"
+            className="h-2 overflow-hidden rounded-full bg-track"
           >
             <span className="block h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
           </div>
@@ -140,7 +140,7 @@ export function HomePage() {
               <span className="rounded-full bg-primary px-2 text-xs leading-5 font-semibold text-white">{now.length}</span>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="size-[7px] rounded-full bg-[#1b6530]" aria-hidden />
+              <span className="size-[7px] rounded-full bg-st-done-fg" aria-hidden />
               담당자 처리 결과가 바로 반영돼요
             </span>
           </div>
@@ -177,7 +177,7 @@ export function HomePage() {
           const stageDone = list.filter((t) => t.status === 'done' || t.status === 'na').length
           return (
             <div key={stage}>
-              <div className="flex items-baseline justify-between gap-2 border-t border-border bg-[#fafafc] px-4 py-2.5 first:border-t-0 sm:px-6">
+              <div className="flex items-baseline justify-between gap-2 border-t border-border bg-surface-subtle px-4 py-2.5 first:border-t-0 sm:px-6">
                 <h3 className="text-sm font-semibold">{STAGE_LABEL[stage]}</h3>
                 <span className="text-xs text-muted-foreground">
                   {list.length}개 중 {stageDone}개 완료

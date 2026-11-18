@@ -3,6 +3,8 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 import { Slot } from "radix-ui"
 
+const STATUS_DOT = "before:size-1.5 before:shrink-0 before:rounded-full before:bg-current"
+
 const badgeVariants = cva(
   "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
@@ -18,13 +20,13 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
-        // 과제 상태 6종 (README 상태 배지 표)
-        blocked: "bg-[#f2f2f4] text-[#515154]",
-        todo: "bg-[#e7eef8] text-[#06479a]",
-        submitted: "bg-[#fdf2dc] text-[#7a4f00]",
-        rework: "bg-[#fde8e6] text-[#a1261c]",
-        done: "bg-[#e4f3e8] text-[#1b6530]",
-        na: "border-dashed border-[#d2d2d7] bg-transparent text-[#6e6e73]",
+        // 과제 상태 6종 (README 상태 배지 표). 점은 시안 .st::before, blocked·na는 점 대신 테두리
+        blocked: "border-st-blocked-border bg-st-blocked-bg text-st-blocked-fg",
+        todo: `${STATUS_DOT} bg-st-todo-bg text-st-todo-fg`,
+        submitted: `${STATUS_DOT} bg-st-submitted-bg text-st-submitted-fg`,
+        rework: `${STATUS_DOT} bg-st-rework-bg text-st-rework-fg`,
+        done: `${STATUS_DOT} bg-st-done-bg text-st-done-fg`,
+        na: "border-dashed border-st-na-border bg-transparent text-st-na-fg",
       },
     },
     defaultVariants: {

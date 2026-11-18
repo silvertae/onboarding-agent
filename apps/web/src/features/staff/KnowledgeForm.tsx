@@ -67,7 +67,7 @@ export function KnowledgeForm({ mode, initial, scopeLabel, busy, error, onSubmit
         </div>
 
         {mode === 'resolve' && (
-          <p className="rounded-xl border border-[#cfdcf0] bg-accent px-4 py-3 text-sm text-primary">
+          <p className="rounded-xl border border-alert-info-border bg-alert-info-bg px-4 py-3 text-sm text-alert-info-fg">
             게시하면 이 미답변은 해결됨으로 바뀌고, 같은 질문에 바로 답해요.
           </p>
         )}

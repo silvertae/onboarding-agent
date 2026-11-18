@@ -3,7 +3,7 @@ import { useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { OwnerBadge } from '@/components/OwnerBadge'
 import { StatusBadge } from '@/components/StatusBadge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { Enums } from '@/lib/database.types'
 import { OWNER_LABEL, STAGE_LABEL } from '@/lib/labels'
@@ -180,19 +180,17 @@ export function TaskDetailPage() {
             <span>{MODE_TEXT[t.completion_mode]}</span>
           </div>
           {locked && (
-            <p className="inline-flex items-center gap-1.5 rounded-lg bg-[#f2f2f4] px-3.5 py-2.5 text-sm text-[var(--text-secondary)]">
+            <p className="inline-flex items-center gap-1.5 rounded-lg bg-st-blocked-bg px-3.5 py-2.5 text-sm text-st-blocked-fg">
               <Lock className="size-4" aria-hidden />
               {locked}
             </p>
           )}
           {task.status === 'rework' && task.rework_reason && (
-            <div className="flex gap-2.5 rounded-lg border border-[#f5c6c1] bg-[#fff8f7] px-4 py-3 text-sm text-[#a1261c]">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <div className="flex flex-col gap-0.5">
-                <b>{ownerName}이 보완을 요청했어요</b>
-                <span className="whitespace-pre-wrap">{task.rework_reason}</span>
-              </div>
-            </div>
+            <Alert variant="destructive" role="note">
+              <AlertCircle aria-hidden />
+              <AlertTitle className="font-semibold">{ownerName}이 보완을 요청했어요</AlertTitle>
+              <AlertDescription className="whitespace-pre-wrap">{task.rework_reason}</AlertDescription>
+            </Alert>
           )}
           {task.status === 'na' && task.na_reason && (
             <p className="rounded-lg border border-dashed border-input px-3.5 py-2.5 text-sm text-muted-foreground">

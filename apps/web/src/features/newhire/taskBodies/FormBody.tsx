@@ -68,7 +68,7 @@ export function FormBody({ task, disabled, children }: BodyProps) {
                 <Label htmlFor={id}>
                   {f.label}
                   {f.required && (
-                    <span className="text-[#a1261c]" aria-hidden>
+                    <span className="text-st-rework-fg" aria-hidden>
                       *
                     </span>
                   )}

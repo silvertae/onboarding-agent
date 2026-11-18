@@ -113,7 +113,7 @@ export function LoginPage() {
                 />
               </div>
               {error && (
-                <Alert variant="destructive" className="border-[#f3c5c1] bg-[#fde8e6]">
+                <Alert variant="destructive">
                   <TriangleAlert aria-hidden />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
