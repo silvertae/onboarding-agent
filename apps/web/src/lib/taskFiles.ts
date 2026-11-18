@@ -138,7 +138,8 @@ export async function downloadTaskFile(file: TaskFile): Promise<void> {
 }
 
 // storage-js StorageApiError: status는 숫자(HTTP), statusCode는 문자열, code는 서비스 코드(예: ResourceAlreadyExists).
-function storageError(
+// 데모 초기화(features/admin/users.ts)도 같은 방식으로 DbError로 바꾼다.
+export function storageError(
   err: { message: string; status?: number; statusCode?: string | number; code?: string } | null,
 ): DbError {
   const fromCode = Number(err?.statusCode)

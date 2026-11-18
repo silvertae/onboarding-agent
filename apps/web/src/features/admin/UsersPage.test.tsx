@@ -19,9 +19,12 @@ vi.mock('@/lib/supabase', () => ({
           if (table === 'profiles') state.profileLoads += 1
           return { data: table === 'profiles' ? state.users : state.teams, error: null, status: 200 }
         },
+        // 데모 초기화가 먼저 읽는 담당자 서식 목록(task_template_files). 지우는 순서는 users.test.ts에서 본다.
+        eq: async () => ({ data: [], error: null, status: 200 }),
       }),
     }),
     rpc,
+    storage: { from: () => ({ remove: vi.fn(async () => ({ data: [], error: null })) }) },
     auth: { signOut: vi.fn() },
   },
 }))
