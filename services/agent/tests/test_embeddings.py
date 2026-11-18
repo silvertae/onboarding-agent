@@ -61,3 +61,24 @@ async def test_embed_empty_returns_empty_without_calling_api(monkeypatch):
 
     monkeypatch.setattr(embeddings.litellm, "aembedding", boom)
     assert await embed([]) == []
+
+
+async def test_embed_wraps_api_errors_without_echoing_input(embedding_env, monkeypatch):
+    async def failing(**kwargs):
+        raise RuntimeError("secret input text")
+
+    monkeypatch.setattr(embeddings.litellm, "aembedding", failing)
+    with pytest.raises(EmbeddingError) as exc:
+        await embed(["secret input text"])
+    assert "secret input text" not in str(exc.value)
+    assert "RuntimeError" in str(exc.value)
+    assert exc.value.__cause__ is None and exc.value.__suppress_context__
+
+
+async def test_embed_rejects_count_mismatch(embedding_env, monkeypatch):
+    async def short(**kwargs):
+        return _fake_response(len(kwargs["input"]) - 1, 1536)
+
+    monkeypatch.setattr(embeddings.litellm, "aembedding", short)
+    with pytest.raises(EmbeddingError):
+        await embed(["a", "b"])
