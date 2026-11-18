@@ -63,7 +63,7 @@
   - 테이블 `public.document_clauses(id uuid pk, org_id, document_id uuid references policy_documents on delete cascade, ord int, label text, heading text, body text, embedding extensions.vector(1536))`
   - 칼럼 `public.knowledge_items.origin text not null default 'manual' check in ('manual','ai_draft')`
   - 테이블 `public.knowledge_sources(knowledge_id uuid references knowledge_items on delete cascade, clause_id uuid references document_clauses on delete cascade, org_id, primary key(knowledge_id, clause_id))`
-  - 함수 `private.can_manage_scope(p_scope public.knowledge_scope, p_team uuid) returns boolean`: 지식 쓰기 정책(`0002_rls.sql:105-137`)과 같은 판정이다. 이후 정책과 RPC가 재사용한다.
+  - 함수 `private.can_manage_scope(p_org uuid, p_scope public.knowledge_scope, p_team uuid) returns boolean`: 먼저 `p_org = private.my_org()`을 확인하고(다른 조직이면 false), 그다음 지식 쓰기 정책(`0002_rls.sql:105-137`)과 같은 판정이다. 이후 정책과 RPC가 재사용한다.
   - 버킷 `policy-docs`
 
 - [ ] **Step 1: 실패하는 pgTAP 작성.** 픽스처는 `06_question_bank.sql` 방식(가상 조직, 팀T·팀T2, 신입A(팀T), trainer(팀T), trainer2(팀T2), ga(ops))을 따르고 끝나면 롤백한다. 문서는 넷을 둔다: 회사 ready, 회사 failed, 팀T ready, 팀T2 ready. 단언:
@@ -73,6 +73,7 @@
   - 신입A로 `storage.objects`의 `policy-docs` 객체는 0행이다(문서 행은 보여도 원본 파일은 받을 수 없다).
   - trainer로 회사 ready 조항을 볼 수 있다(읽기 범위). 회사 failed 문서 행은 볼 수 없다(관리 범위 밖).
   - ga로 회사 failed 문서 행을 볼 수 있다.
+  - 다른 조직 픽스처(조직 O2와 그 회사 공통 ready·failed 문서): ga와 신입A는 O2 문서·조항을 볼 수 없다. ga가 `org_id=O2`로 회사 문서 insert는 실패한다. ga가 O2 문서 delete는 0행이다.
   - trainer로 회사 문서 insert는 `throws_ok`(42501), 팀T 문서 insert는 성공, 팀T2 문서 insert는 실패한다.
   - `knowledge_sources`: trainer가 팀T 지식 + 회사 ready 조항 연결 insert는 성공하고 select로 보인다. trainer가 회사 지식에 연결 insert는 실패한다. trainer가 팀T2 문서 조항을 연결하면 실패한다. ga는 회사 지식 연결을 읽고 쓸 수 있다.
   - `select file_size_limit, allowed_mime_types, public from storage.buckets where id='policy-docs'` = `(10485760, {application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document}, false)`
@@ -85,12 +86,12 @@
   - 위 테이블과 HNSW 인덱스 `using hnsw (embedding extensions.vector_cosine_ops)`, `(org_id)` 인덱스
   - RLS
     - 조항 select: 신입과 담당자 모두 `org_id = my_org()`이고, 부모 문서가 `ready`이며, 부모 범위가 company이거나 `team_id = my_team()`일 때 허용한다.
-    - 문서 select: `can_manage_scope`이거나, 문서가 ready이고 읽기 범위(회사 공통 또는 `team_id = my_team()`) 안일 때 허용한다. 신입도 포함한다. 조항 정책의 부모 문서 조회와 `match_document_clauses`의 문서명 JOIN이 RLS에 막히지 않게 하려는 것이다. 원본 파일은 storage 정책(관리 범위만)으로 막는다.
-    - 문서 insert와 delete, 조항 insert와 delete: `can_manage_scope`일 때만 허용한다.
-    - `knowledge_sources` select·insert·delete: `org_id = my_org()`이고, 연결된 지식에 대해 `private.can_manage_scope(지식.scope, 지식.team_id)`가 참일 때 허용한다. insert는 추가로 `clause_id`가 호출자가 읽을 수 있는 조항(조항 select 정책 통과)이어야 한다. 신입에게는 정책이 없어 0행이다. `save_knowledge_drafts`(invoker)와 S10 편집 창이 이 정책에 기대므로 빠뜨리지 않는다.
+    - 문서 select: `can_manage_scope(org_id, scope, team_id)`이거나, `org_id = my_org()`이고 문서가 ready이며 읽기 범위(회사 공통 또는 `team_id = my_team()`) 안일 때 허용한다. 신입도 포함한다. 조항 정책의 부모 문서 조회와 `match_document_clauses`의 문서명 JOIN이 RLS에 막히지 않게 하려는 것이다. 원본 파일은 storage 정책(관리 범위만)으로 막는다.
+    - 문서 insert와 delete, 조항 insert와 delete: `can_manage_scope(org_id, scope, team_id)`(조항은 부모 문서의 값)일 때만 허용한다. 조직 조건이 헬퍼 안에 있으므로 다른 조직의 회사 공통 문서는 관리 범위가 아니다.
+    - `knowledge_sources` select·insert·delete: `org_id = my_org()`이고, 연결된 지식에 대해 `private.can_manage_scope(지식.org_id, 지식.scope, 지식.team_id)`가 참일 때 허용한다. insert는 추가로 `clause_id`가 호출자가 읽을 수 있는 조항(조항 select 정책 통과)이어야 한다. 신입에게는 정책이 없어 0행이다. `save_knowledge_drafts`(invoker)와 S10 편집 창이 이 정책에 기대므로 빠뜨리지 않는다.
   - grant: 문서는 select·insert·delete, 조항은 select·insert·delete, knowledge_sources는 select·insert·delete를 `authenticated`에 준다. `policy_documents`에는 update 권한을 주지 않는다. 상태 갱신은 `replace_document_clauses`(security definer)만 한다.
   - 버킷: `insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) ... on conflict do nothing`
-  - storage 정책: 경로의 두 번째 부분인 document_id로 `policy_documents`를 찾아 `can_manage_scope`로 판정한다.
+  - storage 정책: 경로의 두 번째 부분인 document_id로 `policy_documents`를 찾아 `can_manage_scope(문서.org_id, 문서.scope, 문서.team_id)`로 판정하고, 경로 첫 부분이 그 문서의 org_id와 같아야 한다.
 
 - [ ] **Step 4: 통과 확인.** `npm run db:test`를 실행한다. 09가 통과하고 나머지 pgTAP은 그대로 통과해야 한다. 04의 문제은행 시드 개수 실패는 공용 로컬 DB에 남은 데이터 때문에 이미 알려진 실패이며, CI에서는 깨끗하다.
 
@@ -110,7 +111,7 @@
     - 코사인 거리 오름차순, `p_count`는 1~20으로 자른다
   - `public.replace_document_clauses(p_document_id uuid, p_clauses jsonb, p_error text default null) returns int`
     - **security definer**, `set search_path = ''`. 호출자에게 `policy_documents` update 권한이 없으므로 definer로 상태를 갱신한다.
-    - 함수 안에서 직접 검사한다: 문서가 `my_org()` 조직에 있고(없으면 P0002), `private.can_manage_scope(문서.scope, 문서.team_id)`가 참이어야 한다(아니면 42501). 문서 행을 `for update`로 잠근다.
+    - 함수 안에서 직접 검사한다: 문서가 `my_org()` 조직에 있고(없으면 P0002), `private.can_manage_scope(문서.org_id, 문서.scope, 문서.team_id)`가 참이어야 한다(아니면 42501). 문서 행을 `for update`로 잠근다.
     - `p_clauses`는 `[{ord, label, heading, body, embedding:[...1536]}]` 형식
     - 기존 조항을 지우고 새로 넣는다
     - `p_error`가 있으면 status `failed`와 error를 기록하고, 없으면 `ready`와 clause_count를 기록한다
