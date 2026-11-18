@@ -54,11 +54,17 @@ def _docs(service, org_id):
     return service.table("policy_documents").select("*").eq("org_id", org_id).execute().data
 
 
-def test_indexes_both_docs_and_is_idempotent(script, service, org, monkeypatch, capsys):
+def test_default_seeds_only_work_rules(script, service, org, monkeypatch):
+    _fake_embed(monkeypatch, script, [])
+    assert script.main(["--org", org]) == 0
+    assert [d["title"] for d in _docs(service, org)] == ["취업규칙 발췌(가상)"]
+
+
+def test_all_indexes_both_docs_and_is_idempotent(script, service, org, monkeypatch, capsys):
     calls: list[int] = []
     _fake_embed(monkeypatch, script, calls)
 
-    assert script.main(["--org", org]) == 0
+    assert script.main(["--org", org, "--all"]) == 0
     docs = {d["title"]: d for d in _docs(service, org)}
     assert set(docs) == set(EXPECTED)
     for title, (file_name, file_type) in EXPECTED.items():
@@ -75,7 +81,7 @@ def test_indexes_both_docs_and_is_idempotent(script, service, org, monkeypatch, 
 
     ids = {d["id"] for d in docs.values()}
     calls.clear()
-    assert script.main(["--org", org]) == 0
+    assert script.main(["--org", org, "--all"]) == 0
     assert {d["id"] for d in _docs(service, org)} == ids
     assert calls == []
     assert "건너뜀" in capsys.readouterr().out
@@ -86,13 +92,38 @@ def test_embedding_error_leaves_no_row_so_rerun_retries(script, service, org, mo
         raise EmbeddingError("fail")
 
     monkeypatch.setattr(script, "embed", boom)
-    assert script.main(["--org", org]) == 1
+    assert script.main(["--org", org, "--all"]) == 1
     assert _docs(service, org) == []
     assert "EmbeddingError" in capsys.readouterr().err
 
     _fake_embed(monkeypatch, script, [])
-    assert script.main(["--org", org]) == 0
+    assert script.main(["--org", org, "--all"]) == 0
     assert len(_docs(service, org)) == 2
+
+
+def test_failed_existing_row_is_replaced(script, service, org, monkeypatch):
+    doc_id = str(uuid.uuid4())
+    service.table("policy_documents").insert(
+        {"id": doc_id, "org_id": org, "scope": "company", "title": "취업규칙 발췌(가상)",
+         "file_path": f"{org}/{doc_id}.pdf", "file_type": "pdf", "status": "failed", "error": "x"}
+    ).execute()
+    _fake_embed(monkeypatch, script, [])
+    assert script.main(["--org", org]) == 0
+    docs = _docs(service, org)
+    assert len(docs) == 1 and docs[0]["id"] != doc_id and docs[0]["status"] == "ready"
+
+
+def test_rejected_seed_doc_exits_1(script, service, org, monkeypatch, capsys):
+    from app.documents import DocumentRejected
+
+    def reject(data, file_type):
+        raise DocumentRejected("읽을 수 없음")
+
+    monkeypatch.setattr(script, "extract_text", reject)
+    _fake_embed(monkeypatch, script, [])
+    assert script.main(["--org", org]) == 1
+    assert "DocumentRejected" in capsys.readouterr().err
+    assert [d["status"] for d in _docs(service, org)] == ["failed"]
 
 
 def test_missing_env_exits_2_naming_only_the_variable(script, monkeypatch, capsys):
