@@ -52,7 +52,7 @@
   - `create type public.bank_item_status as enum ('active','hidden')`
   - `create type public.bank_item_source as enum ('exam','manual','migrated','seed')`
   - `private.prompt_key(p text) returns text immutable` = `md5(regexp_replace(btrim(p), '\s+', ' ', 'g'))`. 생성 컬럼이 insert하는 사용자 권한으로 이 함수를 부르므로, 다른 private 함수처럼 `revoke all ... from public` 한 뒤 `grant execute ... to authenticated, service_role`을 명시한다(빠지면 교육 담당자 insert가 42501).
-  - `public.question_bank_items(id uuid pk, org_id uuid not null → orgs, team_id uuid not null → teams, topic text not null check (btrim(topic) <> ''), difficulty public.exam_difficulty not null, prompt text not null, model_answer text not null, rubric text not null, points int not null check 1..100, status bank_item_status not null default 'active', source bank_item_source not null, created_by uuid → profiles on delete set null, created_at timestamptz default now(), updated_at timestamptz default now(), prompt_key text generated always as (private.prompt_key(prompt)) stored, unique (team_id, prompt_key))`, 인덱스 `(team_id, lower(btrim(topic)), difficulty)`
+  - `public.question_bank_items(id uuid pk, org_id uuid not null → orgs, team_id uuid not null → teams, topic text not null check (btrim(topic) <> ''), difficulty public.exam_difficulty not null, prompt text not null, model_answer text not null, rubric text not null, points int not null check 1..100, status bank_item_status not null default 'active', source bank_item_source not null, created_by uuid → profiles on delete set null, created_at timestamptz default now(), updated_at timestamptz default now(), prompt_key text generated always as (private.prompt_key(prompt)) stored, topic_key text generated always as (lower(btrim(topic))) stored, unique (team_id, prompt_key))`, 인덱스 `(team_id, topic_key, difficulty)`. 주제 비교는 RPC와 웹 모두 `topic_key`로만 한다(`ilike`는 `_`·`%`를 와일드카드로 읽으므로 쓰지 않는다).
   - `alter table public.exam_questions add column bank_item_id uuid references public.question_bank_items (id) on delete set null`
   - `public.exam_sittings(id uuid pk, org_id uuid not null, exam_id uuid not null → exams on delete cascade, task_instance_id uuid not null → task_instances on delete cascade, assigned_by uuid → profiles on delete set null, bank_item_ids uuid[] not null default '{}', created_at timestamptz default now(), unique (exam_id, task_instance_id))`. `bank_item_ids`는 연결 시점에 그 시험에 있던 은행 문항 id의 스냅샷이다. 시험 문항은 저장 때마다 지웠다가 다시 넣으므로, 신입이 본 문항은 현재 문항이 아니라 이 스냅샷으로 판정한다.
   - 트리거: 은행에 `private.stamp_exam()`(created_by), `private.touch_updated_at()`(updated_at) 재사용
@@ -83,7 +83,7 @@
 - Consumes: Task 1의 테이블·`private.prompt_key`
 - Produces (모두 `revoke ... from public, anon` 후 `grant execute ... to authenticated`):
   - `public.register_exam_to_bank(p_exam uuid) returns int` — security invoker. 보이지 않는 시험이면 `P0002`, `status <> 'final'`이면 `22023`. `bank_item_id is null`인 문항을 `source='exam'`, 시험의 `topic`·`difficulty`, 시험의 `team_id`로 등록(`on conflict do nothing`), 같은 `prompt_key` 행 id로 `bank_item_id`를 채운다. 반환값 = 새로 insert된 은행 행 수.
-  - `public.pick_bank_items(p_topic text, p_difficulty public.exam_difficulty, p_count int, p_exclude uuid[] default '{}', p_new_hire uuid default null) returns setof public.question_bank_items` — security invoker, volatile. `p_count` 1~10 밖이면 `22023`. 조건: `team_id = my_team()`, `status='active'`, `lower(btrim(topic)) = lower(btrim(p_topic))`, `difficulty = p_difficulty`, `id <> all(p_exclude)`, `p_new_hire`가 있으면 그 신입의 평가 과제에 연결된 `exam_sittings.bank_item_ids`에 있는 id 제외(현재 `exam_questions`는 보지 않는다). `order by random() limit p_count`.
+  - `public.pick_bank_items(p_topic text, p_difficulty public.exam_difficulty, p_count int, p_exclude uuid[] default '{}', p_exclude_prompts text[] default '{}', p_new_hire uuid default null) returns setof public.question_bank_items` — security invoker, volatile. `p_count` 1~10 밖이면 `22023`. 조건: `team_id = my_team()`, `status='active'`, `topic_key = lower(btrim(p_topic))`, `difficulty = p_difficulty`, `id <> all(p_exclude)`, `prompt_key <> all(array(select private.prompt_key(x) from unnest(p_exclude_prompts) x))`(편집기에 직접 쓴 문항은 `bank_item_id`가 없으므로 문장으로도 뺀다), `p_new_hire`가 있으면 그 신입의 평가 과제에 연결된 `exam_sittings.bank_item_ids`에 있는 id 제외(현재 `exam_questions`는 보지 않는다). `order by random() limit p_count`.
   - `public.bank_prompts(p_topic text, p_difficulty public.exam_difficulty, p_limit int default 30) returns setof text` — security invoker. 같은 조건(제외 없음)의 `prompt`를 `created_at desc`로 최대 `least(p_limit, 30)`개.
   - `public.assign_exam(p_task uuid, p_exam uuid) returns public.exam_sittings` — security definer, `set search_path = ''`. `private.lock_hire_of_task(p_task)` 먼저. 과제 없음 `P0002`, 호출자가 그 과제 템플릿 팀의 `team_trainer`가 아니면 `42501`, `kind <> 'assessment'`·상태 `blocked`/`na`·시험이 다른 팀·시험이 `final` 아님이면 `22023`. insert 때 `bank_item_ids = array(select distinct bank_item_id from exam_questions where exam_id = p_exam and bank_item_id is not null)`로 스냅샷을 남긴다. `on conflict (exam_id, task_instance_id) do nothing` 후 그 행을 반환한다(다시 연결해도 처음 스냅샷 유지). 확정·확정 상태 저장 때 등록이 돌므로 확정 시험 문항에는 `bank_item_id`가 채워져 있다. 등록이 실패해 비어 있는 문항은 스냅샷에서 빠진다(등록 실패 문구와 "다시 시도"로 안내).
 
@@ -91,7 +91,7 @@
   - `register_exam_to_bank(E1)` = 3, 다시 호출 = 0, 은행 행 수 3 유지, E1 문항 모두 `bank_item_id is not null`
   - 공백만 다른 같은 문제가 든 확정 시험 E3 등록 → 반환 0, E3 문항이 E1 문항과 같은 `bank_item_id`
   - `register_exam_to_bank(E2)` → `throws_ok(..., '22023')`; 교육 담당자2(T2)가 E1 등록 → `throws_ok(..., 'P0002')`
-  - `pick_bank_items(' javascript 기초', 'beginner', 5)` → 3행(주제 대소문자·공백 무시); 1개를 `hidden`으로 바꾸면 2행; `p_exclude`에 1개 넣으면 그 id 없음; `p_count => 0`·`11` → `22023`
+  - `pick_bank_items(' javascript 기초', 'beginner', 5)` → 3행(주제 대소문자·공백 무시); 주제가 `'JavaScript_기초'`면 0행(와일드카드로 해석하지 않음); 1개를 `hidden`으로 바꾸면 2행; `p_exclude`에 1개 넣으면 그 id 없음; `p_exclude_prompts`에 은행 문항 하나의 문장을 공백만 다르게 넣으면 그 문항 없음(출처 id 없는 같은 문항 회귀); `p_count => 0`·`11` → `22023`
   - `assign_exam(평가 인스턴스, E1)` 후 `pick_bank_items(..., p_new_hire => 신입A)` → E1에서 온 문항 0행
   - 회귀: 연결 뒤 교육 담당자가 E1 문항 하나를 지우고(`delete from exam_questions`) 나머지를 다시 넣어도 `pick_bank_items(..., p_new_hire => 신입A)`에 그 문항이 나오지 않는다; 반환된 `exam_sittings.bank_item_ids`가 E1 문항 3개의 id와 같다
   - `assign_exam`: 읽기 과제·초안 시험·T2 시험 → `22023`, 신입·T2 담당자가 호출 → `42501`, 같은 쌍 두 번 → 행 1개
@@ -156,17 +156,17 @@
   - `export type BankItem = Tables<'question_bank_items'>`
   - `export const AVOID_MAX_ITEMS = 30`, `export const AVOID_PROMPT_MAX = 500`
   - `export const bankKeys = { topics: (userId?: string) => ['bank-topics', userId] as const, list: (userId?: string) => ['bank', userId] as const }`
-  - `export async function pickBankItems(a: { topic: string; difficulty: Difficulty; count: number; exclude: string[]; newHireId?: string }): Promise<BankItem[]>` → `supabase.rpc('pick_bank_items', { p_topic, p_difficulty, p_count, p_exclude, p_new_hire })`
+  - `export async function pickBankItems(a: { topic: string; difficulty: Difficulty; count: number; exclude: string[]; excludePrompts: string[]; newHireId?: string }): Promise<BankItem[]>` → `supabase.rpc('pick_bank_items', { p_topic, p_difficulty, p_count, p_exclude, p_exclude_prompts, p_new_hire })`
   - `export async function bankPrompts(topic: string, difficulty: Difficulty): Promise<string[]>` → `rpc('bank_prompts', { p_topic, p_difficulty, p_limit: AVOID_MAX_ITEMS })`
   - `export async function registerExamToBank(examId: string): Promise<number>` → `rpc('register_exam_to_bank', { p_exam })`
-  - `export function useBankTopics(): UseQueryResult<string[]>` — 게시 문항의 `topic`을 읽어 `btrim`·대소문자 무시로 중복 제거, 가나다순
+  - `export function useBankTopics(): UseQueryResult<string[]>` — 게시 문항의 `topic`·`topic_key`를 읽어 `topic_key`로 중복 제거(표시는 먼저 나온 `topic`의 앞뒤 공백을 지운 값), 가나다순
   - `export function toDraft(item: BankItem): DraftQuestion` — `bank_item_id: item.id` 포함
   - `export function buildAvoidPrompts(editor: string[], bank: string[]): string[]` — 편집기 문장을 먼저, 그다음 은행 문장. 빈 문장은 빼고, 앞뒤 공백을 지우고 연속 공백을 하나로 줄인 값이 같으면 하나만 남기며, `AVOID_MAX_ITEMS`개에서 자른다. 은행이 30개를 넘어도 편집기 문항(최대 10개)은 항상 들어간다.
   - 실패는 `exams.ts`와 같이 `DbError`로 던진다.
 - Produces (`exams.ts`): `DraftQuestion`에 `bank_item_id?: string | null` 추가; `saveExam`이 문항 행에 `bank_item_id: q.bank_item_id ?? null`을 넣는다; `GenerateRequest`에 `avoid_prompts?: string[]`; `generateExam`이 `avoid_prompts`를 `AVOID_MAX_ITEMS`개·`AVOID_PROMPT_MAX`자로 잘라 보낸다.
 
 - [ ] **Step 1: 실패하는 테스트** (`supabase`·`agentFetch`는 기존 `exams.test.ts` 방식으로 mock)
-  - `pickBankItems`가 `rpc('pick_bank_items', { p_topic: 'JS', p_difficulty: 'beginner', p_count: 2, p_exclude: ['b1'], p_new_hire: 'h1' })`로 부른다; `newHireId` 없으면 `p_new_hire: null`
+  - `pickBankItems`가 `rpc('pick_bank_items', { p_topic: 'JS', p_difficulty: 'beginner', p_count: 2, p_exclude: ['b1'], p_exclude_prompts: ['직접 쓴 문제'], p_new_hire: 'h1' })`로 부른다; `newHireId` 없으면 `p_new_hire: null`
   - `registerExamToBank('e1')`가 rpc 결과 `2`를 돌려준다; rpc 오류면 `DbError`
   - `toDraft`가 `bank_item_id`를 은행 id로 채운다
   - `buildAvoidPrompts`: 은행 30개 + 편집기 2개 → 30개이고 편집기 2개가 모두 앞에 있다; 편집기·은행에 공백만 다른 같은 문장 → 한 번만; 빈 문장 제외
@@ -189,7 +189,7 @@
 - Consumes: Task 5의 `pickBankItems`, `bankPrompts`, `registerExamToBank`, `useBankTopics`, `toDraft`
 - 동작 (`need = 문항 수 − items.length`):
   - 주제 칸에 `useBankTopics()`를 `<datalist>`로 연결.
-  - "문제은행에서 채우기"(아이콘 `Library`): `need ≤ 0`이거나 주제가 비었거나 작업 중이면 비활성. `pickBankItems({ topic, difficulty, count: need, exclude: 편집기의 bank_item_id들, newHireId: hireId || undefined })` 결과를 `toDraft`로 뒤에 붙인다. 한도를 쓰지 않는다.
+  - "문제은행에서 채우기"(아이콘 `Library`): `need ≤ 0`이거나 주제가 비었거나 작업 중이면 비활성. `pickBankItems({ topic, difficulty, count: need, exclude: 편집기의 bank_item_id들, excludePrompts: 편집기 문항 중 bank_item_id 없는 것의 prompt(빈 문장 제외), newHireId: hireId || undefined })` 결과를 `toDraft`로 뒤에 붙인다. 한도를 쓰지 않는다.
   - 생성 버튼: 문항이 없으면 지금처럼 "초안 만들기"(전체 교체), 있으면 "부족분 AI로 만들기"로 `question_count: need`를 요청하고 결과를 뒤에 붙인다. `need ≤ 0`이면 비활성. 두 경우 모두 `avoid_prompts = buildAvoidPrompts(편집기 문항 prompt, await bankPrompts(topic, difficulty))`(편집기 우선). `bankPrompts`가 실패하면 회피 목록 없이 생성한다(생성은 막지 않는다).
   - 문항 다시 만들기: 변경 없음(기존 `existing_prompts`).
   - 문항 카드: `bank_item_id`가 있으면 "문제은행" 배지(`Badge variant="secondary"`). 편집해도 배지와 `bank_item_id`는 유지.
@@ -208,12 +208,13 @@
 | 등록 실패 | 확정했지만 문제은행에 넣지 못했어요. 다시 시도해 주세요. |
 
 - [ ] **Step 1: 실패하는 테스트** (`./bank` mock 추가)
-  - 문항 수 5, 빈 편집기에서 "문제은행에서 채우기" → `pickBankItems`가 `count: 5, exclude: []`로 불리고 카드 5개, 모두 "문제은행" 배지, `agentFetch`는 호출되지 않음(한도 미사용)
+  - 문항 수 5, 빈 편집기에서 "문제은행에서 채우기" → `pickBankItems`가 `count: 5, exclude: [], excludePrompts: []`로 불리고 카드 5개, 모두 "문제은행" 배지, `agentFetch`는 호출되지 않음(한도 미사용)
   - 은행이 2개만 돌려주면 카드 2개 + "문제은행에 맞는 문항이 2개뿐이에요. 나머지는 AI로 만들어 주세요."
   - 0개 → "문제은행에 이 주제·난이도 문항이 아직 없어요. AI로 만들어 주세요."
   - 카드 2개 있는 상태에서 생성 버튼 이름이 "부족분 AI로 만들기", 누르면 `agentFetch('/exams/generate', …)` 본문의 `question_count`가 3, `avoid_prompts`가 카드 문장으로 시작하고 은행 문장이 뒤에 있으며(은행이 30개를 돌려줘도 카드 문장 2개가 들어 있다), 결과 3개가 뒤에 붙어 카드 5개
   - 카드 5개면 두 버튼 모두 비활성
   - 참고할 신입을 고르고 채우면 `newHireId: 'h1'`
+  - 은행 배지 없는 카드(직접 입력) 1개가 있는 상태에서 채우면 `excludePrompts`에 그 문장이 들어간다
   - 확정 → `saveExam` 후 `registerExamToBank('e1')`, 반환 2면 "확정했어요. 새 문항 2개를 문제은행에 넣었어요."; 거절되면 등록 실패 문구, "다시 시도" 누르면 다시 호출
   - 저장 시 `saveExam` 인자의 문항에 `bank_item_id`가 남아 있다
   - `bank_item_id`가 있는 문항으로 불러온 시험을 저장해도 `bank_item_id`가 남는다; 그 문항을 다시 만들면 `bank_item_id`가 `null`이 되고 배지가 사라진다
@@ -279,7 +280,7 @@
 - Consumes: Task 5 `bank.ts`, 기존 `QuestionCard`(편집 UI 재사용)
 - Produces (`bank.ts`):
   - `export type BankFilter = { topic?: string; difficulty?: Difficulty; status: 'active' | 'hidden' }`
-  - `export function useBankItems(f: BankFilter): UseQueryResult<BankItem[]>` — `created_at desc`, 주제는 `useBankTopics` 값 중 하나를 그대로 비교(`ilike` 정확 일치)
+  - `export function useBankItems(f: BankFilter): UseQueryResult<BankItem[]>` — `created_at desc`, 주제는 `.eq('topic_key', topic.trim().toLowerCase())`로 비교한다(공백·대소문자만 다른 주제의 문항이 함께 나온다)
   - `export async function updateBankItem(id: string, patch: Partial<Pick<BankItem, 'prompt' | 'model_answer' | 'rubric' | 'points' | 'topic' | 'difficulty' | 'status'>>): Promise<void>`
   - `export async function addBankItem(input: { topic: string; difficulty: Difficulty } & DraftQuestion): Promise<string>` — `org_id`·`team_id`는 `saveExam`처럼 내 프로필에서, `source: 'manual'`
   - 중복(`23505`)은 `DbError`의 `code`로 구분한다.
@@ -298,7 +299,7 @@
 | 같은 문제 | 같은 문제가 이미 문제은행에 있어요. |
 | 저장 실패 | 저장하지 못했어요. 잠시 후 다시 시도해 주세요. |
 
-- [ ] **Step 1: 실패하는 테스트** — 목록·필터 전환(숨김 보기에서 숨긴 문항만); 고치기 저장 → `updateBankItem` 인자; 숨기기 → `{ status: 'hidden' }`와 숨김 문구; 문항 추가 → `addBankItem`; `23505` → "같은 문제가 이미 문제은행에 있어요."; 비어 있음 문구; `Layout` 테스트(있으면)에 "문제은행" 메뉴; 신입이 `/team/bank` 접근 시 기존 보호 라우트 동작(`/me`로).
+- [ ] **Step 1: 실패하는 테스트** — 목록·필터 전환(숨김 보기에서 숨긴 문항만); 주제 필터가 `eq('topic_key', 'javascript 기초')`로 조회한다(`' JavaScript 기초'`를 골라도); 고치기 저장 → `updateBankItem` 인자; 숨기기 → `{ status: 'hidden' }`와 숨김 문구; 문항 추가 → `addBankItem`; `23505` → "같은 문제가 이미 문제은행에 있어요."; 비어 있음 문구; `Layout` 테스트(있으면)에 "문제은행" 메뉴; 신입이 `/team/bank` 접근 시 기존 보호 라우트 동작(`/me`로).
 - [ ] **Step 2: 실패 확인** — `npm run test:web -- BankPage`.
 - [ ] **Step 3: 구현.**
 - [ ] **Step 4: 통과 확인** — `npm run test:web` PASS.
