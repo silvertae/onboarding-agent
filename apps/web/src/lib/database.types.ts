@@ -725,6 +725,32 @@ export type Database = {
     };
     Functions: {
       _start_onboarding: { Args: { p_new_hire: string }; Returns: number };
+      assign_exam: {
+        Args: { p_exam: string; p_task: string };
+        Returns: {
+          assigned_by: string | null;
+          bank_item_ids: string[];
+          created_at: string;
+          exam_id: string;
+          id: string;
+          org_id: string;
+          task_instance_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "exam_sittings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      bank_prompts: {
+        Args: {
+          p_difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          p_limit?: number;
+          p_topic: string;
+        };
+        Returns: string[];
+      };
       confirm_task: {
         Args: { p_id: string };
         Returns: {
@@ -782,6 +808,40 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      pick_bank_items: {
+        Args: {
+          p_count: number;
+          p_difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          p_exclude?: string[];
+          p_exclude_prompts?: string[];
+          p_new_hire?: string;
+          p_topic: string;
+        };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          id: string;
+          model_answer: string;
+          org_id: string;
+          points: number;
+          prompt: string;
+          prompt_key: string | null;
+          rubric: string;
+          source: Database["public"]["Enums"]["bank_item_source"];
+          status: Database["public"]["Enums"]["bank_item_status"];
+          team_id: string;
+          topic: string;
+          topic_key: string | null;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "question_bank_items";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       record_assessment: {
         Args: {
           p_id: string;
@@ -816,6 +876,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      register_exam_to_bank: { Args: { p_exam: string }; Returns: number };
       request_rework: {
         Args: { p_id: string; p_reason: string };
         Returns: {
