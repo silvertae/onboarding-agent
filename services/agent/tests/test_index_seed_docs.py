@@ -113,6 +113,24 @@ def test_failed_existing_row_is_replaced(script, service, org, monkeypatch):
     assert len(docs) == 1 and docs[0]["id"] != doc_id and docs[0]["status"] == "ready"
 
 
+def test_ready_doc_survives_failed_duplicate(script, service, org, monkeypatch):
+    calls: list[int] = []
+    _fake_embed(monkeypatch, script, calls)
+    assert script.main(["--org", org]) == 0
+    ready = _docs(service, org)[0]
+    clauses_before = len(service.table("document_clauses").select("id").eq("document_id", ready["id"]).execute().data)
+    bad = str(uuid.uuid4())
+    service.table("policy_documents").insert(
+        {"id": bad, "org_id": org, "scope": "company", "title": ready["title"],
+         "file_path": f"{org}/{bad}.pdf", "file_type": "pdf", "status": "failed", "error": "x"}
+    ).execute()
+    calls.clear()
+    assert script.main(["--org", org]) == 0
+    docs = _docs(service, org)
+    assert [d["id"] for d in docs] == [ready["id"]] and calls == []
+    assert len(service.table("document_clauses").select("id").eq("document_id", ready["id"]).execute().data) == clauses_before > 0
+
+
 def test_rejected_seed_doc_exits_1(script, service, org, monkeypatch, capsys):
     from app.documents import DocumentRejected
 

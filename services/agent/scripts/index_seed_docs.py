@@ -9,7 +9,7 @@
 필요한 환경변수: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, OPENAI_EMBEDDING_MODEL
 
 - 파일은 <repo>/supabase/seed-docs/. 회사 공통(scope company) 문서로 올리고 uploaded_by는 비운다.
-- 같은 조직에 같은 제목이 이미 있고 ready면 건너뛴다. failed·processing이면 그 행과 객체를 지우고 다시 색인한다.
+- 같은 조직에 같은 제목이 이미 있고 ready면 건너뛴다. 같은 제목의 failed·processing 행은 지운다(ready가 하나라도 있으면 그 문서는 그대로 두고 건너뛰며, 없을 때만 다시 색인한다).
 - 처리 중 실패하면 방금 만든 행과 객체를 지운다. 다시 실행하면 처음부터 다시 시도한다.
 - 시드 문서가 읽히지 않아 failed로 끝나면 stderr에 사유를 출력하고 종료 코드 1(실패 행은 남고, 다시 실행하면 지우고 재시도).
 - 환경변수가 없으면 이름만 출력하고 종료 코드 2, 처리 중 실패는 종료 코드 1.
@@ -117,13 +117,15 @@ def main(argv: list[str] | None = None) -> int:
                 .execute()
                 .data
             )
-            if existing and all(r["status"] == "ready" for r in existing):
+            has_ready = any(r["status"] == "ready" for r in existing)
+            # ready가 하나라도 있으면 그 문서는 그대로 둔다. 못 쓰는 같은 제목 행만 정리한다.
+            for row in (r for r in existing if r["status"] != "ready"):
+                _log(f"{title}: {row['status']} 상태 행을 지움")
+                _discard(client, row["id"], row["file_path"])
+            if has_ready:
                 _log(f"{title}: 이미 있어 건너뜀")
                 skipped += 1
                 continue
-            for row in existing:
-                _log(f"{title}: {row['status']} 상태라 지우고 다시 색인")
-                _discard(client, row["id"], row["file_path"])
             data = path.read_bytes()
             doc_id = str(uuid.uuid4())
             file_path = f"{org_id}/{doc_id}.{file_type}"
