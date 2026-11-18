@@ -4,7 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pytest
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.testclient import TestClient
 
 from app.auth import CurrentUser, current_user
@@ -43,3 +43,37 @@ def test_quota_429_after_limit(chat_limit_two, service, newhire_token):
         assert third.json() == {"detail": "오늘 사용 한도를 넘었어요"}
     finally:
         service.table("usage_counters").delete().eq("user_id", hire["id"]).eq("day", today).execute()
+
+
+class _FakeRpc:
+    def __init__(self, calls, name, params):
+        calls.append((name, params))
+
+    def execute(self):
+        return type("R", (), {"data": False})()
+
+
+class _FakeClient:
+    def __init__(self):
+        self.calls = []
+
+    def rpc(self, name, params):
+        return _FakeRpc(self.calls, name, params)
+
+
+@pytest.mark.parametrize(
+    "kind,env",
+    [("document", "DOCUMENT_DAILY_LIMIT"), ("draft", "DRAFT_DAILY_LIMIT")],
+)
+def test_document_and_draft_limits_use_their_settings(kind, env, monkeypatch):
+    monkeypatch.setenv(env, "0")
+    get_settings.cache_clear()
+    fake = _FakeClient()
+    monkeypatch.setattr("app.quota.user_client", lambda token: fake)
+    try:
+        with pytest.raises(HTTPException) as exc:
+            enforce_quota(CurrentUser(id="u", token="t", role="member", department=None, team_id=None, org_id="o"), kind)
+    finally:
+        get_settings.cache_clear()
+    assert exc.value.status_code == 429
+    assert fake.calls == [("consume_quota", {"p_kind": kind, "p_limit": 0})]
