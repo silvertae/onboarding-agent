@@ -55,7 +55,7 @@ export function ResetDemoDialog({ onDone }: { onDone: () => void }) {
   return (
     <AlertDialog open={open} onOpenChange={changeOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" className="h-10 gap-2 border-destructive/40 px-4 text-destructive hover:text-destructive">
+        <Button variant="outline" className="border-destructive/40 text-destructive hover:text-destructive">
           <RotateCcw aria-hidden />
           데모 데이터 초기화
         </Button>

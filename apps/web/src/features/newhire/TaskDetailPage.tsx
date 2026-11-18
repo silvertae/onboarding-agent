@@ -131,7 +131,7 @@ export function TaskDetailPage() {
           <p className="rounded-lg bg-accent px-3.5 py-2.5 text-label text-accent-foreground">담당자가 처리하면 완료됩니다</p>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button variant="outline" onClick={() => askAboutTask(t.title)}>
+          <Button variant="outline" size="lg" onClick={() => askAboutTask(t.title)}>
             <MessageSquare aria-hidden />이 과제에 대해 물어보기
           </Button>
           {actionable ? (
@@ -140,11 +140,12 @@ export function TaskDetailPage() {
                 <span className="text-xs text-muted-foreground">제출하면 {ownerName}이 확인해요</span>
               )}
               {t.allow_na && !naOpen && (
-                <Button variant="ghost" onClick={() => setNaOpen(true)}>
+                <Button variant="ghost" size="lg" onClick={() => setNaOpen(true)}>
                   해당 없음
                 </Button>
               )}
               <Button
+                size="lg"
                 disabled={!ready || pending}
                 onClick={() => void run(() => (result === undefined ? actions.submit(task!.id) : actions.submit(task!.id, result)))}
               >

@@ -2,9 +2,10 @@ import { useId, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { BusinessCard } from '@/components/BusinessCard'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useTeamName } from '../useTeamName'
-import { TEXTAREA_CLASS, type BodyProps } from './types'
+import type { BodyProps } from './types'
 
 type Field = { key: string; label: string; type: 'text' | 'textarea'; required?: boolean; placeholder?: string }
 
@@ -73,7 +74,7 @@ export function FormBody({ task, disabled, children }: BodyProps) {
                     </span>
                   )}
                 </Label>
-                {f.type === 'textarea' ? <textarea className={TEXTAREA_CLASS} {...common} /> : <Input {...common} />}
+                {f.type === 'textarea' ? <Textarea {...common} /> : <Input size="lg" {...common} />}
               </div>
             )
           })}

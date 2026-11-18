@@ -4,11 +4,12 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import type { Enums } from '@/lib/database.types'
 import { useTaskActions, type TaskView } from '@/lib/tasks'
 import { isoToLocalInput, localInputToIso } from './format'
 import { ASSESSMENT_LABEL } from './teamTasks'
-import { ErrorText, Panel, Textarea } from './ui'
+import { ErrorText, Panel } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 type Choice = 'none' | Enums<'assessment_result'>
@@ -155,7 +156,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
         )}
 
         <div className="flex justify-end">
-          <Button type="button" size="lg" className="px-5" disabled={disabled || clearsSaved || unrecords} onClick={() => void save()}>
+          <Button type="button" disabled={disabled || clearsSaved || unrecords} onClick={() => void save()}>
             저장
           </Button>
         </div>

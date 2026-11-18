@@ -91,6 +91,7 @@ export function LoginPage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="email">메일</Label>
                 <Input
+                  size="lg"
                   id="email"
                   type="email"
                   autoComplete="username"
@@ -103,6 +104,7 @@ export function LoginPage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="password">비밀번호</Label>
                 <Input
+                  size="lg"
                   id="password"
                   type="password"
                   autoComplete="current-password"
@@ -118,7 +120,7 @@ export function LoginPage() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <Button type="submit" size="lg" className="h-11 w-full" disabled={submitting || !email || !password}>
+              <Button type="submit" size="lg" className="w-full" disabled={submitting || !email || !password}>
                 {submitting ? '로그인 중…' : '로그인'}
               </Button>
               <p className="text-center text-xs text-muted-foreground">로그인하면 역할에 맞는 화면으로 이동합니다.</p>

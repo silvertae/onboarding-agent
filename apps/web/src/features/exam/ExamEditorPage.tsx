@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { useHires } from '@/features/staff/hires'
 import { AgentError } from '@/lib/agent'
 import { isAuthError } from '@/lib/errors'
@@ -32,9 +33,6 @@ export const REVIEW_NOTICE = 'AI가 만든 답안은 확정 전 검토가 필요
 const GENERATE_RETRY_MESSAGE = '시험 초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.'
 const SAVE_FAILED = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const INVALID_QUESTIONS = '비어 있는 칸이 있어요. 모든 문항에 문제·모범 답안·채점 기준과 1~100점 배점을 넣어 주세요.'
-
-const fieldClass =
-  'h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50'
 
 type Item = DraftQuestion & { key: string; startEditing?: boolean }
 type Snapshot = { title: string; topic: string; difficulty: Difficulty; status: ExamStatus; questions: DraftQuestion[] }
@@ -252,18 +250,18 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
         />
         <Badge variant={status === 'final' ? 'done' : 'todo'}>{EXAM_STATUS_LABEL[status]}</Badge>
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="lg" className="px-4" disabled={empty || busy} onClick={() => void print('paper')}>
+          <Button type="button" variant="outline" disabled={empty || busy} onClick={() => void print('paper')}>
             <Printer />
             시험지 인쇄
           </Button>
-          <Button type="button" variant="outline" size="lg" className="px-4" disabled={empty || busy} onClick={() => void print('answers')}>
+          <Button type="button" variant="outline" disabled={empty || busy} onClick={() => void print('answers')}>
             <Printer />
             답안지 인쇄
           </Button>
-          <Button type="button" variant="secondary" size="lg" className="px-4" disabled={busy} onClick={() => void persist(status)}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => void persist(status)}>
             저장
           </Button>
-          <Button type="button" size="lg" className="px-4" disabled={empty || busy || status === 'final'} onClick={() => void persist('final')}>
+          <Button type="button" disabled={empty || busy || status === 'final'} onClick={() => void persist('final')}>
             확정
           </Button>
         </div>
@@ -289,11 +287,11 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="exam-difficulty" className="mb-1">난이도</Label>
-                <select id="exam-difficulty" disabled={busy} className={fieldClass} value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+                <NativeSelect id="exam-difficulty" disabled={busy} value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
                   {(Object.keys(DIFFICULTY_LABEL) as Difficulty[]).map((d) => (
                     <option key={d} value={d}>{DIFFICULTY_LABEL[d]}</option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div>
                 <Label htmlFor="exam-count" className="mb-1">문항 수</Label>
@@ -307,16 +305,16 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
             </div>
             <div>
               <Label htmlFor="exam-hire" className="mb-1">참고할 신입</Label>
-              <select id="exam-hire" disabled={busy} className={fieldClass} value={hireId} onChange={(e) => setHireId(e.target.value)}>
+              <NativeSelect id="exam-hire" disabled={busy} value={hireId} onChange={(e) => setHireId(e.target.value)}>
                 <option value="">선택 안 함</option>
                 {(hires.data ?? []).map((h) => (
                   <option key={h.id} value={h.id}>{h.full_name}</option>
                 ))}
                 {hireId && !hires.data?.some((h) => h.id === hireId) && <option value={hireId}>선택한 신입</option>}
-              </select>
+              </NativeSelect>
               <p className="mt-1 text-xs text-muted-foreground">기술스택·경력 조사 결과를 참고해 난이도와 예시를 맞춰요.</p>
             </div>
-            <Button type="button" size="lg" className="h-11" disabled={!canGenerate} onClick={() => void generate()}>
+            <Button type="button" size="lg" disabled={!canGenerate} onClick={() => void generate()}>
               <Sparkles />
               {empty ? '초안 만들기' : '초안 다시 만들기'}
             </Button>
@@ -362,7 +360,7 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
             <p className="text-sm text-[var(--text-secondary)] tabular-nums">
               문항 {items.length} · 총 {totalPoints}점
             </p>
-            <Button type="button" variant="outline" size="lg" className="px-4" disabled={busy} onClick={() => setItems((prev) => [...prev, withKey({ prompt: '', model_answer: '', rubric: '', points: 10 }, true)])}>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => setItems((prev) => [...prev, withKey({ prompt: '', model_answer: '', rubric: '', points: 10 }, true)])}>
               <Plus />
               문항 추가
             </Button>

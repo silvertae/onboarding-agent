@@ -25,7 +25,7 @@ export function TaskReviewPanel({ task, hire, onClose }: Props) {
   const { canConfirm, canRework, canComplete } = reviewActions(task)
 
   const confirmButton = (label: string) => (
-    <Button type="button" size="lg" className="px-4" disabled={busy} onClick={() => void run(() => confirm(task.id))}>
+    <Button type="button" disabled={busy} onClick={() => void run(() => confirm(task.id))}>
       <Check />
       {label}
     </Button>

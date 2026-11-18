@@ -102,7 +102,7 @@ export function QuestionCard({ number, total, question, startEditing = false, di
               onChange={(e) => setInstruction(e.target.value)}
             />
           </div>
-          <Button type="button" size="lg" disabled={busy} onClick={() => void regenerate()}>
+          <Button type="button" disabled={busy} onClick={() => void regenerate()}>
             새 문항 만들기
           </Button>
         </div>

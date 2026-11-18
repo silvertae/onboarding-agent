@@ -45,7 +45,7 @@ export function ExamPrintPage() {
             </Link>
           ))}
         </nav>
-        <Button type="button" size="lg" className="px-4" disabled={!exam.data} onClick={() => window.print()}>
+        <Button type="button" disabled={!exam.data} onClick={() => window.print()}>
           <Printer />
           인쇄 / PDF로 저장
         </Button>
