@@ -1,5 +1,6 @@
 import { Download, Loader2 } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { LoadError } from '@/components/LoadError'
 import { Button } from '@/components/ui/button'
 import { downloadTaskFile, useTemplateFiles, type TaskFile } from '@/lib/taskFiles'
 import { FileRow } from './FileRow'
@@ -8,12 +9,22 @@ const FAIL_TEXT = '파일을 내려받지 못했어요. 다시 시도해 주세�
 
 // S3 "작성할 서식". 서식이 없으면 그리지 않는다. 잠긴 과제·완료한 과제에서도 받을 수 있다.
 export function TaskFormsSection({ templateId }: { templateId: string }) {
-  const { data: files } = useTemplateFiles(templateId)
+  const { data: files, isError, isFetching, refetch } = useTemplateFiles(templateId)
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set())
   const [failedIds, setFailedIds] = useState<ReadonlySet<string>>(new Set())
   // 상태 갱신 전 두 번째 클릭도 막는다
   const inFlight = useRef(new Set<string>())
 
+  if (isError) {
+    return (
+      <div className="flex flex-col gap-3 border-t border-border px-5 py-6 sm:px-7">
+        <h3 className="text-row font-semibold">작성할 서식</h3>
+        <LoadError size="lg" retrying={isFetching} onRetry={() => void refetch()}>
+          서식을 불러오지 못했어요. 다시 시도해 주세요.
+        </LoadError>
+      </div>
+    )
+  }
   if (!files || files.length === 0) return null
 
   async function download(file: TaskFile) {
@@ -57,9 +68,9 @@ export function TaskFormsSection({ templateId }: { templateId: string }) {
                   <Button
                     variant="outline"
                     size="icon-lg"
-                    disabled={busy}
+                    aria-disabled={busy || undefined}
                     aria-label={label}
-                    className="sm:hidden"
+                    className="aria-disabled:opacity-50 sm:hidden"
                     onClick={() => void download(file)}
                   >
                     {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Download aria-hidden />}
@@ -67,9 +78,9 @@ export function TaskFormsSection({ templateId }: { templateId: string }) {
                   <Button
                     variant="outline"
                     size="lg"
-                    disabled={busy}
+                    aria-disabled={busy || undefined}
                     aria-label={label}
-                    className="hidden sm:inline-flex"
+                    className="hidden aria-disabled:opacity-50 sm:inline-flex"
                     onClick={() => void download(file)}
                   >
                     {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Download aria-hidden />}

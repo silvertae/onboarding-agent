@@ -1,3 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { renderHook, waitFor } from '@testing-library/react'
+import { createElement, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const m = vi.hoisted(() => ({
@@ -8,13 +11,14 @@ const m = vi.hoisted(() => ({
   del: vi.fn(),
   getSession: vi.fn(),
   order: [] as string[],
+  select: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: { getSession: m.getSession },
     storage: { from: vi.fn(() => ({ upload: m.upload, remove: m.remove, createSignedUrl: m.createSignedUrl })) },
-    from: vi.fn(() => ({ insert: m.insert, delete: m.del })),
+    from: vi.fn(() => ({ insert: m.insert, delete: m.del, select: m.select })),
   },
 }))
 
@@ -25,6 +29,7 @@ import {
   formExt,
   MAX_FORM_BYTES,
   signedDownloadUrl,
+  useTemplateFiles,
   uploadTaskFile,
   type TaskFile,
 } from './taskFiles'
@@ -179,5 +184,22 @@ describe('signedDownloadUrl', () => {
     m.createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://x/y' }, error: null })
     await expect(signedDownloadUrl(row)).resolves.toBe('https://x/y')
     expect(m.createSignedUrl).toHaveBeenCalledWith('org/tpl/abc.xlsx', 60, { download: '법인카드 신청서.xlsx' })
+  })
+})
+
+describe('useTemplateFiles 순서', () => {
+  it('기본 서식 먼저, 그다음 올린 순서(오래된 것 먼저)로 요청한다', async () => {
+    const order = vi.fn()
+    const result = { data: [row], error: null, status: 200 }
+    order.mockReturnValueOnce({ order }).mockReturnValueOnce(Promise.resolve(result))
+    m.select.mockReturnValue({ eq: () => ({ order }) })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children)
+    const { result: hook } = renderHook(() => useTemplateFiles('tpl'), { wrapper })
+    await waitFor(() => expect(hook.current.isSuccess).toBe(true))
+    expect(order.mock.calls).toEqual([
+      ['is_seed', { ascending: false }],
+      ['created_at', { ascending: true }],
+    ])
   })
 })

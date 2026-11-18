@@ -42,6 +42,7 @@ export function formatFileMeta(f: Pick<TaskFile, 'file_name' | 'size_bytes'>): s
   return label ? `${label} · ${size}` : size
 }
 
+// 기본 서식 먼저, 그다음 올린 순서대로
 export function useTemplateFiles(templateId: string | undefined): UseQueryResult<TaskFile[]> {
   return useQuery({
     queryKey: [...FILES_KEY, templateId],
@@ -52,7 +53,7 @@ export function useTemplateFiles(templateId: string | undefined): UseQueryResult
         .select('*')
         .eq('template_id', templateId!)
         .order('is_seed', { ascending: false })
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
       if (error) throw new DbError(status, error.message, error.code)
       return data
     },

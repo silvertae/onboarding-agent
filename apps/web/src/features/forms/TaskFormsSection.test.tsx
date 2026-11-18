@@ -3,13 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import type { TaskFile } from '@/lib/taskFiles'
 
-const state = vi.hoisted(() => ({ files: [] as TaskFile[], isPending: false }))
+const state = vi.hoisted(() => ({ files: [] as TaskFile[], isPending: false, isError: false, refetch: vi.fn() }))
 const download = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 vi.mock('@/lib/taskFiles', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/taskFiles')>()),
-  useTemplateFiles: () => ({ data: state.files, isPending: state.isPending }),
+  useTemplateFiles: () => ({
+    data: state.isError ? undefined : state.files,
+    isPending: state.isPending,
+    isError: state.isError,
+    isFetching: false,
+    refetch: state.refetch,
+  }),
   downloadTaskFile: download,
 }))
 
@@ -39,6 +45,8 @@ const DOCX = file({ id: 'f2', file_name: '법인카드 사용 동의서.docx', s
 beforeEach(() => {
   state.files = []
   state.isPending = false
+  state.isError = false
+  state.refetch.mockReset()
   download.mockReset()
   download.mockResolvedValue(undefined)
 })
@@ -73,11 +81,11 @@ describe('작성할 서식', () => {
     await userEvent.click(btns('법인카드 신청서.xlsx')[0])
     expect(download).toHaveBeenCalledTimes(1)
     expect(download).toHaveBeenCalledWith(XLSX)
-    for (const b of btns('법인카드 신청서.xlsx')) expect(b).toBeDisabled()
-    for (const b of btns('법인카드 사용 동의서.docx')) expect(b).toBeEnabled()
+    for (const b of btns('법인카드 신청서.xlsx')) expect(b).toHaveAttribute('aria-disabled', 'true')
+    for (const b of btns('법인카드 사용 동의서.docx')) expect(b).not.toHaveAttribute('aria-disabled')
     finish()
     await vi.waitFor(() => {
-      for (const b of btns('법인카드 신청서.xlsx')) expect(b).toBeEnabled()
+      for (const b of btns('법인카드 신청서.xlsx')) expect(b).not.toHaveAttribute('aria-disabled')
     })
   })
 
@@ -109,5 +117,30 @@ describe('작성할 서식', () => {
     expect(desktop).toHaveClass('hidden', 'sm:inline-flex')
     expect(desktop).toHaveTextContent('내려받기')
     expect(desktop.className).not.toMatch(/sm:(py-|px-|h-|size-)|(^|\s)py-/)
+  })
+
+  it('진행 중에도 포커스가 남고, 두 번째 클릭은 무시하며, 다른 행은 쓸 수 있다', async () => {
+    state.files = [XLSX, DOCX]
+    let finish!: () => void
+    download.mockReturnValue(new Promise<void>((r) => (finish = r)))
+    render(<TaskFormsSection templateId="tpl" />)
+    const first = btns('법인카드 신청서.xlsx')[0]
+    await userEvent.click(first)
+    expect(first).toHaveFocus()
+    expect(first).not.toBeDisabled()
+    await userEvent.click(first)
+    expect(download).toHaveBeenCalledTimes(1)
+    await userEvent.click(btns('법인카드 사용 동의서.docx')[0])
+    expect(download).toHaveBeenCalledTimes(2)
+    finish()
+  })
+
+  it('불러오기에 실패하면 제목 아래에 오류와 다시 불러오기를 보인다', async () => {
+    state.isError = true
+    render(<TaskFormsSection templateId="tpl" />)
+    expect(screen.getByRole('heading', { name: '작성할 서식' })).toBeInTheDocument()
+    expect(screen.getByText('서식을 불러오지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '다시 불러오기' }))
+    expect(state.refetch).toHaveBeenCalledTimes(1)
   })
 })
