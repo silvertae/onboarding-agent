@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app import exam_agent
 from app.config import Settings, get_settings
+from app.exam_schema import GenerateRequest
 from app.main import create_app
 
 from .conftest import AI_TEAM_ID, sign_in
@@ -244,6 +245,45 @@ def test_regenerate_validation(client, fake_model, trainer_token, existing_promp
     assert fake.calls == []
 
 
+def test_generate_avoids_given_prompts(client, fake_model, trainer_token):
+    fake = fake_model({"title": "t", "questions": [question(i) for i in range(5)]})
+    avoid = ["var와 let의 차이를 쓰시오", "== 와 === 의 차이를 쓰시오"]
+    res = client.post("/exams/generate", json={**GENERATE, "avoid_prompts": avoid}, headers=bearer(trainer_token))
+    assert res.status_code == 200
+    for prompt in avoid:
+        assert prompt in fake.last_input
+    # 지시문 규칙 5에도 "피할 문항"이 있으므로 블록 여부는 사용자 메시지로만 본다
+    assert "피할 문항" in fake.calls[-1]["message"]
+
+
+def test_generate_without_avoid_has_no_block(client, fake_model, trainer_token):
+    fake = fake_model({"title": "t", "questions": [question(i) for i in range(5)]})
+    assert client.post("/exams/generate", json=GENERATE, headers=bearer(trainer_token)).status_code == 200
+    assert "피할 문항" not in fake.calls[-1]["message"]
+
+
+def test_avoid_block_after_survey_and_skips_blank():
+    req = GenerateRequest(**GENERATE, avoid_prompts=["클로저를 설명하시오", "   ", ""])
+    message = exam_agent.build_generate_message(req, {"stacks": "React"})
+    assert message.index("참고 자료") < message.index("피할 문항")
+    assert message.endswith("피할 문항(이미 있는 문항이다. 이것들과 내용이 겹치지 않게 한다):\n- 클로저를 설명하시오")
+    blank_only = GenerateRequest(**GENERATE, avoid_prompts=["  "])
+    assert "피할 문항" not in exam_agent.build_generate_message(blank_only, None)
+
+
+@pytest.mark.parametrize(
+    "avoid_prompts",
+    [["p"] * 31, ["가" * 501]],  # 31개, 항목 하나가 500자 초과(모델 입력 비용 상한)
+)
+def test_avoid_prompts_validation(client, fake_model, trainer_token, avoid_prompts):
+    fake = fake_model({"title": "t", "questions": [question(i) for i in range(5)]})
+    res = client.post(
+        "/exams/generate", json={**GENERATE, "avoid_prompts": avoid_prompts}, headers=bearer(trainer_token)
+    )
+    assert res.status_code == 422
+    assert fake.calls == []
+
+
 @pytest.fixture
 def exam_limit_one(monkeypatch):
     monkeypatch.setenv("EXAM_DAILY_LIMIT", "1")
@@ -287,6 +327,11 @@ def test_instruction_has_no_company_name(client, fake_model, trainer_token):
     call = fake.calls[-1]
     assert "Blueward" not in call["instruction"]
     assert "Blueward" not in call["message"]
+
+
+def test_instruction_has_no_team_name():
+    """출제 도우미는 어느 팀이 써도 같은 지시문을 쓴다."""
+    assert "AI팀" not in exam_agent.INSTRUCTION
 
 
 FENCED = {
