@@ -1,11 +1,9 @@
 """온보딩 어시스턴트의 조회 도구. 모두 사용자 토큰 클라이언트를 써서 RLS가 그대로 적용된다.
 
-과제 상태를 바꾸는 함수는 두지 않는다(조회와 미답변 기록만).
+DB에 쓰는 함수는 두지 않는다(조회만).
 """
 
 from typing import Any, cast
-
-from postgrest import ReturnMethod
 
 from app.auth import CurrentUser
 from app.db import user_client
@@ -14,7 +12,6 @@ OWNER_LABEL = {"hr": "인사팀", "ga": "총무팀", "accounting": "회계팀"}
 STAGE_ORDER = {"day1": 0, "week1": 1, "month1": 2}
 FINISHED = ("done", "na")
 OPEN_FOR_NEW_HIRE = ("todo", "rework")
-MAX_QUESTION_LENGTH = 1000
 
 
 def get_my_tasks(user: CurrentUser) -> list[dict]:
@@ -79,15 +76,3 @@ def search_knowledge(user: CurrentUser) -> list[dict]:
         .data,
     )
 
-
-def log_unanswered(user: CurrentUser, question: str) -> None:
-    """답할 근거가 없던 질문을 미답변으로 기록한다. 신입은 기록만 할 수 있고 읽을 수 없으므로 결과를 받지 않는다."""
-    user_client(user.token).table("unanswered_questions").insert(
-        {
-            "org_id": user.org_id,
-            "asked_by": user.id,
-            "team_id": user.team_id,
-            "question": question.strip()[:MAX_QUESTION_LENGTH],
-        },
-        returning=ReturnMethod.minimal,
-    ).execute()

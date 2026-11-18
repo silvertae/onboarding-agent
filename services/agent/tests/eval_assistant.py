@@ -114,7 +114,7 @@ def main() -> int:
     todo_titles = [r["task_templates"]["title"] for r in open_rows if r["task_templates"]["completion_mode"] != "staff_only"]
     staff_titles = [r["task_templates"]["title"] for r in open_rows if r["task_templates"]["completion_mode"] == "staff_only"]
 
-    def unanswered_ids_since(since: str) -> list[dict]:
+    def unanswered_since(since: str) -> list[dict]:
         return (
             service.table("unanswered_questions")
             .select("id, question")
@@ -143,7 +143,10 @@ def main() -> int:
         results.append(("노트북 경비 계정과목이 뭐야?", ok, r))
 
         r = ask(client, "동호회 가입비 얼마야?")
-        ok = not r["error"] and r["unanswered"] and not re.search(r"\d", r["text"])
+        # 근거가 없으면 신호만 보낸다. 담당자에게 넘기는 기록은 신입이 화면에서 요청할 때만 생긴다.
+        recorded = unanswered_since(started_at)
+        ok = not r["error"] and r["unanswered"] and not re.search(r"\d", r["text"]) and "전달" not in r["text"] and not recorded
+        r["recorded"] = recorded
         results.append(("동호회 가입비 얼마야?", ok, r))
 
         before = task_statuses()
@@ -157,16 +160,14 @@ def main() -> int:
     finally:
         client.close()
         server.should_exit = True
-        # 이번 실행이 만든 미답변("동호회 가입비" 문항)만 지운다. 같은 계정으로 동시에 한 다른 질문은 남긴다.
-        created = [r for r in unanswered_ids_since(started_at) if "동호회" in r["question"]]
-        for row in created[:1]:
-            service.table("unanswered_questions").delete().eq("id", row["id"]).execute()
 
     print(f"model={os.environ['OPENAI_MODEL']}")
     for question, ok, r in results:
         print(f"\n[{'PASS' if ok else 'FAIL'}] {question}")
         print(f"  events={_compact(r['types'])} unanswered={r['unanswered']} knowledge={r['knowledge']} tasks={r['tasks']}")
         print(f"  first_token={r['first_token_s']}s total={r['total_s']}s")
+        if r.get("recorded"):
+            print(f"  에이전트가 미답변을 기록함: {len(r['recorded'])}건")
         if r.get("staff_misled"):
             print(f"  담당자 처리 과제를 할 일로 안내: {r['staff_misled']}")
         preview = r["text"].replace("\n", " ")
