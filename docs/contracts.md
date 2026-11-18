@@ -20,7 +20,7 @@ POST /chat            {message: string(1..1000), history: [{role:"user"|"assista
     {"type":"unanswered"}            # 미답변으로 기록됨
     {"type":"error","message":string}
     {"type":"done"}
-POST /exams/generate  {topic, difficulty:"beginner"|"intermediate", question_count:1..10, style?:string, new_hire_id?:uuid}
+POST /exams/generate  {topic, difficulty:"beginner"|"intermediate", question_count:1..10, style?:string, new_hire_id?:uuid, avoid_prompts?:string[] (≤30, 각 ≤500자)}
   → 200 {title:string, questions:[ExamQuestion]}
 POST /exams/regenerate-question {topic, difficulty, existing_prompts:string[], instruction?:string}
   → 200 ExamQuestion
