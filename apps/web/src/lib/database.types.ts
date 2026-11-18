@@ -510,17 +510,80 @@ export type Database = {
           },
         ];
       };
+      task_template_files: {
+        Row: {
+          created_at: string;
+          file_name: string;
+          id: string;
+          is_seed: boolean;
+          org_id: string;
+          size_bytes: number;
+          storage_path: string;
+          template_id: string;
+          uploaded_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          file_name: string;
+          id?: string;
+          is_seed?: boolean;
+          org_id: string;
+          size_bytes: number;
+          storage_path: string;
+          template_id: string;
+          uploaded_by?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          file_name?: string;
+          id?: string;
+          is_seed?: boolean;
+          org_id?: string;
+          size_bytes?: number;
+          storage_path?: string;
+          template_id?: string;
+          uploaded_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "task_template_files_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_template_files_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "task_templates";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_template_files_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       task_templates: {
         Row: {
           allow_na: boolean;
+          archived_at: string | null;
+          assigned_to: string | null;
           checklist: Json | null;
           code: string;
           completion_mode: Database["public"]["Enums"]["completion_mode"];
+          created_by: string | null;
           department: Database["public"]["Enums"]["ops_department"] | null;
           description: string;
           due_offset_days: number;
           form_schema: Json | null;
           id: string;
+          is_seed: boolean;
           kind: Database["public"]["Enums"]["task_kind"];
           org_id: string;
           prerequisite_codes: string[];
@@ -533,14 +596,18 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           allow_na?: boolean;
+          archived_at?: string | null;
+          assigned_to?: string | null;
           checklist?: Json | null;
           code: string;
           completion_mode: Database["public"]["Enums"]["completion_mode"];
+          created_by?: string | null;
           department?: Database["public"]["Enums"]["ops_department"] | null;
           description?: string;
           due_offset_days?: number;
           form_schema?: Json | null;
           id?: string;
+          is_seed?: boolean;
           kind?: Database["public"]["Enums"]["task_kind"];
           org_id: string;
           prerequisite_codes?: string[];
@@ -552,14 +619,18 @@ export type Database = {
         };
         Update: {
           allow_na?: boolean;
+          archived_at?: string | null;
+          assigned_to?: string | null;
           checklist?: Json | null;
           code?: string;
           completion_mode?: Database["public"]["Enums"]["completion_mode"];
+          created_by?: string | null;
           department?: Database["public"]["Enums"]["ops_department"] | null;
           description?: string;
           due_offset_days?: number;
           form_schema?: Json | null;
           id?: string;
+          is_seed?: boolean;
           kind?: Database["public"]["Enums"]["task_kind"];
           org_id?: string;
           prerequisite_codes?: string[];
@@ -570,6 +641,20 @@ export type Database = {
           title?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "task_templates_assigned_to_fkey";
+            columns: ["assigned_to"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "task_templates_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "task_templates_org_id_fkey";
             columns: ["org_id"];
@@ -592,6 +677,7 @@ export type Database = {
           name: string;
           org_id: string;
           org_line: string[];
+          task_code_prefix: string | null;
         };
         ComputedFields: never;
         Insert: {
@@ -599,12 +685,14 @@ export type Database = {
           name: string;
           org_id: string;
           org_line?: string[];
+          task_code_prefix?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
           org_id?: string;
           org_line?: string[];
+          task_code_prefix?: string | null;
         };
         Relationships: [
           {
@@ -725,6 +813,76 @@ export type Database = {
     };
     Functions: {
       _start_onboarding: { Args: { p_new_hire: string }; Returns: number };
+      add_task_for_hire: {
+        Args: {
+          p_allow_na: boolean;
+          p_checklist: Json;
+          p_completion_mode: Database["public"]["Enums"]["completion_mode"];
+          p_days_in_stage: number;
+          p_description: string;
+          p_kind: Database["public"]["Enums"]["task_kind"];
+          p_new_hire: string;
+          p_stage: Database["public"]["Enums"]["task_stage"];
+          p_title: string;
+        };
+        Returns: {
+          assessment_note: string | null;
+          assessment_result: Database["public"]["Enums"]["assessment_result"] | null;
+          confirmed_at: string | null;
+          confirmed_by: string | null;
+          due_date: string | null;
+          id: string;
+          location: string | null;
+          na_reason: string | null;
+          new_hire_id: string;
+          org_id: string;
+          result: Json | null;
+          rework_reason: string | null;
+          scheduled_at: string | null;
+          status: Database["public"]["Enums"]["task_status"];
+          submitted_at: string | null;
+          template_id: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "task_instances";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      archive_task_template: {
+        Args: { p_id: string };
+        Returns: {
+          allow_na: boolean;
+          archived_at: string | null;
+          assigned_to: string | null;
+          checklist: Json | null;
+          code: string;
+          completion_mode: Database["public"]["Enums"]["completion_mode"];
+          created_by: string | null;
+          department: Database["public"]["Enums"]["ops_department"] | null;
+          description: string;
+          due_offset_days: number;
+          form_schema: Json | null;
+          id: string;
+          is_seed: boolean;
+          kind: Database["public"]["Enums"]["task_kind"];
+          org_id: string;
+          prerequisite_codes: string[];
+          requires_hq_access: boolean;
+          sort_order: number;
+          stage: Database["public"]["Enums"]["task_stage"];
+          team_id: string | null;
+          title: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "task_templates";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       assign_exam: {
         Args: { p_exam: string; p_task: string };
         Returns: {
@@ -923,6 +1081,81 @@ export type Database = {
         SetofOptions: {
           from: "*";
           to: "knowledge_items";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      restore_task_template: {
+        Args: { p_id: string };
+        Returns: {
+          allow_na: boolean;
+          archived_at: string | null;
+          assigned_to: string | null;
+          checklist: Json | null;
+          code: string;
+          completion_mode: Database["public"]["Enums"]["completion_mode"];
+          created_by: string | null;
+          department: Database["public"]["Enums"]["ops_department"] | null;
+          description: string;
+          due_offset_days: number;
+          form_schema: Json | null;
+          id: string;
+          is_seed: boolean;
+          kind: Database["public"]["Enums"]["task_kind"];
+          org_id: string;
+          prerequisite_codes: string[];
+          requires_hq_access: boolean;
+          sort_order: number;
+          stage: Database["public"]["Enums"]["task_stage"];
+          team_id: string | null;
+          title: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "task_templates";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      save_task_template: {
+        Args: {
+          p_allow_na: boolean;
+          p_checklist: Json;
+          p_completion_mode: Database["public"]["Enums"]["completion_mode"];
+          p_days_in_stage: number;
+          p_description: string;
+          p_id: string;
+          p_kind: Database["public"]["Enums"]["task_kind"];
+          p_prerequisite_codes: string[];
+          p_stage: Database["public"]["Enums"]["task_stage"];
+          p_title: string;
+        };
+        Returns: {
+          allow_na: boolean;
+          archived_at: string | null;
+          assigned_to: string | null;
+          checklist: Json | null;
+          code: string;
+          completion_mode: Database["public"]["Enums"]["completion_mode"];
+          created_by: string | null;
+          department: Database["public"]["Enums"]["ops_department"] | null;
+          description: string;
+          due_offset_days: number;
+          form_schema: Json | null;
+          id: string;
+          is_seed: boolean;
+          kind: Database["public"]["Enums"]["task_kind"];
+          org_id: string;
+          prerequisite_codes: string[];
+          requires_hq_access: boolean;
+          sort_order: number;
+          stage: Database["public"]["Enums"]["task_stage"];
+          team_id: string | null;
+          title: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "task_templates";
           isOneToOne: true;
           isSetofReturn: false;
         };
