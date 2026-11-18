@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Plus, Printer, Sparkles, TriangleAlert } from 'lucide-react'
+import { Check, ChevronLeft, CircleAlert, Info, Library, Plus, Printer, Sparkles, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus } from '@/components/LoadingStatus'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,6 +16,7 @@ import { AgentError } from '@/lib/agent'
 import { isAuthError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { bankPrompts, buildAvoidPrompts, pickBankItems, registerExamToBank, toDraft, useBankTopics } from './bank'
 import {
   DIFFICULTY_LABEL,
   EXAM_STATUS_LABEL,
@@ -36,13 +37,28 @@ export const REVIEW_NOTICE = 'AI가 만든 답안은 확정 전 검토가 필요
 const GENERATE_RETRY_MESSAGE = '시험 초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.'
 const SAVE_FAILED = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const INVALID_QUESTIONS = '비어 있는 칸이 있어요. 모든 문항에 문제·모범 답안·채점 기준과 1~100점 배점을 넣어 주세요.'
+const BANK_LOADING = '문제은행에서 가져오는 중…'
+const BANK_EMPTY = '문제은행에 이 주제·난이도 문항이 아직 없어요. AI로 만들어 주세요.'
+const BANK_FAILED = '문제은행을 불러오지 못했어요. 다시 시도해 주세요.'
+const BANK_REGISTER_FAILED = '확정했지만 문제은행에 넣지 못했어요. 다시 시도해 주세요.'
+const bankShortage = (n: number) => `문제은행에 맞는 문항이 ${n}개뿐이에요. 나머지는 AI로 만들어 주세요.`
+const registered = (n: number) => (n > 0 ? `확정했어요. 새 문항 ${n}개를 문제은행에 넣었어요.` : '확정했어요.')
 
 type Item = DraftQuestion & { key: string; startEditing?: boolean }
 type Snapshot = { title: string; topic: string; difficulty: Difficulty; status: ExamStatus; questions: DraftQuestion[] }
+// 확정(또는 확정된 시험 저장) 뒤 은행 등록 결과. 머리 아래 알림 자리에 보인다
+type BankNotice = { ok: true; count: number } | { ok: false; examId: string }
 
 let keySeq = 0
 const withKey = (q: DraftQuestion, startEditing = false): Item => ({ ...q, key: `k${++keySeq}`, startEditing })
-const draftOf = ({ prompt, model_answer, rubric, points }: DraftQuestion): DraftQuestion => ({ prompt, model_answer, rubric, points })
+// 은행 출처(bank_item_id)도 남긴다. 불러올 때·저장 스냅샷에서 출처가 사라지면 확정 때 은행에 또 들어간다
+const draftOf = ({ prompt, model_answer, rubric, points, bank_item_id }: DraftQuestion): DraftQuestion => ({
+  prompt,
+  model_answer,
+  rubric,
+  points,
+  bank_item_id: bank_item_id ?? null,
+})
 const isComplete = (q: DraftQuestion) =>
   Boolean(q.prompt.trim() && q.model_answer.trim() && q.rubric.trim()) && Number.isInteger(q.points) && q.points >= 1 && q.points <= 100
 
@@ -135,10 +151,12 @@ export function ExamEditorPage() {
 
 function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const [params] = useSearchParams()
   const hires = useHires()
   const exams = useExams()
+  const bankTopics = useBankTopics()
 
   const [examId, setExamId] = useState<string | undefined>(initial?.id)
   const [title, setTitle] = useState(initial?.title ?? '')
@@ -156,6 +174,13 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
   // 진행 중인 문항 다시 만들기 수. 끝나기 전에 저장·확정·인쇄하면 결과가 사라지므로 막는다
   const [regenerating, setRegenerating] = useState(0)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [filling, setFilling] = useState(false)
+  // 은행 채우기 결과: 부족·없음 안내(info) 또는 불러오기 실패
+  const [fillNotice, setFillNotice] = useState<{ text: string; failed: boolean } | null>(null)
+  const [registering, setRegistering] = useState(false)
+  const [bankNotice, setBankNotice] = useState<BankNotice | null>(
+    () => (location.state as { bankNotice?: BankNotice } | null)?.bankNotice ?? null,
+  )
 
   const snapshot = (over: Partial<Snapshot> = {}): Snapshot => ({
     title: title.trim() || topic.trim(),
@@ -181,29 +206,90 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
 
   const questionCount = Number(count)
   const countValid = Number.isInteger(questionCount) && questionCount >= 1 && questionCount <= 10
-  const canGenerate = Boolean(topic.trim()) && countValid && !generating && !saving
   const totalPoints = items.reduce((sum, q) => sum + (q.points || 0), 0)
   const empty = items.length === 0
-  const busy = generating || saving || regenerating > 0
+  // 문항 수까지 모자란 개수. 은행 채우기와 부족분 생성이 이만큼만 붙인다
+  const need = countValid ? questionCount - items.length : 0
+  const busy = generating || saving || regenerating > 0 || filling || registering
+  const canGenerate = Boolean(topic.trim()) && need > 0 && !generating && !saving && !filling && !registering
+  const canFill = Boolean(topic.trim()) && need > 0 && !busy
 
+  // 편집기의 모든 문항 문장(출처와 무관, 빈 문장 제외)
+  const editorPrompts = () => items.map((q) => q.prompt).filter((p) => p.trim())
+
+  async function fillFromBank() {
+    setFilling(true)
+    setFillNotice(null)
+    try {
+      const picked = await pickBankItems({
+        topic: topic.trim(),
+        difficulty,
+        count: need,
+        exclude: items.flatMap((q) => (q.bank_item_id ? [q.bank_item_id] : [])),
+        excludePrompts: editorPrompts(),
+        newHireId: hireId || undefined,
+      })
+      setItems((prev) => [...prev, ...picked.map((b) => withKey(toDraft(b)))])
+      if (picked.length === 0) setFillNotice({ text: BANK_EMPTY, failed: false })
+      else if (picked.length < need) setFillNotice({ text: bankShortage(picked.length), failed: false })
+    } catch (error) {
+      if (isAuthError(error)) {
+        void supabase.auth.signOut()
+        return
+      }
+      setFillNotice({ text: BANK_FAILED, failed: true })
+    } finally {
+      setFilling(false)
+    }
+  }
+
+  // 문항이 없으면 전체 초안(교체), 있으면 부족분만 만들어 뒤에 붙인다
   async function generate() {
+    const append = !empty
     setGenerating(true)
     setGenError(null)
+    setFillNotice(null)
     try {
+      // 은행 문장을 못 불러와도 생성은 막지 않는다. 편집기 문장 회피는 유지한다
+      const bank = await bankPrompts(topic.trim(), difficulty).catch(() => [])
       const res = await generateExam({
         topic: topic.trim(),
         difficulty,
-        question_count: questionCount,
+        question_count: append ? need : questionCount,
         ...(style.trim() ? { style: style.trim() } : {}),
         ...(hireId ? { new_hire_id: hireId } : {}),
+        avoid_prompts: buildAvoidPrompts(editorPrompts(), bank),
       })
-      setItems(res.questions.map((q) => withKey(draftOf(q))))
-      if (res.title.trim()) setTitle(res.title.trim())
+      const generated = res.questions.map((q) => withKey(draftOf(q)))
+      setItems((prev) => (append ? [...prev, ...generated] : generated))
+      if (res.title.trim() && (!append || !title.trim())) setTitle(res.title.trim())
     } catch (error) {
       setGenError(generateError(error))
     } finally {
       setGenerating(false)
     }
+  }
+
+  // 확정 시험의 새 문항을 은행에 넣는다. 실패해도 시험은 확정된 채로 두고 다시 시도할 수 있다(중복은 DB가 막는다)
+  async function registerToBank(id: string): Promise<BankNotice | null> {
+    setRegistering(true)
+    setBankNotice(null)
+    let notice: BankNotice | null = null
+    try {
+      notice = { ok: true, count: await registerExamToBank(id) }
+      void queryClient.invalidateQueries({ queryKey: ['bank-topics'] })
+      void queryClient.invalidateQueries({ queryKey: ['bank'] })
+    } catch (error) {
+      if (isAuthError(error)) {
+        void supabase.auth.signOut()
+        return null
+      }
+      notice = { ok: false, examId: id }
+    } finally {
+      setRegistering(false)
+    }
+    setBankNotice(notice)
+    return notice
   }
 
   async function regenerateAt(key: string, instruction: string) {
@@ -215,7 +301,8 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
         existing_prompts: items.filter((q) => q.key !== key && q.prompt.trim()).map((q) => q.prompt),
         ...(instruction ? { instruction } : {}),
       })
-      setItems((prev) => prev.map((q) => (q.key === key ? { ...draftOf(next), key } : q)))
+      // 내용이 새로 바뀌므로 은행 출처를 비운다
+      setItems((prev) => prev.map((q) => (q.key === key ? { ...draftOf(next), bank_item_id: null, key } : q)))
     } finally {
       setRegenerating((n) => n - 1)
     }
@@ -235,9 +322,19 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
     })
   }
 
-  // 저장에 성공하면 시험 id, 실패하면 null
+  // 저장에 성공하면 시험 id, 실패하면 null. 확정 상태로 저장하면(확정, 확정된 시험 저장) 은행에도 등록한다
   async function persist(nextStatus: ExamStatus): Promise<string | null> {
+    const savedId = await saveOnly(nextStatus)
+    if (!savedId) return null
+    const notice = nextStatus === 'final' ? await registerToBank(savedId) : null
+    // 새 시험은 새 주소에서 편집기가 다시 그려지므로 등록 결과를 주소 state로 넘긴다
+    if (!examId) navigate(`/team/exams/${savedId}`, { replace: true, state: notice ? { bankNotice: notice } : null })
+    return savedId
+  }
+
+  async function saveOnly(nextStatus: ExamStatus): Promise<string | null> {
     setSaveError(null)
+    setBankNotice(null)
     if (!topic.trim()) {
       setSaveError('주제를 입력해 주세요.')
       return null
@@ -266,7 +363,6 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
           status: snap.status,
           questions: snap.questions.map((q, position) => ({ ...q, id: `${savedId}-${position}`, exam_id: savedId, position })),
         })
-        navigate(`/team/exams/${savedId}`, { replace: true })
       } else {
         void queryClient.invalidateQueries({ queryKey: examKeys.detail(savedId) })
       }
@@ -338,6 +434,21 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
           <AlertDescription>{REVIEW_NOTICE}</AlertDescription>
         </Alert>
       )}
+      {bankNotice?.ok && (
+        <Alert variant="success" role="status">
+          <Check aria-hidden />
+          <AlertDescription>{registered(bankNotice.count)}</AlertDescription>
+        </Alert>
+      )}
+      {bankNotice && !bankNotice.ok && (
+        <Alert variant="destructive" role="alert" className="flex flex-wrap items-center gap-2 py-2">
+          <CircleAlert aria-hidden />
+          <span className="flex-1">{BANK_REGISTER_FAILED}</span>
+          <Button type="button" variant="outline" size="sm" className="bg-card" disabled={busy} onClick={() => void registerToBank(bankNotice.examId)}>
+            다시 시도
+          </Button>
+        </Alert>
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
         <aside className="grid gap-4">
@@ -345,7 +456,13 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
             <h2 id="exam-conditions" className="font-semibold">출제 조건</h2>
             <div>
               <Label htmlFor="exam-topic" className="mb-1">주제</Label>
-              <Input id="exam-topic" disabled={busy} value={topic} maxLength={200} placeholder="예: JavaScript 비동기·스코프" onChange={(e) => setTopic(e.target.value)} />
+              <Input id="exam-topic" list="exam-bank-topics" disabled={busy} value={topic} maxLength={200} placeholder="예: JavaScript 비동기·스코프" onChange={(e) => setTopic(e.target.value)} />
+              {/* 팀 문제은행의 기존 주제. 표기가 갈라지지 않게 고르도록 띄운다 */}
+              <datalist id="exam-bank-topics">
+                {(bankTopics.data ?? []).map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -377,10 +494,25 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
               </NativeSelect>
               <p className="mt-1 text-xs text-muted-foreground">기술스택·경력 조사 결과를 참고해 난이도와 예시를 맞춰요.</p>
             </div>
-            <Button type="button" size="lg" disabled={!canGenerate} onClick={() => void generate()}>
-              <Sparkles />
-              {empty ? '초안 만들기' : '초안 다시 만들기'}
-            </Button>
+            {/* 은행에서 먼저 채우고(한도 없음), 모자라면 AI로 만든다. 둘 다 문항 수까지 모자란 만큼만 붙인다 */}
+            <div className="grid gap-2">
+              <Button type="button" size="lg" variant="outline" className="bg-card" disabled={!canFill} onClick={() => void fillFromBank()}>
+                <Library />
+                문제은행에서 채우기
+              </Button>
+              <Button type="button" size="lg" disabled={!canGenerate} onClick={() => void generate()}>
+                <Sparkles />
+                {empty ? '초안 만들기' : '부족분 AI로 만들기'}
+              </Button>
+            </div>
+            {filling && <p role="status" className="text-sm text-primary">{BANK_LOADING}</p>}
+            {fillNotice?.failed && <p role="alert" className="text-sm text-destructive">{fillNotice.text}</p>}
+            {fillNotice && !fillNotice.failed && (
+              <Alert variant="info" role="status">
+                <Info aria-hidden />
+                <AlertDescription>{fillNotice.text}</AlertDescription>
+              </Alert>
+            )}
             {generating && <p role="status" className="text-sm text-primary">초안을 만드는 중이에요. 20초 정도 걸릴 수 있어요.</p>}
             {genError && (
               <Alert variant="destructive" className="gap-2 px-3">
@@ -430,7 +562,7 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
           </div>
           {empty && (
             <p className={cn('rounded-[18px] border border-dashed border-border px-6 py-16 text-center text-sm text-muted-foreground')}>
-              왼쪽에서 출제 조건을 넣고 "초안 만들기"를 누르면 문항 초안이 여기에 나타나요.
+              왼쪽에서 출제 조건을 넣고 "문제은행에서 채우기"나 "초안 만들기"를 누르면 문항이 여기에 나타나요.
             </p>
           )}
           {items.map((q, index) => (

@@ -1,6 +1,7 @@
-import { ArrowDown, ArrowUp, Pencil, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Library, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Alert } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -60,6 +61,12 @@ export function QuestionCard({ number, total, question, startEditing = false, di
       <header className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold">{number}번</span>
         <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-[var(--text-secondary)]">{question.points || 0}점</span>
+        {question.bank_item_id && (
+          <Badge variant="secondary">
+            <Library aria-hidden />
+            문제은행
+          </Badge>
+        )}
         {regenerating && (
           <span role="status" className="text-xs text-primary">
             다시 만드는 중…

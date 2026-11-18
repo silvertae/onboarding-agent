@@ -7,8 +7,11 @@ import { AgentError } from '@/lib/agent'
 import { DbError } from '@/lib/errors'
 import type { DraftQuestion, ExamWithQuestions } from './exams'
 
-const { agentFetch, saveExam, signOut, state } = vi.hoisted(() => ({
+const { agentFetch, saveExam, signOut, state, pickBankItems, bankPrompts, registerExamToBank } = vi.hoisted(() => ({
   agentFetch: vi.fn(),
+  pickBankItems: vi.fn(async (_a: unknown): Promise<unknown[]> => []),
+  bankPrompts: vi.fn(async (_t: string, _d: string): Promise<string[]> => []),
+  registerExamToBank: vi.fn(async (_id: string) => 0),
   signOut: vi.fn(async () => ({ error: null })),
   saveExam: vi.fn(async (_e: unknown) => 'e1'),
   state: { exam: undefined as unknown },
@@ -40,15 +43,33 @@ vi.mock('./exams', async (importOriginal) => ({
   saveExam,
 }))
 
+vi.mock('./bank', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./bank')>()),
+  useBankTopics: () => ({ data: ['JavaScript 기초'], isLoading: false, isError: false }),
+  pickBankItems,
+  bankPrompts,
+  registerExamToBank,
+}))
+
+import { toDraft, type BankItem } from './bank'
 import { ExamEditorPage } from './ExamEditorPage'
 
 const q = (i: number): DraftQuestion => ({ prompt: `문제 ${i}`, model_answer: `답 ${i}`, rubric: `기준 ${i}`, points: 10 * i })
 
-function examWith(questions: DraftQuestion[]): ExamWithQuestions {
+// 저장·불러온 문항은 출처 칸(bank_item_id)이 늘 있다
+const saved = (x: DraftQuestion): DraftQuestion => ({ ...x, bank_item_id: x.bank_item_id ?? null })
+
+const bank = (i: number): BankItem => ({
+  id: `b${i}`, org_id: 'org-1', team_id: 'team-ai', topic: 'JavaScript 기초', topic_key: 'javascript 기초', difficulty: 'beginner',
+  prompt: `은행 문제 ${i}`, prompt_key: `은행 문제 ${i}`, model_answer: `은행 답 ${i}`, rubric: `은행 기준 ${i}`, points: 20,
+  status: 'active', source: 'seed', created_by: null, created_at: '2026-11-18T00:00:00Z', updated_at: '2026-11-18T00:00:00Z',
+})
+
+function examWith(questions: DraftQuestion[], status: 'draft' | 'final' = 'draft'): ExamWithQuestions {
   return {
     id: 'e1', org_id: 'org-1', team_id: 'team-ai', created_by: 'trainer', created_at: '2026-11-17T00:00:00Z',
-    title: 'JS 기본기', topic: 'JavaScript 기초', difficulty: 'beginner', status: 'draft',
-    questions: questions.map((x, i) => ({ ...x, id: `q${i}`, exam_id: 'e1', org_id: 'org-1', position: i, bank_item_id: null })),
+    title: 'JS 기본기', topic: 'JavaScript 기초', difficulty: 'beginner', status,
+    questions: questions.map((x, i) => ({ ...x, id: `q${i}`, exam_id: 'e1', org_id: 'org-1', position: i, bank_item_id: x.bank_item_id ?? null })),
   }
 }
 
@@ -83,8 +104,17 @@ function savedQuestions(): DraftQuestion[] {
   return (last[0] as { questions: DraftQuestion[] }).questions
 }
 
+function generateBody(): { question_count: number; avoid_prompts: string[] } {
+  const call = agentFetch.mock.calls.find((c) => c[0] === '/exams/generate')
+  if (!call) throw new Error('/exams/generate가 호출되지 않았습니다')
+  return call[1] as { question_count: number; avoid_prompts: string[] }
+}
+
 beforeEach(() => {
   agentFetch.mockReset()
+  pickBankItems.mockReset().mockResolvedValue([])
+  bankPrompts.mockReset().mockResolvedValue([])
+  registerExamToBank.mockReset().mockResolvedValue(0)
   saveExam.mockClear()
   signOut.mockClear()
   state.exam = undefined
@@ -114,7 +144,7 @@ describe('ExamEditorPage', () => {
     expect(screen.getByText('AI가 만든 답안은 확정 전 검토가 필요합니다.')).toBeInTheDocument()
     expect(screen.getByLabelText('시험 제목')).toHaveValue('JS 기초 시험')
     expect(agentFetch).toHaveBeenCalledWith('/exams/generate', {
-      topic: 'JavaScript 기초', difficulty: 'beginner', question_count: 3, new_hire_id: 'h1',
+      topic: 'JavaScript 기초', difficulty: 'beginner', question_count: 3, new_hire_id: 'h1', avoid_prompts: [],
     })
   })
 
@@ -124,14 +154,15 @@ describe('ExamEditorPage', () => {
     renderAt('/team/exams/e1')
     expect(cards()).toHaveLength(2)
 
-    await userEvent.click(screen.getByRole('button', { name: '초안 다시 만들기' }))
+    await userEvent.click(screen.getByRole('button', { name: '부족분 AI로 만들기' }))
     expect(await screen.findByText('시험 초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
     expect(cards()).toHaveLength(2)
     expect(within(card(1)).getByText('문제 1')).toBeInTheDocument()
 
-    agentFetch.mockResolvedValueOnce(ok({ title: 't', questions: [q(5)] }))
+    agentFetch.mockResolvedValueOnce(ok({ title: 't', questions: [q(3), q(4), q(5)] }))
     await userEvent.click(screen.getByRole('button', { name: '다시 시도' }))
-    await waitFor(() => expect(cards()).toHaveLength(1))
+    await waitFor(() => expect(cards()).toHaveLength(5))
+    expect(within(card(1)).getByText('문제 1')).toBeInTheDocument()
     expect(agentFetch).toHaveBeenCalledTimes(2)
   })
 
@@ -139,7 +170,7 @@ describe('ExamEditorPage', () => {
     state.exam = examWith([q(1), q(2)])
     agentFetch.mockRejectedValueOnce(new AgentError(429, '오늘 사용 한도를 넘었어요'))
     renderAt('/team/exams/e1')
-    await userEvent.click(screen.getByRole('button', { name: '초안 다시 만들기' }))
+    await userEvent.click(screen.getByRole('button', { name: '부족분 AI로 만들기' }))
     expect(await screen.findByText(/오늘 사용 한도를 넘었어요/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
     expect(cards()).toHaveLength(2)
@@ -159,7 +190,7 @@ describe('ExamEditorPage', () => {
 
     await waitFor(() => expect(saveExam).toHaveBeenCalledTimes(1))
     expect(saveExam.mock.calls[0][0]).toMatchObject({ id: 'e1', title: 'JS 기본기', topic: 'JavaScript 기초', difficulty: 'beginner', status: 'draft' })
-    expect(savedQuestions()).toEqual([q(1), { ...q(2), prompt: '고친 문제', points: 35 }])
+    expect(savedQuestions()).toEqual([saved(q(1)), saved({ ...q(2), prompt: '고친 문제', points: 35 })])
   })
 
   it('"다시 만들기"는 나머지 문항 prompt를 existing_prompts로 보내고 그 카드만 바꾼다', async () => {
@@ -239,7 +270,7 @@ describe('ExamEditorPage', () => {
     await userEvent.click(screen.getByRole('button', { name: '답안지 인쇄' }))
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/team/exams/e1/print?variant=answers'))
     expect(saveExam).toHaveBeenCalledTimes(1)
-    expect(savedQuestions()).toEqual([q(2)])
+    expect(savedQuestions()).toEqual([saved(q(2))])
   })
 
   it('변경이 없으면 저장하지 않고 바로 시험지 인쇄 화면으로 간다', async () => {
@@ -310,5 +341,219 @@ describe('ExamEditorPage', () => {
     finish('e1')
     await waitFor(() => expect(within(card(1)).getByLabelText('문제')).toBeEnabled())
     expect(screen.getByLabelText('주제')).toBeEnabled()
+  })
+  describe('문제은행', () => {
+    it('주제 칸에 팀 은행 주제를 자동완성으로 단다', () => {
+      renderAt('/team/exams/new')
+      const input = screen.getByLabelText('주제')
+      const list = document.getElementById(input.getAttribute('list') ?? '')
+      expect(list?.querySelector('option')).toHaveAttribute('value', 'JavaScript 기초')
+    })
+
+    it('빈 편집기에서 "문제은행에서 채우기"는 문항 수만큼 가져와 붙이고 AI 한도를 쓰지 않는다', async () => {
+      pickBankItems.mockResolvedValueOnce([1, 2, 3, 4, 5].map(bank))
+      renderAt('/team/exams/new')
+      await userEvent.type(screen.getByLabelText('주제'), 'JavaScript 기초')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+
+      await waitFor(() => expect(cards()).toHaveLength(5))
+      expect(pickBankItems).toHaveBeenCalledWith({
+        topic: 'JavaScript 기초', difficulty: 'beginner', count: 5, exclude: [], excludePrompts: [], newHireId: undefined,
+      })
+      for (const n of [1, 2, 3, 4, 5]) expect(within(card(n)).getByText('문제은행')).toBeInTheDocument()
+      expect(agentFetch).not.toHaveBeenCalled()
+    })
+
+    it('은행이 모자라면 가져온 만큼만 붙이고 부족 안내를 보인다', async () => {
+      pickBankItems.mockResolvedValueOnce([bank(1), bank(2)])
+      renderAt('/team/exams/new')
+      await userEvent.type(screen.getByLabelText('주제'), 'JavaScript 기초')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      expect(await screen.findByText('문제은행에 맞는 문항이 2개뿐이에요. 나머지는 AI로 만들어 주세요.')).toBeInTheDocument()
+      expect(cards()).toHaveLength(2)
+    })
+
+    it('은행에 맞는 문항이 없으면 없음 안내를 보인다', async () => {
+      renderAt('/team/exams/new')
+      await userEvent.type(screen.getByLabelText('주제'), 'React 기초')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      expect(await screen.findByText('문제은행에 이 주제·난이도 문항이 아직 없어요. AI로 만들어 주세요.')).toBeInTheDocument()
+      expect(cards()).toHaveLength(0)
+    })
+
+    it('은행을 불러오지 못하면 버튼 아래 실패 문구를 보인다', async () => {
+      pickBankItems.mockRejectedValueOnce(new DbError(500, 'boom'))
+      renderAt('/team/exams/new')
+      await userEvent.type(screen.getByLabelText('주제'), 'JavaScript 기초')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      expect(await screen.findByText('문제은행을 불러오지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+      expect(signOut).not.toHaveBeenCalled()
+    })
+
+    it('문항이 있으면 "부족분 AI로 만들기"가 부족분만 편집기 문장 우선 회피 목록과 함께 요청하고 뒤에 붙인다', async () => {
+      state.exam = examWith([q(1), q(2)])
+      bankPrompts.mockResolvedValueOnce(Array.from({ length: 30 }, (_, i) => `은행 ${i}`))
+      agentFetch.mockResolvedValueOnce(ok({ title: '새 제목', questions: [q(3), q(4), q(5)] }))
+      renderAt('/team/exams/e1')
+      expect(screen.queryByRole('button', { name: '초안 만들기' })).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '부족분 AI로 만들기' }))
+
+      await waitFor(() => expect(cards()).toHaveLength(5))
+      expect(bankPrompts).toHaveBeenCalledWith('JavaScript 기초', 'beginner')
+      const body = generateBody()
+      expect(body.question_count).toBe(3)
+      expect(body.avoid_prompts).toHaveLength(30)
+      expect(body.avoid_prompts.slice(0, 3)).toEqual(['문제 1', '문제 2', '은행 0'])
+      expect(within(card(1)).getByText('문제 1')).toBeInTheDocument()
+      expect(within(card(5)).getByText('문제 5')).toBeInTheDocument()
+      expect(screen.getByLabelText('시험 제목')).toHaveValue('JS 기본기')
+    })
+
+    it('은행 회피 목록을 못 불러와도 편집기 문장만 피해서 생성한다', async () => {
+      state.exam = examWith([q(1), q(2)])
+      bankPrompts.mockRejectedValueOnce(new DbError(500, 'boom'))
+      agentFetch.mockResolvedValueOnce(ok({ title: 't', questions: [q(3), q(4), q(5)] }))
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '부족분 AI로 만들기' }))
+      await waitFor(() => expect(cards()).toHaveLength(5))
+      expect(generateBody().avoid_prompts).toEqual(['문제 1', '문제 2'])
+    })
+
+    it('문항 수만큼 차면 두 버튼 모두 비활성이다', () => {
+      state.exam = examWith([q(1), q(2), q(3), q(4), q(5)])
+      renderAt('/team/exams/e1')
+      expect(screen.getByRole('button', { name: '문제은행에서 채우기' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: '부족분 AI로 만들기' })).toBeDisabled()
+    })
+
+    it('참고할 신입을 고르고 채우면 그 신입이 이미 본 문항을 빼도록 넘긴다', async () => {
+      renderAt('/team/exams/new?hire=h1')
+      await userEvent.type(screen.getByLabelText('주제'), 'JavaScript 기초')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      await waitFor(() => expect(pickBankItems).toHaveBeenCalledWith(expect.objectContaining({ newHireId: 'h1' })))
+    })
+
+    it('직접 쓴 문항이 있으면 그 문장도 은행 뽑기에서 뺀다', async () => {
+      state.exam = examWith([q(1)])
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      await waitFor(() => expect(pickBankItems).toHaveBeenCalledTimes(1))
+      expect(pickBankItems).toHaveBeenCalledWith(expect.objectContaining({ count: 4, exclude: [], excludePrompts: ['문제 1'] }))
+    })
+
+    it('은행 문항을 고친 뒤 다시 채우면 출처 id와 고친 문장을 모두 뺀다', async () => {
+      pickBankItems.mockResolvedValueOnce([bank(1), bank(2)])
+      renderAt('/team/exams/new')
+      await userEvent.type(screen.getByLabelText('주제'), 'JavaScript 기초')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      await waitFor(() => expect(cards()).toHaveLength(2))
+
+      await userEvent.click(within(card(1)).getByRole('button', { name: '수정' }))
+      const prompt = within(card(1)).getByLabelText('문제')
+      await userEvent.clear(prompt)
+      await userEvent.type(prompt, '고친 문제')
+      expect(within(card(1)).getByText('문제은행')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+
+      await waitFor(() => expect(pickBankItems).toHaveBeenCalledTimes(2))
+      expect(pickBankItems.mock.calls[1][0]).toMatchObject({ count: 3, exclude: ['b1', 'b2'], excludePrompts: ['고친 문제', '은행 문제 2'] })
+    })
+
+    it('은행에서 가져온 문항은 저장할 때 출처(bank_item_id)가 남는다', async () => {
+      state.exam = examWith([q(1)])
+      pickBankItems.mockResolvedValueOnce([bank(7)])
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      await waitFor(() => expect(cards()).toHaveLength(2))
+      await userEvent.click(screen.getByRole('button', { name: '저장' }))
+      await waitFor(() => expect(saveExam).toHaveBeenCalledTimes(1))
+      expect(savedQuestions().map((x) => x.bank_item_id)).toEqual([null, 'b7'])
+    })
+
+    it('불러온 은행 문항은 저장해도 출처가 남고, 다시 만들면 출처와 배지가 사라진다', async () => {
+      state.exam = examWith([{ ...q(1), bank_item_id: 'b7' }, q(2)])
+      agentFetch.mockResolvedValueOnce(ok(q(9)))
+      renderAt('/team/exams/e1')
+      expect(within(card(1)).getByText('문제은행')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '저장' }))
+      await waitFor(() => expect(saveExam).toHaveBeenCalledTimes(1))
+      expect(savedQuestions()[0].bank_item_id).toBe('b7')
+
+      await userEvent.click(within(card(1)).getByRole('button', { name: '다시 만들기' }))
+      await userEvent.click(within(card(1)).getByRole('button', { name: '새 문항 만들기' }))
+      await waitFor(() => expect(within(card(1)).getByText('문제 9')).toBeInTheDocument())
+      expect(within(card(1)).queryByText('문제은행')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '저장' }))
+      await waitFor(() => expect(saveExam).toHaveBeenCalledTimes(2))
+      expect(savedQuestions()[0].bank_item_id).toBeNull()
+    })
+
+    it('확정하면 저장한 뒤 은행에 등록하고 넣은 개수를 알린다', async () => {
+      state.exam = examWith([q(1)])
+      registerExamToBank.mockResolvedValueOnce(2)
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '확정' }))
+      expect(await screen.findByText('확정했어요. 새 문항 2개를 문제은행에 넣었어요.')).toBeInTheDocument()
+      expect(registerExamToBank).toHaveBeenCalledWith('e1')
+      expect(saveExam.mock.invocationCallOrder[0]).toBeLessThan(registerExamToBank.mock.invocationCallOrder[0])
+    })
+
+    it('새 시험을 바로 확정해 주소가 바뀌어도 등록 결과가 보인다', async () => {
+      pickBankItems.mockResolvedValueOnce([bank(1)])
+      saveExam.mockResolvedValueOnce('e-new')
+      registerExamToBank.mockResolvedValueOnce(1)
+      renderAt('/team/exams/new')
+      await userEvent.type(screen.getByLabelText('주제'), 'JavaScript 기초')
+      await userEvent.click(screen.getByRole('button', { name: '문제은행에서 채우기' }))
+      await waitFor(() => expect(cards()).toHaveLength(1))
+      state.exam = { ...examWith([bank(1)].map(toDraft), 'final'), id: 'e-new' }
+      await userEvent.click(screen.getByRole('button', { name: '확정' }))
+
+      await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/team/exams/e-new'))
+      expect(await screen.findByText('확정했어요. 새 문항 1개를 문제은행에 넣었어요.')).toBeInTheDocument()
+      expect(registerExamToBank).toHaveBeenCalledWith('e-new')
+    })
+
+    it('새로 넣은 문항이 없으면 "확정했어요."만 보인다', async () => {
+      state.exam = examWith([q(1)])
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '확정' }))
+      expect(await screen.findByText('확정했어요.')).toBeInTheDocument()
+    })
+
+    it('은행 등록이 실패하면 확정은 유지하고 실패 문구와 "다시 시도"를 보인다', async () => {
+      state.exam = examWith([q(1)])
+      registerExamToBank.mockRejectedValueOnce(new DbError(500, 'boom'))
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '확정' }))
+      expect(await screen.findByText('확정했지만 문제은행에 넣지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+      expect(screen.getByText('확정', { selector: '[data-slot="badge"]' })).toBeInTheDocument()
+
+      registerExamToBank.mockResolvedValueOnce(1)
+      await userEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+      expect(await screen.findByText('확정했어요. 새 문항 1개를 문제은행에 넣었어요.')).toBeInTheDocument()
+      expect(registerExamToBank).toHaveBeenCalledTimes(2)
+      expect(registerExamToBank).toHaveBeenLastCalledWith('e1')
+    })
+
+    it('확정된 시험에 문항을 추가해 저장해도 은행에 등록한다', async () => {
+      state.exam = examWith([q(1)], 'final')
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '문항 추가' }))
+      await userEvent.type(within(card(2)).getByLabelText('문제'), '새 문제')
+      await userEvent.type(within(card(2)).getByLabelText('모범 답안'), '새 답')
+      await userEvent.type(within(card(2)).getByLabelText('채점 기준'), '새 기준')
+      await userEvent.click(screen.getByRole('button', { name: '저장' }))
+      await waitFor(() => expect(registerExamToBank).toHaveBeenCalledWith('e1'))
+      expect(saveExam.mock.calls[0][0]).toMatchObject({ status: 'final' })
+    })
+
+    it('초안을 저장할 때는 은행에 등록하지 않는다', async () => {
+      state.exam = examWith([q(1)])
+      renderAt('/team/exams/e1')
+      await userEvent.click(screen.getByRole('button', { name: '저장' }))
+      await waitFor(() => expect(saveExam).toHaveBeenCalledTimes(1))
+      expect(registerExamToBank).not.toHaveBeenCalled()
+    })
   })
 })
