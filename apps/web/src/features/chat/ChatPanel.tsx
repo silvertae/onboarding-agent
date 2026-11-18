@@ -21,7 +21,8 @@ export function ChatPanel({ children }: { children: ReactNode }) {
   if (profile?.role !== 'new_hire') return <>{children}</>
   return (
     <div className="mx-auto flex max-w-[1376px] items-start lg:gap-2 lg:pr-8">
-      <div className="min-w-0 flex-1">{children}</div>
+      {/* 모바일: 아래 "에이전트에게 묻기" 버튼(바닥 24 + 높이 44)이 마지막 내용(과제 상세의 완료 버튼 등)을 덮지 않게 여백을 둔다 */}
+      <div className="min-w-0 flex-1 pb-16 lg:pb-0">{children}</div>
       <ChatAside />
     </div>
   )
