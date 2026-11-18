@@ -34,7 +34,7 @@ run() { # <env> <sha> → 종료 코드를 $code에
 }
 
 export GCP_PROJECT_ID=demo-project SUPABASE_URL=https://ref.supabase.co SUPABASE_ANON_KEY=anon-public
-export OPENAI_MODEL=model-x WEB_URL=https://site.web.app/
+export OPENAI_MODEL=model-x OPENAI_EMBEDDING_MODEL=embed-x WEB_URL=https://site.web.app/
 export ALLOWED_ORIGIN_REGEX="^https://site--pr-[0-9]+-[a-z0-9]+\.web\.app\$"
 
 run staging abc123
@@ -51,6 +51,8 @@ check "비밀값은 Secret Manager 참조" grep -q -- \
   '--set-secrets OPENAI_API_KEY=openai-api-key:latest,SUPABASE_SERVICE_ROLE_KEY=supabase-service-role-key-staging:latest' \
   <<<"$deploy_line"
 check "GIT_SHA 전달" grep -qx "GIT_SHA: 'abc123'" "$work/env.yaml"
+check "모델 이름 전달" grep -qx "OPENAI_MODEL: 'model-x'" "$work/env.yaml"
+check "임베딩 모델 이름 전달" grep -qx "OPENAI_EMBEDDING_MODEL: 'embed-x'" "$work/env.yaml"
 check "ALLOWED_ORIGINS = 웹 주소(끝 / 제거)" grep -qx "ALLOWED_ORIGINS: 'https://site.web.app'" "$work/env.yaml"
 check "정규식 그대로 전달" grep -qxF "ALLOWED_ORIGIN_REGEX: '^https://site--pr-[0-9]+-[a-z0-9]+\.web\.app\$'" "$work/env.yaml"
 check "비밀값 이름이 환경변수 파일에 없음" bash -c "! grep -Eq 'OPENAI_API_KEY|SERVICE_ROLE' '$work/env.yaml'"
@@ -75,6 +77,12 @@ check "알 수 없는 환경이면 gcloud 호출 없음" test ! -s "$work/log"
 OPENAI_MODEL="" run staging abc
 check "필수 변수 없으면 거부" test "$code" -ne 0
 check "누락 변수 이름을 알려 줌" grep -q OPENAI_MODEL "$work/err"
+
+# 임베딩 모델이 없으면 채팅은 조항 없이 답하고 문서 색인은 실패한다. 조용히 꺼지지 않게 배포를 막는다.
+OPENAI_EMBEDDING_MODEL="" run staging abc
+check "임베딩 모델 없으면 거부" test "$code" -ne 0
+check "누락된 임베딩 모델 이름을 알려 줌" grep -q OPENAI_EMBEDDING_MODEL "$work/err"
+check "임베딩 모델 없으면 gcloud 호출 없음" test ! -s "$work/log"
 
 # 하루 한도는 선택 값이다. 없으면 환경변수 파일에 넣지 않아 서비스 기본값(채팅 50, 시험 10)을 쓴다.
 run staging abc

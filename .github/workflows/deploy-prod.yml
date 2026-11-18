@@ -99,6 +99,7 @@ jobs:
       - name: 에이전트 배포 (agent-prod, 최소 인스턴스 1)
         env:
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OPENAI_EMBEDDING_MODEL: ${{ vars.OPENAI_EMBEDDING_MODEL }}
         run: bash scripts/deploy-agent.sh prod "$GITHUB_SHA"
 
       - uses: actions/setup-node@v7
