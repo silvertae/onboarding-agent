@@ -45,9 +45,9 @@
 
 - **같은 문서를 다시 색인하는 경우**(재시도나 다시 누름): 조항이 두 벌 생기지 않고 교체된다. Task 2의 `replace_document_clauses` 테스트로 확인한다.
 - **글자가 없는 파일**(스캔 PDF, 빈 docx): 500이 아니라 문서가 `failed`가 되고 "글자를 읽을 수 없는 파일이에요"가 남는다. Task 4와 Task 5의 테스트로 확인한다.
-- **채팅 중 임베딩 호출이 실패하는 경우**: 채팅 전체가 오류로 끝나지 않는다. `search_documents`가 빈 결과를 돌려주고 지식만으로 답한다. Task 6의 테스트로 확인한다.
+- **채팅 중 임베딩 호출이 실패하는 경우**: 채팅 전체가 오류로 끝나지 않는다. 조항 없이 지식·과제만으로 답한다. Task 6의 테스트로 확인한다.
 - **다른 팀 교육 담당자가 남의 팀 문서를 색인하거나 초안을 요청하는 경우**: 404로 막고 조항은 바뀌지 않는다. Task 5와 Task 8의 테스트로 확인한다.
-- **질문과 무관한 조항이 상위 6개에 섞여 오는 경우**: 모델이 인용하지 않은 조항은 출처에 나오지 않는다. 도구가 돌려주지 않은 id도 버린다. Task 6의 테스트로 확인한다.
+- **질문과 무관한 조항이 상위 6개에 섞여 오는 경우**: 모델이 인용하지 않은 조항은 출처에 나오지 않는다. 이번 요청에서 넘기지 않은 키도 버린다. Task 6의 테스트로 확인한다.
 
 ---
 
@@ -235,35 +235,38 @@
 
 ### Task 6: 채팅이 조항을 검색하고 출처로 보낸다
 
+> **(변경, Leo 승인 2026-11-18)** 채팅은 모델을 한 번만 부르는 구조로 바뀌었다(`feat/agent-single-call`). 도구·`cite_sources`·`_RequestScope`는 없다. 서버가 근거를 미리 조회해 지시문의 참고 자료 묶음에 짧은 키로 넣고, 모델은 답 끝 `[[출처: K1, T2]]`·`[[미답변]]`로 근거를 표시한다(`app/assistant.py`의 `Refs`, `MarkFilter`). 조항도 같은 방식으로 `D` 키를 붙여 넣는다. 설계: `2026-11-18-policy-docs-rag-design.md` "채팅".
+
 **Files:**
 - Modify: `services/agent/app/assistant_tools.py`(`search_documents`)
-- Modify: `services/agent/app/assistant.py`(도구, scope, 지시문, `sources_event`)
-- Modify: `services/agent/tests/test_chat.py`, `services/agent/tests/test_tools.py`
+- Modify: `services/agent/app/assistant.py`(`Refs`의 조항, 지시문, `run_chat`의 임베딩·조회)
+- Modify: `services/agent/tests/test_chat.py`, `services/agent/tests/test_assistant.py`, `services/agent/tests/test_tools.py`
 
 **Interfaces:**
 - Consumes: `embed`(Task 3), RPC `match_document_clauses`(Task 2)
 - Produces
   - `assistant_tools.search_documents(user, embedding: list[float], count: int = 6) -> list[dict]`: 키는 id, document_title, label, heading, body
-  - 모델 도구 `search_documents(query: str) -> {"clauses": [...]}`: 임베딩이 실패하면 `{"clauses": [], "unavailable": True}`
-  - `cite_sources(knowledge_ids, task_ids, clause_ids)`
+  - `Refs.from_rows(knowledge, tasks, documents=())`: 조항에 `D1`… 키를 붙인다. `block()`에는 id를 빼고 document_title, label, heading, body를 넣는다.
+  - 임베딩할 글: 이전 대화에 사용자 질문이 있으면 `"<직전 사용자 질문>\n<이번 질문>"`, 없으면 이번 질문
+  - 임베딩이 `EmbeddingError`를 내면 조항 없이 진행한다(error 이벤트 없음)
   - `sources` 이벤트: `{"type":"sources","knowledge":[...],"tasks":[...],"documents":[{"id","document_title","label","heading","body"}]}`
     - 세 목록 중 하나라도 있으면 보낸다. 웹 계획은 이 형식을 쓴다.
 
 - [ ] **Step 1: 실패하는 테스트**
   - `test_tools.py::test_search_documents_scoped_by_rls`: 신입 토큰 기준이다. 픽스처의 회사 ready 조항은 나오고, 다른 팀 조항은 나오지 않는다.
-  - `test_chat.py::test_document_sources_event`: ScriptedLlm이 `search_documents(query="경조금")` → `cite_sources(clause_ids=[반환된 id, "가짜id"])` → 텍스트 순서로 진행한다. sources.documents에는 반환된 id 하나만 있고 label과 document_title이 맞다.
-  - `test_chat.py::test_document_search_failure_does_not_break_chat`: `embed`가 `EmbeddingError`를 낸다. 도구 응답이 `unavailable: True`이고, 스트림은 token → done으로 끝나며 error 이벤트가 없다.
-  - `test_chat.py::test_uncited_clauses_not_in_sources`: 검색은 했지만 cite하지 않았다. documents가 없다(sources 이벤트가 없다).
-  - `test_instruction_rules_and_no_company_name`에 넣을 단언: 지시문에 `"search_documents"`, `"문서명과 조항"`, `"지식과 조항이 다르면 조항을 따르고"`, `"문서 조항"`(규칙 6), `"지식, 과제, 문서 조항에만 근거해"`(규칙 1), `"지식·과제·조항 id"`(진행 순서 2)가 들어 있다. 예전 문구 `"지식과 과제에만 근거해"`와 `"실제로 쓴 지식·과제 id만"`은 없다.
+  - `test_assistant.py`: `Refs.from_rows`의 조항 줄에 `D1` 키가 붙고 id가 없다. `sources_event(["D1","D9"])`의 documents에는 D1 하나만 있다.
+  - `test_chat.py::test_document_sources_event`: 가짜 `embed`가 벡터를 돌려준다. ScriptedLlm 턴(함수)이 자료 묶음에서 조항 키를 찾아 `[[출처: D1, D99]]`를 쓴다. sources.documents에는 넘긴 조항 하나만 있고 label과 document_title이 맞다.
+  - `test_chat.py::test_document_search_failure_does_not_break_chat`: `embed`가 `EmbeddingError`를 낸다. 자료 묶음에 D 키가 없고, 스트림은 token → done으로 끝나며 error 이벤트가 없다.
+  - `test_chat.py::test_uncited_clauses_not_in_sources`: 조항을 넘겼지만 표시하지 않았다. documents가 없다(sources 이벤트가 없다).
+  - `test_chat.py::test_follow_up_question_embeds_previous_turn`: 이력의 직전 사용자 질문과 이번 질문이 함께 임베딩된다.
+  - `test_instruction_rules_and_no_company_name`에 넣을 단언: 지시문에 `"문서명과 조항"`, `"지식과 조항이 다르면 조항을 따르고"`, `"문서 조항"`(규칙 6), `"지식, 과제, 문서 조항에만 근거해"`(규칙 1), `"D로 시작"`(참고 자료 설명)이 들어 있다. 예전 문구 `"지식과 과제에만 근거해"`는 없다.
 - [ ] **Step 2: 실패 확인**
 - [ ] **Step 3: 구현.** 지시문을 고친다.
-  - 도구 목록에 `search_documents`를 추가한다.
-  - 진행 순서 1: "search_knowledge, get_my_tasks, search_documents를 함께 호출"
-  - 진행 순서 2: "cite_sources를 한 번 호출해 실제로 쓴 지식·과제·조항 id만 표시"(`assistant.py:53`)
-  - 규칙 1: "도구가 돌려준 지식, 과제, 문서 조항에만 근거해 답한다"(`assistant.py:57`). 기존 문구가 남으면 조항으로 답하라는 규칙과 충돌한다.
+  - 참고 자료 설명에 문서 조항(키가 D로 시작, 필드 document_title·label·heading·body)을 넣는다.
+  - 규칙 1: "참고 자료의 지식, 과제, 문서 조항에만 근거해 답한다". 기존 문구가 남으면 조항으로 답하라는 규칙과 충돌한다.
   - 규칙 추가: "조항을 근거로 쓰면 '복리후생 규정 제5조에 따르면'처럼 문서명과 조항을 말한다. 지식과 조항이 다르면 조항을 따르고 다르다고 알린다."
   - 규칙 6에 "문서 조항"을 넣는다.
-  - `MAX_LLM_CALLS`는 6을 유지한다(병렬 도구 호출이라 횟수는 늘지 않는다).
+  - `run_chat`: 임베딩·조항 조회를 지식·과제 조회와 함께 `asyncio.gather`로 돌린다. `MAX_LLM_CALLS`는 1을 유지한다.
 - [ ] **Step 4: 통과 확인.** 전체 `npm run test:agent`
 - [ ] **Step 5: 커밋.** `feat(agent): chat searches policy clauses and cites them`
 
@@ -276,7 +279,7 @@
 - Create: `services/agent/tests/test_knowledge_draft.py`
 
 **Interfaces:**
-- Consumes: `search_documents` 도구 구현(Task 6, 같은 scope 방식), `assistant_tools.search_knowledge`, `embed`
+- Consumes: `assistant_tools.search_documents`(Task 6), `assistant_tools.search_knowledge`, `embed`. 채팅은 도구를 쓰지 않으므로(Task 6 변경) 초안 에이전트의 `search_documents(query)` 도구는 이 Task에서 만든다. 질의를 임베딩해 `assistant_tools.search_documents`를 부르고, 돌려준 조항 id만 근거로 인정한다.
 - Produces
   - 요청: `POST /knowledge/draft-answer` body `{"question": str(1..300)}`
   - 응답: `{"found": true, "draft": {"question","answer","category","clauses":[{id,document_title,label,heading}]}}` 또는 `{"found": false}`
