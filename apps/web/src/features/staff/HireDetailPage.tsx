@@ -148,7 +148,7 @@ export function HireDetailPage() {
             if (tasksQuery.isError) void tasksQuery.refetch()
           }}
         >
-          신입 정보를 불러오지 못했어요. 새로고침해 주세요.
+          신입 정보를 불러오지 못했어요. 다시 시도해 주세요.
         </LoadError>
       </main>
     )

@@ -221,7 +221,9 @@ describe('OpsInboxPage 로딩·오류', () => {
   it('불러오지 못하면 "다시 불러오기"로 업무 목록을 다시 조회한다', async () => {
     state.query = { isLoading: false, isError: true, isFetching: false }
     renderPage()
-    expect(screen.getByRole('alert')).toHaveTextContent('업무 목록을 불러오지 못했어요')
+    // 버튼이 있으니 문구는 "새로고침"이 아니라 "다시 시도"로 안내한다
+    expect(screen.getByRole('alert')).toHaveTextContent('업무 목록을 불러오지 못했어요. 다시 시도해 주세요.')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('새로고침')
     await userEvent.click(screen.getByRole('button', { name: '다시 불러오기' }))
     expect(state.refetch).toHaveBeenCalledTimes(1)
   })

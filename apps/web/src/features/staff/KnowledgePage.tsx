@@ -133,7 +133,7 @@ export function KnowledgePage() {
               ) : unansweredQuery.isError ? (
                 <div className="p-6">
                   <LoadError retrying={unansweredQuery.isFetching} onRetry={() => void unansweredQuery.refetch()}>
-                    미답변 질문을 불러오지 못했어요. 새로고침해 주세요.
+                    미답변 질문을 불러오지 못했어요. 다시 시도해 주세요.
                   </LoadError>
                 </div>
               ) : unanswered.length === 0 ? (
@@ -200,7 +200,7 @@ export function KnowledgePage() {
               ) : knowledgeQuery.isError ? (
                 <div className="p-6">
                   <LoadError retrying={knowledgeQuery.isFetching} onRetry={() => void knowledgeQuery.refetch()}>
-                    지식 목록을 불러오지 못했어요. 새로고침해 주세요.
+                    지식 목록을 불러오지 못했어요. 다시 시도해 주세요.
                   </LoadError>
                 </div>
               ) : (

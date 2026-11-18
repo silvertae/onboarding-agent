@@ -141,7 +141,7 @@ export function HomePage() {
     return (
       <main className={PAGE}>
         <LoadError size="lg" retrying={isFetching} onRetry={() => void refetch()}>
-          과제를 불러오지 못했어요. 잠시 후 새로고침해 주세요.
+          과제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </LoadError>
       </main>
     )

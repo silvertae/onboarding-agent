@@ -128,7 +128,7 @@ export function UsersPage() {
           ) : usersQuery.isError ? (
             <div className="p-6">
               <LoadError retrying={usersQuery.isFetching} onRetry={() => void usersQuery.refetch()}>
-                사용자 목록을 불러오지 못했어요. 새로고침해 주세요.
+                사용자 목록을 불러오지 못했어요. 다시 시도해 주세요.
               </LoadError>
             </div>
           ) : (

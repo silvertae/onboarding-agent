@@ -263,7 +263,9 @@ describe('신입 홈 — 로딩·오류', () => {
   it('불러오지 못하면 오류 알림의 "다시 불러오기"로 다시 조회한다', async () => {
     state.query = { isPending: false, isError: true, isFetching: false }
     renderHome([])
-    expect(screen.getByRole('alert')).toHaveTextContent('과제를 불러오지 못했어요')
+    // 버튼이 있으니 문구는 "새로고침"이 아니라 "다시 시도"로 안내한다
+    expect(screen.getByRole('alert')).toHaveTextContent('과제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('새로고침')
     await userEvent.click(screen.getByRole('button', { name: '다시 불러오기' }))
     expect(state.refetch).toHaveBeenCalledTimes(1)
   })

@@ -154,7 +154,7 @@ export function OpsInboxPage() {
               ) : tasksQuery.isError ? (
                 <div className="px-6 pb-6">
                   <LoadError retrying={tasksQuery.isFetching} onRetry={() => void tasksQuery.refetch()}>
-                    업무 목록을 불러오지 못했어요. 새로고침해 주세요.
+                    업무 목록을 불러오지 못했어요. 다시 시도해 주세요.
                   </LoadError>
                 </div>
               ) : (

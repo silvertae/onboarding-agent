@@ -176,7 +176,7 @@ export function TeamOverviewPage() {
             if (hiresQuery.isError) void hiresQuery.refetch()
           }}
         >
-          신입 현황을 불러오지 못했어요. 새로고침해 주세요.
+          신입 현황을 불러오지 못했어요. 다시 시도해 주세요.
         </LoadError>
       ) : hires.length === 0 ? (
         <Panel>
