@@ -12,6 +12,13 @@
 <style>
 body{margin:0}
 a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
+.ok-text{font-size:14px;color:var(--st-done-fg)}
+.fs{border:0;padding:0;margin:0;min-width:0}
+.fs legend{padding:0;margin-bottom:6px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px 20px}
+.due{display:flex;align-items:center;gap:8px;font-size:14px;white-space:nowrap}
+.due .input{width:88px}
+.state-label{font-size:13px;font-weight:600;color:var(--secondary)}
 </style>
 
 <div style="min-height: 1560px; background: var(--canvas)">
@@ -19,7 +26,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
     <div class="topbar-in">
       <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
       <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
-      <nav class="nav" aria-label="주 메뉴"><a class="on" href="S5-team.html">팀 신입 현황</a><a href="S7-exam-editor.html">시험 출제</a><a href="S10-knowledge.html">지식 관리</a></nav>
+      <nav class="nav" aria-label="주 메뉴"><a class="on" href="S5-team.html">팀 신입 현황</a><a href="S7-exam-editor.html">시험 출제</a><a href="S13-bank.html">문제은행</a><a href="S12-tasks.html">온보딩 과제</a><a href="S10-knowledge.html">지식 관리</a></nav>
       <div class="user">
         <span class="avatar">서준</span>
         <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">박서준</b><span class="caption">AI팀</span></div>
@@ -34,7 +41,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
     <div class="between">
       <div class="row" style="gap: 16px">
         <span class="avatar" style="width: 56px; height: 56px; font-size: 16px">하늘</span>
-        <div style="display: flex; flex-direction: column; gap: 4px"><h1>김하늘</h1><span class="secondary">사원 · AI팀 · 입사 11월 14일 (4일째) · 팀 과제 3 / 8</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><h1>김하늘</h1><span class="secondary">사원 · AI팀 · 입사 11월 14일 (4일째) · 팀 과제 3 / 9</span></div>
       </div>
       <a href="S7-exam-editor.html" class="btn btn-primary"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15h6"></path></svg>이 신입 기준으로 시험 만들기</a>
     </div>
@@ -42,7 +49,11 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
     <div class="split">
       <div class="split-main">
         <section class="card">
-          <div class="card-hd"><h2 style="font-size: 18px">팀 과제</h2><span class="caption">경영지원 과제는 표시되지 않아요</span></div>
+          <div class="card-hd">
+            <div class="row" style="gap: 12px; flex-wrap: wrap"><h2 style="font-size: 18px">팀 과제</h2><span class="caption">경영지원 과제는 표시되지 않아요</span></div>
+            <!-- 이 신입에게 과제 추가: 대화 상자를 연다(아래 상태별 화면). 추가하면 닫히고 버튼 옆에 결과 문구(아래 "추가한 뒤") -->
+            <div class="row" style="gap: 12px"><button class="btn btn-ghost btn-sm" type="button" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>이 신입에게 과제 추가</button></div>
+          </div>
           <div class="tbl-wrap">
             <table class="tbl">
               <thead><tr><th>단계</th><th>과제</th><th>상태</th><th>기한·제출</th><th style="text-align: right">처리</th></tr></thead>
@@ -52,6 +63,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
                 <tr><td class="muted">첫 주</td><td>멘토 1:1 첫 면담</td><td><span class="st st-done">완료</span></td><td class="muted">11/17</td><td></td></tr>
                 <tr class="sel"><td class="muted">첫 주</td><td><b>기술스택·경력 조사</b></td><td><span class="st st-submitted">확인 대기</span></td><td class="muted">11/17 10:12 제출</td><td style="text-align: right"><div class="row" style="justify-content: flex-end; gap: 8px"><button class="btn btn-ghost btn-sm" type="button">보완 요청</button><button class="btn btn-primary btn-sm" type="button">확인</button></div></td></tr>
                 <tr><td class="muted">첫 주</td><td>BTP 개발 환경 세팅</td><td><span class="st st-todo">할 일</span></td><td class="muted">기한 11/19</td><td></td></tr>
+                <!-- 한 사람용 과제(이 신입에게만 추가). 빼려면 해당 없음으로 처리한다 -->
+                <tr><td class="muted">첫 주</td><td><span class="row" style="gap: 8px; flex-wrap: wrap">React 기초 보충 학습<span class="badge">이 신입만</span></span></td><td><span class="st st-todo">할 일</span></td><td class="muted">기한 11/22</td><td></td></tr>
                 <tr><td class="muted">첫 달</td><td>간단 코딩테스트</td><td><span class="st st-todo">할 일</span></td><td class="muted">11/20 14:00</td><td></td></tr>
                 <tr><td class="muted">첫 달</td><td class="muted">SAPUI5 실습 과제</td><td><span class="st st-blocked">선행 과제 대기</span></td><td class="muted">BTP 세팅 후</td><td></td></tr>
                 <tr><td class="muted">첫 달</td><td class="muted">JS 기본기 테스트</td><td><span class="st st-blocked">선행 과제 대기</span></td><td class="muted">SAPUI5 실습 후</td><td></td></tr>
@@ -118,6 +131,49 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
         </section>
       </aside>
     </div>
+
+    <!-- 상태별 화면: "이 신입에게 과제 추가" 대화 상자 -->
+    <section style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px">
+      <div class="between"><h2 style="font-size: 18px">상태별 화면</h2><span class="caption">"이 신입에게 과제 추가"를 누르면 열리는 대화 상자</span></div>
+      <div class="grid-2" style="gap: 24px; align-items: start">
+        <div class="col" style="gap: 8px">
+          <span class="state-label">대화 상자 — S12 편집 칸에서 선행 과제를 뺀 것. 교육 담당자에게는 종류 "평가"가 있다</span>
+          <div role="dialog" aria-modal="true" aria-labelledby="add-t" aria-describedby="add-d" class="card" style="overflow: hidden; border-color: var(--border-strong)">
+            <div class="col" style="gap: 6px; padding: 24px 24px 0">
+              <h2 id="add-t" style="font-size: 17px">'김하늘'님에게 과제 추가</h2>
+              <p id="add-d" class="secondary">이 신입에게만 들어가고, 바로 할 일로 보여요.</p>
+            </div>
+            <form class="col" style="gap: 18px; padding: 20px 24px 24px">
+              <div class="field"><label class="label" for="a-title">제목</label><input class="input" id="a-title" value="React 기초 보충 학습"></div>
+              <div class="field"><label class="label" for="a-desc">안내문</label><textarea class="textarea" id="a-desc" style="min-height: 64px">React 공식 문서의 기초 부분을 읽고 예제 하나를 직접 만들어 보세요.</textarea></div>
+              <fieldset class="fs field"><legend class="label">종류</legend>
+                <div class="seg"><label><input type="radio" name="a-kind">안내</label><label><input type="radio" name="a-kind">읽기</label><label><input type="radio" name="a-kind" checked>실습</label><label><input type="radio" name="a-kind">체크리스트</label><label><input type="radio" name="a-kind">평가</label></div>
+              </fieldset>
+              <fieldset class="fs field"><legend class="label">완료 방식</legend>
+                <div class="seg"><label><input type="radio" name="a-mode" checked>신입이 완료</label><label><input type="radio" name="a-mode">담당자 확인</label><label><input type="radio" name="a-mode">담당자만 처리</label></div>
+              </fieldset>
+              <div class="form-grid">
+                <div class="field"><label class="label" for="a-stage">단계</label><select class="select" id="a-stage"><option>입사일</option><option selected>첫 주</option><option>첫 달</option></select></div>
+                <div class="field"><label class="label" for="a-due">기한</label><div class="due"><span>단계 시작 후</span><input class="input" id="a-due" type="number" min="0" max="60" value="3"><span>일</span></div></div>
+              </div>
+              <label class="check"><input type="checkbox">해당 없음 허용</label>
+            </form>
+            <div style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end"><button class="btn btn-ghost btn-sm" type="button">취소</button><button class="btn btn-primary btn-sm" type="button">추가</button></div>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">추가한 뒤 — 대화 상자가 닫히고 "팀 과제" 머리의 버튼 옆에 결과 문구</span>
+          <section class="card" style="overflow: hidden">
+            <div class="card-hd">
+              <div class="row" style="gap: 12px; flex-wrap: wrap"><h2 style="font-size: 18px">팀 과제</h2><span class="caption">경영지원 과제는 표시되지 않아요</span></div>
+              <div class="row" style="gap: 12px"><span role="status" class="ok-text">추가했어요</span><button class="btn btn-ghost btn-sm" type="button" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>이 신입에게 과제 추가</button></div>
+            </div>
+          </section>
+          <p class="secondary">추가한 과제는 표에 "이 신입만" 배지를 달고(위 화면의 "React 기초 보충 학습"), 이 신입에게만 바로 할 일로 들어간다. 빼려면 해당 없음으로 처리한다.</p>
+          <p class="secondary">실패하면 대화 상자를 연 채 입력을 그대로 두고 동작 줄 왼쪽에 "추가하지 못했어요. 다시 시도해 주세요."를 보인다(S9 시안).</p>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
