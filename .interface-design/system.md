@@ -83,6 +83,19 @@
 - **폼 컨트롤:** `components/ui`의 `Input`, `NativeSelect`, `Textarea`, `Checkbox`만 쓴다. `NativeSelect`는 브라우저 기본 select에 Input과 같은 테두리와 화살표를 입힌 것이고, `className`은 바깥 상자(너비)에 붙는다. 입력 스타일 문자열을 화면 파일에 복사하지 않는다.
 - **체크리스트 행:** 신입 화면에서는 한 줄 높이를 44(`min-h-11`), 체크박스를 18px로 한다.
 
+## 상태(로딩·빈·오류)
+
+시안 `S0-system`의 "상태 · 로딩과 오류" 절이 기준이다.
+
+- **로딩:** "불러오는 중…" 글자만 띄우지 않는다. 데이터가 올 자리와 같은 배치·크기로 `components/ui/skeleton.tsx`(`bg-secondary` pulse, `motion-reduce:animate-none`)를 그린다.
+  - `components/LoadingStatus.tsx`의 `LoadingStatus`로 감싼다. 스켈레톤은 `aria-hidden`이고, 화면 읽기 프로그램에는 `role="status"`의 "불러오는 중…"만 알린다.
+  - 표는 `TableSkeleton`(실제 표와 같은 머리 글자 + 칸 모양 `line`·`two-line`·`badge`·`button`)을 쓴다. 카드·과제 행처럼 화면마다 다른 모양은 그 화면 파일 안에 작은 스켈레톤 조각으로 둔다.
+  - 페이지 머리(제목·설명·요약 카드)처럼 데이터 없이 그릴 수 있는 부분은 로딩 중에도 그대로 그린다. 페이지 여백(`main`)도 같다.
+- **빈 목록:** 패널 안 가운데 한 줄(`EmptyState`, "아직 …이 없어요").
+- **목록·화면 오류:** `components/LoadError.tsx`(`Alert variant="destructive"` + "다시 불러오기" 버튼 → `query.refetch`). 다시 불러오는 동안(`isFetching`)은 버튼을 막는다. 신입 화면은 `size="lg"`. 목록 오류는 그 패널 안, 화면 전체 오류는 페이지 머리(뒤로 가기 링크) 아래에 둔다.
+  - 문구는 "…을 불러오지 못했어요. 다시 시도해 주세요."로 끝낸다. 바로 옆에 "다시 불러오기" 버튼이 있으니 "새로고침해 주세요"라고 쓰지 않는다.
+- **동작 오류:** 저장·처리 실패(`useGuardedAction` 등)는 버튼 옆 인라인 문구(`staff/ui`의 `ErrorText`)로 둔다. `LoadError`를 쓰지 않는다.
+
 ## 컴포넌트
 
 - **`StatusBadge`:** `Badge`의 variant 6종을 쓴다. 상태 문구는 `lib/labels.ts`에서만 가져온다.
@@ -101,6 +114,11 @@
 
 `role="tab"`이나 `role="radio"`를 붙인 `button`을 직접 만들지 않는다.
 
+- **표 선택 행:** 선택·처리 중·새로 만든 행은 `components/tableRow.ts`의 `ROW_SELECTED`를 쓴다(시안 `.tbl tr.sel td`). `tr`에 `bg-accent`를 직접 주지 않는다.
+  - 이유: 자동 표 배치는 칸 경계가 소수점(예: 915.27px)이라, Chrome이 행 배경을 칸마다 그리며 경계 픽셀을 반만 칠한다. 창을 띄운 Chrome 1440px에서 칸 사이에 밝은 1px 세로줄이 보였다. 배경을 `td`로 옮기는 것만으로는 사라지지 않아서, 같은 색 `1px` 오른쪽 그림자로 이음새를 덮는다.
+  - hover(`ROW_HOVER`)는 선택되지 않은 행에만 준다. 같이 주면 hover가 선택 색을 덮는다. 키보드 포커스 행은 `ROW_FOCUS`(선택과 같은 색).
+- **편집 화면 머리(S7):** 왼쪽에 뒤로 가기 · 제목 · 상태 배지를 붙여 묶고, 오른쪽에 동작 버튼을 묶는다. 고칠 수 있는 제목 입력은 `field-sizing-content`로 글자 길이만큼만 넓히고(최소 `min-w-24`, 최대 `max-w-xl`), `flex-1`을 주지 않는다. 배지가 머리 가운데 떠 있지 않게 하려는 것이다.
+
 - **S2 초점 패턴(지금 할 일):**
   - 정렬은 보완 요청 → 기한 이른 순(기한 없음은 뒤) → 단계 → 순서다.
   - 처음 5건만 보이고 "나머지 N건 보기"(44px 고스트 버튼, `aria-expanded`)로 펼친다.
@@ -117,9 +135,11 @@
   - 대화 전에는 입력창 위 칩 줄을 숨긴다. 첫 메시지 뒤에는 칩 줄(36px 칩, 누르는 영역 44)이 돌아오고 본문 카드는 사라진다. 같은 질문 버튼이 두 곳에 동시에 있지 않다.
   - 데스크톱 고정 패널과 모바일 전체 화면이 같은 빈 상태를 쓴다.
 
-## 모션 (P1-6에서 적용)
+## 모션
 
-- UI 전환은 150ms, `cubic-bezier(0.23,1,0.32,1)`를 쓴다.
-- 누를 때 `scale(0.97)`이다.
-- `transform`과 `opacity`만 애니메이션한다.
-- `prefers-reduced-motion`을 존중한다.
+- **시간·곡선:** UI 전환은 `duration-150`과 `ease-out-ui`(`cubic-bezier(0.23,1,0.32,1)`, `index.css` `@theme`)를 쓴다. 시안은 같은 값을 `.15s cubic-bezier(.23,1,.32,1)`로 쓴다.
+- **전환할 속성은 이름으로 적는다:** `transition-all`은 쓰지 않는다. 버튼은 `transition-[background-color,border-color,color,box-shadow,scale]`, 배지는 `transition-[background-color,border-color,color,box-shadow]`, 회전·이동은 `transition-transform`이다. Tailwind v4의 `scale-*`·`rotate-*`·`translate-*`는 `transform`이 아니라 개별 속성(`scale` 등)을 바꾸므로, 직접 속성을 적을 때는 그 이름(`scale`)을 넣는다.
+- **누름:** 버튼은 누르는 동안 `active:scale-[0.97]`로 줄어든다. 메뉴를 여는 버튼(`aria-haspopup`)은 줄이지 않는다.
+- **레이아웃 속성은 애니메이션하지 않는다:** width·height·top·left 대신 transform과 opacity만 움직인다. 진행 막대(`components/ProgressBar.tsx`)는 꽉 찬 채움을 `translateX(-남은%)`로 밀어 바탕 밖으로 숨긴다. `scaleX`는 끝의 둥근 모서리까지 눌리므로 쓰지 않는다.
+- **동작 줄이기:** 움직임이 있는 전환에는 `motion-reduce:transition-none`을 붙인다. 버튼은 `motion-reduce:active:scale-100`으로 누름 축소도 끈다. 로딩 표시의 `animate-pulse`(투명도만 바뀜)는 그대로 둔다.
+- **진행 막대:** 이름과 값은 `ProgressBar`의 `label`·`value`·`max`가 `role="progressbar"`에 그대로 붙는다. 신입 홈은 0~100(%), 팀 신입 현황은 끝난 과제 수/전체, 체크리스트는 체크 수/항목 수다. 높이는 기본 8px, 카드 안 체크리스트는 `size="sm"`(6px)이다.

@@ -2,12 +2,15 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Plus, Printer, Sparkles, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus } from '@/components/LoadingStatus'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect } from '@/components/ui/native-select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useHires } from '@/features/staff/hires'
 import { AgentError } from '@/lib/agent'
 import { isAuthError } from '@/lib/errors'
@@ -52,20 +55,77 @@ function generateError(error: unknown): { text: string; retry: boolean } {
   return { text: GENERATE_RETRY_MESSAGE, retry: true }
 }
 
+const PAGE = 'mx-auto grid max-w-[1376px] gap-6 p-6 lg:p-8'
+
+function BackLink() {
+  return (
+    <Link to="/team/exams" className="inline-flex items-center gap-1 text-sm">
+      <ChevronLeft className="size-4" />
+      시험 목록
+    </Link>
+  )
+}
+
+// 로딩: 머리(제목·동작 버튼), 왼쪽 출제 조건, 오른쪽 문항 카드 자리
+function ExamEditorSkeleton() {
+  return (
+    <main className={PAGE}>
+      <div className="flex flex-wrap items-center gap-3">
+        <BackLink />
+        <div className="flex-1">
+          <LoadingStatus className="flex flex-wrap items-center gap-3">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-[22px] w-12 rounded-full" />
+            <div className="ml-auto flex gap-2">
+              <Skeleton className="h-9 w-28 rounded-full" />
+              <Skeleton className="h-9 w-28 rounded-full" />
+              <Skeleton className="h-9 w-16 rounded-full" />
+              <Skeleton className="h-9 w-16 rounded-full" />
+            </div>
+          </LoadingStatus>
+        </div>
+      </div>
+      <div aria-hidden="true" className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
+        <div className="grid gap-4 rounded-[18px] border border-border bg-card p-5">
+          <Skeleton className="h-5 w-20" />
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="grid gap-2">
+              <Skeleton className="h-3.5 w-16" />
+              <Skeleton className="h-10" />
+            </div>
+          ))}
+          <Skeleton className="h-11 rounded-full" />
+        </div>
+        <div className="grid gap-4">
+          <Skeleton className="h-4 w-32" />
+          {Array.from({ length: 2 }, (_, i) => (
+            <div key={i} className="grid gap-3 rounded-[18px] border border-border bg-card p-5">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+  )
+}
+
 export function ExamEditorPage() {
   const { id = 'new' } = useParams()
   const isNew = id === 'new'
   const exam = useExam(id)
 
   if (!isNew) {
-    if (exam.isLoading) {
-      return <p role="status" className="p-8 text-center text-sm text-muted-foreground">불러오는 중…</p>
-    }
+    if (exam.isLoading) return <ExamEditorSkeleton />
     if (exam.isError || !exam.data) {
       return (
-        <main className="mx-auto max-w-[1376px] p-8">
-          <p role="alert" className="text-sm text-destructive">시험을 불러오지 못했어요.</p>
-          <Link to="/team/exams" className="mt-2 inline-block text-sm">시험 목록으로</Link>
+        <main className={PAGE}>
+          <BackLink />
+          <LoadError retrying={exam.isFetching} onRetry={exam.isError ? () => void exam.refetch() : undefined}>
+            시험을 불러오지 못했어요.
+          </LoadError>
         </main>
       )
     }
@@ -233,23 +293,26 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
   const otherExams = (exams.data ?? []).filter((e) => e.id !== examId).slice(0, 5)
 
   return (
-    <main className="mx-auto grid max-w-[1376px] gap-6 p-6 lg:p-8">
-      <div className="flex flex-wrap items-center gap-3">
-        <Link to="/team/exams" className="inline-flex items-center gap-1 text-sm">
-          <ChevronLeft className="size-4" />
-          시험 목록
-        </Link>
-        <Input
-          aria-label="시험 제목"
-          disabled={busy}
-          value={title}
-          placeholder="시험 제목(비우면 주제로 저장)"
-          maxLength={200}
-          onChange={(e) => setTitle(e.target.value)}
-          className="h-10 max-w-md flex-1 border-transparent bg-transparent text-title font-semibold shadow-none hover:border-input md:text-title"
-        />
-        <Badge variant={status === 'final' ? 'done' : 'todo'}>{EXAM_STATUS_LABEL[status]}</Badge>
-        <div className="ml-auto flex flex-wrap gap-2">
+    <main className={PAGE}>
+      {/* 왼쪽: 뒤로 가기 · 제목 · 상태 배지를 붙여 묶는다. 오른쪽: 인쇄 2 · 저장 · 확정 (시안 S7 머리) */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <BackLink />
+          <div className="flex min-w-0 items-center gap-2">
+            {/* 글자 길이만큼만 넓어진다(field-sizing, 최소 96·최대 576). 비어 있으면 placeholder 길이 */}
+            <Input
+              aria-label="시험 제목"
+              disabled={busy}
+              value={title}
+              placeholder="시험 제목(비우면 주제로 저장)"
+              maxLength={200}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-10 w-auto max-w-xl min-w-24 field-sizing-content border-transparent bg-transparent text-title font-semibold shadow-none hover:border-input md:text-title"
+            />
+            <Badge variant={status === 'final' ? 'done' : 'todo'}>{EXAM_STATUS_LABEL[status]}</Badge>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" disabled={empty || busy} onClick={() => void print('paper')}>
             <Printer />
             시험지 인쇄

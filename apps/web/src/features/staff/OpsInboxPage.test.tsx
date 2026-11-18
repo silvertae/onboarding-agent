@@ -13,7 +13,11 @@ const { actions, state } = vi.hoisted(() => ({
     requestRework: vi.fn(async () => {}),
     recordAssessment: vi.fn(),
   },
-  state: { tasks: [] as unknown[] },
+  state: {
+    tasks: [] as unknown[],
+    query: { isLoading: false, isError: false, isFetching: false } as Record<string, boolean>,
+    refetch: vi.fn(),
+  },
 }))
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
@@ -26,7 +30,7 @@ vi.mock('@/app/AuthProvider', () => ({
 }))
 vi.mock('@/lib/tasks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/tasks')>()),
-  useVisibleTasks: () => ({ data: state.tasks, isLoading: false, isError: false }),
+  useVisibleTasks: () => ({ data: state.query.isLoading || state.query.isError ? undefined : state.tasks, ...state.query, refetch: state.refetch }),
   useTaskActions: () => actions,
 }))
 vi.mock('./hires', () => ({ useHires: () => ({ data: HIRES, isLoading: false, isError: false }) }))
@@ -78,6 +82,8 @@ function bodyRows() {
 
 beforeEach(() => {
   Object.values(actions).forEach((fn) => fn.mockClear())
+  state.query = { isLoading: false, isError: false, isFetching: false }
+  state.refetch.mockClear()
 })
 
 describe('OpsInboxPage (S9)', () => {
@@ -201,5 +207,37 @@ describe('OpsInboxPage (S9)', () => {
   it('보여 줄 과제가 없으면 빈 상태 문구', () => {
     renderPage([points])
     expect(screen.getByText('확인 대기 중인 과제가 없어요')).toBeInTheDocument()
+  })
+
+  // 선택 행 배경을 tr에 칠하면 칸 경계(소수점 너비)에 흰 세로줄이 생긴다. 칸(td)에 칠하고 1px 그림자로 이음새를 덮는다.
+  it('선택한 행은 aria-selected이고 배경을 칸(td)에 칠한다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(bodyRows()[0])
+    const row = bodyRows()[0]
+    expect(row).toHaveAttribute('aria-selected', 'true')
+    expect(row).toHaveClass('[&>td]:bg-accent')
+    expect(row).not.toHaveClass('bg-accent')
+    expect(bodyRows()[1]).toHaveAttribute('aria-selected', 'false')
+    expect(bodyRows()[1]).not.toHaveClass('[&>td]:bg-accent')
+  })
+})
+
+describe('OpsInboxPage 로딩·오류', () => {
+  it('불러오는 동안 표 자리에 "불러오는 중…" 상태를 알린다', () => {
+    state.query = { isLoading: true, isError: false, isFetching: true }
+    renderPage()
+    expect(screen.getByRole('status')).toHaveTextContent('불러오는 중…')
+    expect(screen.queryByRole('table', { name: '업무 목록' })).not.toBeInTheDocument()
+  })
+
+  it('불러오지 못하면 "다시 불러오기"로 업무 목록을 다시 조회한다', async () => {
+    state.query = { isLoading: false, isError: true, isFetching: false }
+    renderPage()
+    // 버튼이 있으니 문구는 "새로고침"이 아니라 "다시 시도"로 안내한다
+    expect(screen.getByRole('alert')).toHaveTextContent('업무 목록을 불러오지 못했어요. 다시 시도해 주세요.')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('새로고침')
+    await userEvent.click(screen.getByRole('button', { name: '다시 불러오기' }))
+    expect(state.refetch).toHaveBeenCalledTimes(1)
   })
 })

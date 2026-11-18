@@ -151,8 +151,9 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .tbl th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:10px 16px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface-subtle)}
 .tbl td{padding:14px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
 .tbl tr:last-child td{border-bottom:0}
-.tbl tr.sel td{background:var(--selected)}
-.tbl tr:hover td{background:var(--surface-subtle)}
+/* 선택 행: 배경은 칸(td)에. 자동 표 배치의 소수점 칸 경계에 생기는 1px 이음새를 같은 색 그림자로 덮는다 */
+.tbl tr.sel td{background:var(--selected);box-shadow:1px 0 0 var(--selected)}
+.tbl tr:not(.sel):hover td{background:var(--surface-subtle);box-shadow:1px 0 0 var(--surface-subtle)}
 
 /* Tabs (segmented) */
 .tabs{display:inline-flex;gap:2px;padding:3px;background:var(--fill);border-radius:10px}
@@ -260,6 +261,13 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .spin{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+/* Loading skeleton: 데이터가 올 자리와 같은 크기로 그린다. 움직임 줄이기 설정이면 멈춘다 */
+.skel{display:block;background:var(--fill);border-radius:6px;animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
+.skel-line{height:12px}
+.skel-pill{border-radius:var(--radius-pill)}
+.skel-circle{border-radius:50%;flex:none}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
 
 /* Footer note */
 .foot{max-width:1376px;margin:0 auto;padding:8px 32px 32px;font-size:12px;color:var(--muted)}

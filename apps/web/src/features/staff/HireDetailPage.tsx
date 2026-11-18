@@ -2,9 +2,14 @@ import { ArrowLeft, FilePlus2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
+import { ProgressBar } from '@/components/ProgressBar'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ROW_SELECTED } from '@/components/tableRow'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { STAGE_LABEL } from '@/lib/labels'
 import { blockedBy, groupByStage, progress, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
@@ -16,7 +21,7 @@ import { reviewActions } from './reviewActions'
 import { SubmittedResult } from './SubmittedResult'
 import { TaskReviewPanel } from './TaskReviewPanel'
 import { assessmentsOf, initials, isTeamTask } from './teamTasks'
-import { EmptyState, ErrorText, LoadingText, Panel } from './ui'
+import { EmptyState, Panel } from './ui'
 
 const SURVEY_CODE = 'AI-04'
 const SETUP_CODE = 'AI-09'
@@ -37,7 +42,6 @@ function ChecklistCard({ task }: { task: TaskView }) {
   const checkedList = isRecord(task.result) && Array.isArray(task.result.checked) ? task.result.checked.map(String) : []
   const checked = new Set(task.status === 'done' && checkedList.length === 0 ? items : checkedList)
   const count = items.filter((i) => checked.has(i)).length
-  const percent = items.length ? Math.round((count / items.length) * 100) : 0
 
   return (
     <Panel aria-label="BTP 세팅 체크리스트">
@@ -48,9 +52,7 @@ function ChecklistCard({ task }: { task: TaskView }) {
         </b>
       </div>
       <div className="px-6 py-5">
-        <div className="h-1.5 overflow-hidden rounded-full bg-track">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
-        </div>
+        <ProgressBar label="체크리스트 진행률" value={count} max={items.length} size="sm" />
         <ul className="mt-4 flex flex-col gap-2.5 text-sm">
           {items.map((item) => (
             <li key={item} className="flex items-center justify-between">
@@ -65,6 +67,57 @@ function ChecklistCard({ task }: { task: TaskView }) {
   )
 }
 
+const PAGE = 'mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8'
+
+function BackLink() {
+  return (
+    <Link to="/team" className="inline-flex w-fit items-center gap-1 text-sm text-primary">
+      <ArrowLeft className="size-4" /> 팀 신입 현황
+    </Link>
+  )
+}
+
+// 로딩: 머리(이니셜·이름·메타·시험 버튼)와 팀 과제 표, 오른쪽 카드 자리
+function HireDetailSkeleton() {
+  return (
+    <LoadingStatus className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="size-14 rounded-full" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-4 w-80 max-w-full" />
+          </div>
+        </div>
+        <Skeleton className="h-11 w-60 rounded-full" />
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+        <Panel className="overflow-hidden">
+          <div className="px-6 py-4">
+            <Skeleton className="h-6 w-20" />
+          </div>
+          <TableSkeleton
+            rows={6}
+            columns={[
+              { label: '단계' },
+              { label: '과제' },
+              { label: '상태', cell: 'badge' },
+              { label: '기한·제출' },
+              { label: '처리', cell: 'none', className: 'text-right' },
+            ]}
+          />
+        </Panel>
+        <Panel className="flex flex-col gap-4 p-6">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-1.5 rounded-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+        </Panel>
+      </div>
+    </LoadingStatus>
+  )
+}
+
 // S6 신입 상세: 한 신입의 팀 과제만 보여 준다(경영지원 과제 제외).
 export function HireDetailPage() {
   const { id = '' } = useParams()
@@ -75,11 +128,27 @@ export function HireDetailPage() {
   const tasksQuery = useVisibleTasks({ newHireId: id })
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  if (hiresQuery.isLoading || tasksQuery.isLoading) return <LoadingText />
+  if (hiresQuery.isLoading || tasksQuery.isLoading) {
+    return (
+      <main className={PAGE}>
+        <BackLink />
+        <HireDetailSkeleton />
+      </main>
+    )
+  }
   if (hiresQuery.isError || tasksQuery.isError) {
     return (
-      <main className="mx-auto max-w-[1376px] px-4 py-8 sm:px-8">
-        <ErrorText>신입 정보를 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
+      <main className={PAGE}>
+        <BackLink />
+        <LoadError
+          retrying={hiresQuery.isFetching || tasksQuery.isFetching}
+          onRetry={() => {
+            if (hiresQuery.isError) void hiresQuery.refetch()
+            if (tasksQuery.isError) void tasksQuery.refetch()
+          }}
+        >
+          신입 정보를 불러오지 못했어요. 다시 시도해 주세요.
+        </LoadError>
       </main>
     )
   }
@@ -108,10 +177,8 @@ export function HireDetailPage() {
   const selected = teamTasks.find((t) => t.id === selectedId) ?? null
 
   return (
-    <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
-      <Link to="/team" className="inline-flex w-fit items-center gap-1 text-sm text-primary">
-        <ArrowLeft className="size-4" /> 팀 신입 현황
-      </Link>
+    <main className={PAGE}>
+      <BackLink />
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -166,7 +233,7 @@ export function HireDetailPage() {
                   const { canConfirm, canComplete } = reviewActions(task)
                   const muted = task.status === 'blocked'
                   return (
-                    <tr key={task.id} className={cn('border-b border-border last:border-b-0', task.id === selectedId && 'bg-accent')}>
+                    <tr key={task.id} className={cn('border-b border-border last:border-b-0', task.id === selectedId && ROW_SELECTED)}>
                       <td className="px-4 py-3 text-[var(--text-secondary)]">{STAGE_LABEL[task.template.stage]}</td>
                       <td className={cn('px-4 py-3', muted ? 'text-[var(--text-secondary)]' : 'font-medium')}>{task.template.title}</td>
                       <td className="px-4 py-3">

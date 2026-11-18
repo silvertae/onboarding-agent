@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ROW_FOCUS, ROW_HOVER, ROW_SELECTED } from '@/components/tableRow'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { OWNER_LABEL } from '@/lib/labels'
@@ -10,7 +13,7 @@ import { formatDateTime, formatMonthDay, isOverdue } from './format'
 import { useHires, type Hire } from './hires'
 import { reviewActions } from './reviewActions'
 import { TaskReviewPanel } from './TaskReviewPanel'
-import { EmptyState, ErrorText, LoadingText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
+import { EmptyState, ErrorText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 type Tab = 'submitted' | 'mine' | 'all'
@@ -137,10 +140,23 @@ export function OpsInboxPage() {
 
             <SegmentTabPanel value={tab}>
               {tasksQuery.isLoading ? (
-                <LoadingText />
+                <LoadingStatus>
+                  <TableSkeleton
+                    columns={[
+                      { label: '입사자', cell: 'two-line' },
+                      { label: '과제' },
+                      { label: '상태', cell: 'badge' },
+                      { label: '제출 시각' },
+                      { label: '기한' },
+                      { label: '', cell: 'none' },
+                    ]}
+                  />
+                </LoadingStatus>
               ) : tasksQuery.isError ? (
-                <div className="px-6 py-10">
-                  <ErrorText>업무 목록을 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
+                <div className="px-6 pb-6">
+                  <LoadError retrying={tasksQuery.isFetching} onRetry={() => void tasksQuery.refetch()}>
+                    업무 목록을 불러오지 못했어요. 다시 시도해 주세요.
+                  </LoadError>
                 </div>
               ) : (
                 <table aria-label="업무 목록" className="w-full text-sm">
@@ -181,8 +197,8 @@ export function OpsInboxPage() {
                             }
                           }}
                           className={cn(
-                            'cursor-pointer border-b border-border last:border-b-0 hover:bg-surface-subtle focus-visible:bg-accent focus-visible:outline-none',
-                            task.id === selectedId && 'bg-accent',
+                            'cursor-pointer border-b border-border last:border-b-0',
+                            task.id === selectedId ? ROW_SELECTED : cn(ROW_HOVER, ROW_FOCUS),
                           )}
                         >
                           <td className="px-4 py-3">

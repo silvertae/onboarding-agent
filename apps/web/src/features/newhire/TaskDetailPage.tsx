@@ -1,10 +1,13 @@
 import { AlertCircle, ArrowLeft, CalendarDays, Lock, MessageSquare } from 'lucide-react'
 import { useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus } from '@/components/LoadingStatus'
 import { OwnerBadge } from '@/components/OwnerBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { Enums } from '@/lib/database.types'
 import { OWNER_LABEL, STAGE_LABEL } from '@/lib/labels'
 import { useMyTasks, useTaskActions, type TaskView } from '@/lib/tasks'
@@ -64,9 +67,36 @@ function Page({ children }: { children: ReactNode }) {
   )
 }
 
+// 로딩: 과제 카드(배지 줄·제목·메타 / 안내 / 동작 줄)와 같은 자리
+function TaskDetailSkeleton() {
+  return (
+    <LoadingStatus className="overflow-hidden rounded-[18px] border border-border bg-card">
+      <div className="flex flex-col gap-4 px-5 pt-6 pb-5 sm:px-7 sm:pt-7">
+        <div className="flex gap-2">
+          <Skeleton className="h-5 w-12" />
+          <Skeleton className="h-5 w-14" />
+          <Skeleton className="h-[22px] w-16 rounded-full" />
+        </div>
+        <Skeleton className="h-7 w-full max-w-md sm:h-8" />
+        <Skeleton className="h-4 w-72 max-w-full" />
+      </div>
+      <div className="flex flex-col gap-3 border-t border-border px-5 py-6 sm:px-7">
+        <Skeleton className="h-5 w-10" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-11/12" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-5 sm:px-7">
+        <Skeleton className="h-11 w-52 rounded-full" />
+        <Skeleton className="h-11 w-24 rounded-full" />
+      </div>
+    </LoadingStatus>
+  )
+}
+
 export function TaskDetailPage() {
   const { id } = useParams()
-  const { data: tasks, isPending, isError } = useMyTasks()
+  const { data: tasks, isPending, isError, isFetching, refetch } = useMyTasks()
   const actions = useTaskActions()
   const task = tasks?.find((t) => t.id === id)
   const teamName = useTeamName(task?.template.team_id)
@@ -93,13 +123,19 @@ export function TaskDetailPage() {
     }
   }
 
-  if (isPending) return <Page><p role="status" className="text-muted-foreground">불러오는 중…</p></Page>
+  if (isPending) {
+    return (
+      <Page>
+        <TaskDetailSkeleton />
+      </Page>
+    )
+  }
   if (isError) {
     return (
       <Page>
-        <Alert variant="destructive">
-          <AlertDescription>과제를 불러오지 못했어요. 잠시 후 새로고침해 주세요.</AlertDescription>
-        </Alert>
+        <LoadError size="lg" retrying={isFetching} onRetry={() => void refetch()}>
+          과제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+        </LoadError>
       </Page>
     )
   }
