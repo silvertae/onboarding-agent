@@ -107,7 +107,7 @@ export function KnowledgePage() {
                       onChange={(e) => setSearch(e.target.value)}
                     />
                   </div>
-                  <Button type="button" size="lg" className="px-4" onClick={() => setEditing({ mode: 'create', key: `create-${Date.now()}` })}>
+                  <Button type="button" onClick={() => setEditing({ mode: 'create', key: `create-${Date.now()}` })}>
                     <Plus />
                     지식 추가
                   </Button>
@@ -146,8 +146,9 @@ export function KnowledgePage() {
                           <td className="px-4 py-3 text-right">
                             <Button
                               type="button"
+                              size="sm"
                               variant={active ? 'default' : 'outline'}
-                              className={cn('px-3', !active && 'border-primary text-primary')}
+                              className={cn(!active && 'border-primary text-primary')}
                               onClick={() => setEditing({ mode: 'resolve', key: `resolve-${q.id}`, unanswered: q })}
                             >
                               답 등록
@@ -211,16 +212,16 @@ export function KnowledgePage() {
                           <div className="flex justify-end gap-1.5">
                             <Button
                               type="button"
+                              size="sm"
                               variant="ghost"
-                              className="px-3"
                               onClick={() => setEditing({ mode: 'edit', key: `edit-${k.id}`, item: k })}
                             >
                               수정
                             </Button>
                             <Button
                               type="button"
+                              size="sm"
                               variant="secondary"
-                              className="px-3"
                               disabled={listAction.busy}
                               onClick={() => void listAction.run(() => setStatus(k.id, k.status === 'published' ? 'draft' : 'published'))}
                             >

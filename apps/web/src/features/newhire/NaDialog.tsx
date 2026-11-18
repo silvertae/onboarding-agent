@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { TEXTAREA_CLASS } from './taskBodies/types'
+import { Textarea } from '@/components/ui/textarea'
 
 type Props = {
   pending: boolean
@@ -31,9 +31,8 @@ export function NaDialog({ pending, onCancel, onConfirm }: Props) {
             *
           </span>
         </Label>
-        <textarea
+        <Textarea
           id={id}
-          className={TEXTAREA_CLASS}
           value={reason}
           required
           placeholder="예: 등록할 피부양자가 없어요"
@@ -41,10 +40,10 @@ export function NaDialog({ pending, onCancel, onConfirm }: Props) {
         />
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="button" variant="ghost" size="lg" onClick={onCancel}>
           취소
         </Button>
-        <Button type="submit" disabled={!trimmed || pending}>
+        <Button type="submit" size="lg" disabled={!trimmed || pending}>
           해당 없음으로 처리
         </Button>
       </div>

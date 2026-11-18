@@ -132,7 +132,7 @@ export function HireDetailPage() {
             </p>
           </div>
         </div>
-        <Button type="button" size="lg" className="h-11 px-5" onClick={() => navigate(`/team/exams/new?hire=${encodeURIComponent(hire.id)}`)}>
+        <Button type="button" size="lg" onClick={() => navigate(`/team/exams/new?hire=${encodeURIComponent(hire.id)}`)}>
           <FilePlus2 />이 신입 기준으로 시험 만들기
         </Button>
       </div>
@@ -177,8 +177,8 @@ export function HireDetailPage() {
                         {(canConfirm || canComplete) && (
                           <Button
                             type="button"
+                            size="sm"
                             variant={task.id === selectedId ? 'default' : 'secondary'}
-                            className="px-3"
                             aria-pressed={task.id === selectedId}
                             onClick={() => setSelectedId(task.id === selectedId ? null : task.id)}
                           >

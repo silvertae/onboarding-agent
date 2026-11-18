@@ -1,8 +1,10 @@
 import { useId, useRef, useState, type FormEvent } from 'react'
 import { SegmentedRadio } from '@/components/SegmentedRadio'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { AgentError } from '@/lib/agent'
 import type { Enums } from '@/lib/database.types'
 import { OWNER_LABEL, ROLE_LABEL } from '@/lib/labels'
@@ -25,9 +27,6 @@ function todayInSeoul(): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date())
 }
 
-const selectClass =
-  'h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30'
-const inputClass = 'h-10 bg-card'
 
 export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user: CreatedUser) => void }) {
   const ids = useId()
@@ -132,7 +131,6 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
             <Label htmlFor={field('name')}>이름</Label>
             <Input
               id={field('name')}
-              className={inputClass}
               value={fullName}
               maxLength={50}
               placeholder="홍길동"
@@ -143,7 +141,6 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
             <Label htmlFor={field('title')}>직급</Label>
             <Input
               id={field('title')}
-              className={inputClass}
               value={jobTitle}
               maxLength={50}
               placeholder="사원"
@@ -158,7 +155,6 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
             id={field('email')}
             type="email"
             autoComplete="off"
-            className={inputClass}
             value={email}
             aria-invalid={emailError ? true : undefined}
             aria-describedby={emailError ? field('email-error') : undefined}
@@ -180,7 +176,6 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
             id={field('password')}
             type="password"
             autoComplete="new-password"
-            className={inputClass}
             value={password}
             maxLength={72}
             aria-describedby={field('password-hint')}
@@ -195,9 +190,8 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
           {role === 'ops_staff' ? (
             <div className="flex flex-col gap-2">
               <Label htmlFor={field('department')}>부서</Label>
-              <select
+              <NativeSelect
                 id={field('department')}
-                className={selectClass}
                 value={department}
                 onChange={(e) => setDepartment(e.target.value as Department | '')}
               >
@@ -207,15 +201,14 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
                     {OWNER_LABEL[d]}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           ) : (
             <div className={cn('grid gap-3', needsTeam && role === 'new_hire' && 'grid-cols-2')}>
               <div className="flex flex-col gap-2">
                 <Label htmlFor={field('team')}>소속 팀</Label>
-                <select
+                <NativeSelect
                   id={field('team')}
-                  className={selectClass}
                   value={selectedTeam}
                   onChange={(e) => setTeamId(e.target.value)}
                 >
@@ -225,7 +218,7 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
                       {t.name}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               {role === 'new_hire' && (
                 <div className="flex flex-col gap-2">
@@ -233,8 +226,7 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
                   <Input
                     id={field('hire-date')}
                     type="date"
-                    className={inputClass}
-                    value={hireDate}
+                          value={hireDate}
                     onChange={(e) => setHireDate(e.target.value)}
                   />
                 </div>
@@ -243,13 +235,8 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
           )}
           {role === 'new_hire' && (
             <>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-[var(--primary)]"
-                  checked={needsHqAccess}
-                  onChange={(e) => setNeedsHqAccess(e.target.checked)}
-                />
+              <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox checked={needsHqAccess} onCheckedChange={(v) => setNeedsHqAccess(v === true)} />
                 본사 출입 대상
               </label>
               <p className="text-xs text-muted-foreground">등록하면 온보딩 과제가 바로 만들어져요.</p>
@@ -266,7 +253,7 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
 
       {/* 폼이 길어도 등록 버튼이 화면 아래에 붙어 보이게 한다 */}
       <div className="sticky bottom-0 z-10 flex justify-end rounded-b-[18px] border-t border-border bg-card px-5 py-4">
-        <Button type="submit" className="h-11 px-6 text-base" disabled={!valid || busy}>
+        <Button type="submit" size="lg" disabled={!valid || busy}>
           {busy ? '만드는 중…' : '계정 만들기'}
         </Button>
       </div>

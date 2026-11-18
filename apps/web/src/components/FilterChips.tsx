@@ -27,7 +27,8 @@ export function FilterChips<V extends string>({
             aria-pressed={on}
             onClick={() => onChange(item.value)}
             className={cn(
-              'rounded-full border border-input bg-card px-3 py-1 text-label text-[var(--text-secondary)] outline-none',
+              // 보이는 높이 36, 위아래 4px씩 누르는 영역을 넓혀 44(줄 간격 8과 맞물려 겹치지 않는다)
+              'relative h-9 rounded-full border border-input bg-card px-3.5 text-label text-[var(--text-secondary)] outline-none after:absolute after:inset-x-0 after:-inset-y-1',
               'hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               on && 'border-foreground bg-foreground text-white hover:border-foreground hover:text-white',
             )}

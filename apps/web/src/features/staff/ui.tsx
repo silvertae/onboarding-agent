@@ -3,17 +3,6 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
-const fieldClass =
-  'w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50'
-
-export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
-  return <textarea className={cn(fieldClass, 'min-h-20 resize-y', className)} {...props} />
-}
-
-export function NativeSelect({ className, ...props }: ComponentProps<'select'>) {
-  return <select className={cn(fieldClass, 'h-10 py-0 pr-8', className)} {...props} />
-}
-
 export function Panel({ className, ...props }: ComponentProps<'section'>) {
   return <section className={cn('rounded-[18px] border border-border bg-card', className)} {...props} />
 }

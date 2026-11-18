@@ -119,14 +119,14 @@ function ChatAside() {
         </div>
 
         <div className="flex flex-col gap-2.5 border-t border-border px-3 pt-3 pb-5 lg:px-4 lg:pb-3.5">
-          <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] lg:flex-wrap">
+          <div className="-my-1 flex gap-2 overflow-x-auto py-1 [scrollbar-width:none] lg:flex-wrap">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 type="button"
                 disabled={sending}
                 onClick={() => submit(s)}
-                className="shrink-0 rounded-full border border-input bg-card px-3 py-1.5 text-label hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+                className="relative h-9 shrink-0 rounded-full border border-input bg-card px-3.5 text-label outline-none after:absolute after:inset-x-0 after:-inset-y-1 hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
               >
                 {s}
               </button>
@@ -172,7 +172,8 @@ function ChatAside() {
 
       {!open && (
         <Button
-          className="fixed right-4 bottom-6 z-30 h-11 px-5 shadow-[0_8px_24px_rgba(6,71,154,0.35)] lg:hidden"
+          size="lg"
+          className="fixed right-4 bottom-6 z-30 shadow-[0_8px_24px_rgba(6,71,154,0.35)] lg:hidden"
           onClick={() => setOpen(true)}
         >
           <MessageSquare aria-hidden />

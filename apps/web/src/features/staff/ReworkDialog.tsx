@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { Textarea } from './ui'
+import { Textarea } from '@/components/ui/textarea'
 
 type Props = {
   // 사유를 보내는 함수. 성공하면 true(입력 칸을 비운다).
@@ -41,11 +41,11 @@ export function ReworkDialog({ onSubmit, disabled, taskTitle, submitLabel = '보
       />
       <div className="mt-2 flex flex-wrap justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="secondary" size="lg" className="px-4" onClick={onCancel} disabled={disabled}>
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={disabled}>
             취소
           </Button>
         )}
-        <Button type="button" variant="secondary" size="lg" className="px-4" disabled={!trimmed || disabled} onClick={() => void send()}>
+        <Button type="button" variant="secondary" disabled={!trimmed || disabled} onClick={() => void send()}>
           {submitLabel}
         </Button>
         {extraActions}

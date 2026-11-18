@@ -1,8 +1,9 @@
 import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import type { KnowledgeStatus } from './knowledge'
-import { ErrorText, Textarea } from './ui'
+import { ErrorText } from './ui'
 
 export type KnowledgeValues = { question: string; answer: string; category: string }
 
@@ -75,15 +76,15 @@ export function KnowledgeForm({ mode, initial, scopeLabel, busy, error, onSubmit
       </div>
 
       <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
-        <Button type="button" variant="ghost" size="lg" className="px-4" onClick={onCancel} disabled={busy}>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={busy}>
           취소
         </Button>
         {mode !== 'resolve' && (
-          <Button type="button" variant="secondary" size="lg" className="px-4" disabled={disabled} onClick={() => onSubmit(values, 'draft')}>
+          <Button type="button" variant="secondary" disabled={disabled} onClick={() => onSubmit(values, 'draft')}>
             초안 저장
           </Button>
         )}
-        <Button type="button" size="lg" className="px-5" disabled={disabled} onClick={() => onSubmit(values, 'published')}>
+        <Button type="button" disabled={disabled} onClick={() => onSubmit(values, 'published')}>
           게시
         </Button>
       </div>

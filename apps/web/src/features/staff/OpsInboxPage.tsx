@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
+import { NativeSelect } from '@/components/ui/native-select'
 import { OWNER_LABEL } from '@/lib/labels'
 import { useTaskActions, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
@@ -9,7 +10,7 @@ import { formatDateTime, formatMonthDay, isOverdue } from './format'
 import { useHires, type Hire } from './hires'
 import { reviewActions } from './reviewActions'
 import { TaskReviewPanel } from './TaskReviewPanel'
-import { EmptyState, ErrorText, LoadingText, NativeSelect, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
+import { EmptyState, ErrorText, LoadingText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 type Tab = 'submitted' | 'mine' | 'all'
@@ -201,8 +202,9 @@ export function OpsInboxPage() {
                             {canComplete && (
                               <Button
                                 type="button"
+                                size="sm"
                                 variant="outline"
-                                className="border-primary px-3 text-primary"
+                                className="border-primary text-primary"
                                 disabled={rowAction.busy}
                                 onClick={(e) => {
                                   e.stopPropagation()

@@ -107,11 +107,13 @@
 
   <div class="grid-2">
     <section class="card">
-      <div class="card-hd"><h2>버튼·입력</h2><span class="caption">pill 버튼 · 입력 라운드 8px</span></div>
-      <div class="card-bd col" style="gap: 16px">
-        <div class="row" style="flex-wrap: wrap"><button class="btn btn-primary">제출</button><button class="btn btn-outline">이 과제에 대해 물어보기</button><button class="btn btn-ghost">해당 없음</button><button class="btn btn-primary" disabled>제출</button></div>
-        <div class="row" style="flex-wrap: wrap"><button class="btn btn-sm btn-primary">완료 처리</button><button class="btn btn-sm btn-outline">답 등록</button><button class="btn btn-sm btn-danger">삭제</button></div>
-        <div class="field"><label class="label" for="s0-in">명함 영문 이름</label><input id="s0-in" class="input" placeholder="KIM HANEUL"><span class="hint">여권과 같은 순서로 적어 주세요</span></div>
+      <div class="card-hd"><h2>버튼·입력 크기</h2><span class="caption">pill 버튼 · 입력 라운드 8px · 신입 화면은 44 이상</span></div>
+      <div class="card-bd col" style="gap: 14px">
+        <div class="between"><div class="row" style="flex-wrap: wrap"><button class="btn btn-primary">제출</button><button class="btn btn-outline">이 과제에 대해 물어보기</button><button class="btn btn-primary" disabled>제출</button></div><code class="caption">lg 44 · size="lg" · 주요 동작, 신입 화면 전부</code></div>
+        <div class="between"><div class="row" style="flex-wrap: wrap"><button class="btn btn-sm btn-primary">확인 (완료 처리)</button><button class="btn btn-sm btn-ghost">보완 요청</button></div><code class="caption">36 · 기본 · 패널·폼 동작</code></div>
+        <div class="between"><div class="row" style="flex-wrap: wrap"><button class="btn btn-xs btn-outline">완료 처리</button><button class="btn btn-xs btn-danger">삭제</button></div><code class="caption">32 · size="sm" · 표 행·카드 도구 줄</code></div>
+        <div class="between" style="align-items: flex-end"><div class="field" style="flex: 1"><label class="label" for="s0-in">문항 스타일</label><input id="s0-in" class="input" placeholder="예: 손으로 푸는 코드 읽기"></div><code class="caption" style="margin-left: 16px">40 · 기본</code></div>
+        <div class="between" style="align-items: flex-end"><div class="field" style="flex: 1"><label class="label" for="s0-in2">명함 영문 이름</label><input id="s0-in2" class="input input-lg" placeholder="KIM HANEUL"></div><code class="caption" style="margin-left: 16px">44 · size="lg" · 로그인·신입 양식</code></div>
       </div>
     </section>
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { BodyProps } from './types'
 
 function initialChecked(result: unknown): string[] {
@@ -25,17 +26,11 @@ export function ChecklistBody({ task, disabled, children }: BodyProps) {
     <>
       <div className="flex flex-col gap-3 border-t border-border px-5 py-6 sm:px-7">
         <h3 className="text-row font-semibold">체크리스트</h3>
-        <ul className="flex flex-col gap-2.5">
+        <ul className="flex flex-col">
           {items.map((item) => (
             <li key={item}>
-              <label className="flex items-center gap-2.5 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={checked.has(item)}
-                  disabled={disabled}
-                  onChange={() => toggle(item)}
-                />
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-row has-[:disabled]:cursor-not-allowed">
+                <Checkbox className="size-[18px]" checked={checked.has(item)} disabled={disabled} onCheckedChange={() => toggle(item)} />
                 {item}
               </label>
             </li>
