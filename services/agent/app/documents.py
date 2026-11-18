@@ -25,7 +25,7 @@ CHUNK_TARGET = 800  # 조항 표시가 없을 때 단락 묶음의 목표 글자
 CHUNK_CAP = 1000  # 같은 경우의 상한
 
 _ARTICLE_RE = re.compile(
-    r"^[ \t]*(제[ \t]*\d+[ \t]*조(?:의[ \t]*\d+)?)(?![가-힣])[ \t]*(?:[(（]([^)）\n]*)[)）])?", re.M
+    r"^[ \t]*(제[ \t]*\d+[ \t]*조(?:의[ \t]*\d+)?)(?![가-힣0-9])[ \t]*(?:[(（]([^)）\n]*)[)）])?", re.M
 )
 _SENTENCE_END_RE = re.compile(r"(?<=[.!?。])\s+")
 # pdf 글꼴에 따라 공백이 제어 문자로 나오는 경우가 있다(줄바꿈·탭은 둔다)
@@ -82,11 +82,10 @@ def _docx_text(doc) -> str:
                 tcPr = tc.tcPr
                 v_merge = tcPr.find(qn("w:vMerge")) if tcPr is not None else None
                 if v_merge is not None and v_merge.get(qn("w:val")) != "restart":
+                    cells.append("")  # 세로 병합의 이어지는 칸. 열 위치를 맞춘다
                     continue
-                t = _Cell(tc, block).text.strip()
-                if t and (not cells or cells[-1] != t):
-                    cells.append(t)
-            if cells:
+                cells.append(_Cell(tc, block).text.strip())
+            if any(cells):
                 add(" | ".join(cells))
     return "\n".join(lines)
 

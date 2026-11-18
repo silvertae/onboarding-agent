@@ -227,14 +227,24 @@ def test_docx_table_rows_are_kept_in_order():
     data = _docx_with_table(["제8조(경조금)"], [["본인 결혼", "50만 원(가상)"], ["", "빈칸"]])
     text = extract_text(data, "docx")
     assert text.index("제8조") < text.index("본인 결혼 | 50만 원(가상)")
-    assert "\n빈칸" in text
+    assert "\n | 빈칸" in text
     clauses = split_clauses(text)
     assert "50만 원(가상)" in clauses[0].body
 
 
-def test_docx_merged_cells_are_deduplicated():
-    text = extract_text(_docx_with_table([], [["합계", "", ""]], merge_first_row=True), "docx")
-    assert text.strip() == "합계"
+def test_docx_repeated_values_in_a_row_are_kept():
+    text = extract_text(_docx_with_table([], [["사망", "100만 원", "100만 원"]]), "docx")
+    assert text.strip() == "사망 | 100만 원 | 100만 원"
+
+
+def test_docx_empty_middle_cell_keeps_alignment():
+    text = extract_text(_docx_with_table([], [["가", "", "다"]]), "docx")
+    assert text.strip() == "가 |  | 다"
+
+
+def test_docx_all_empty_row_is_skipped():
+    text = extract_text(_docx_with_table(["제1조 x"], [["", ""], ["a", "b"]]), "docx")
+    assert text.splitlines() == ["제1조 x", "a | b"]
 
 
 def test_docx_with_only_table_is_readable():
@@ -285,7 +295,7 @@ def test_huge_grid_span_is_read_once_and_fast():
     assert text.strip() == "가상 항목"
 
 
-def test_vertically_merged_text_appears_once():
+def test_vertically_merged_text_appears_once_with_empty_slots():
     def build(doc):
         t = doc.add_table(rows=3, cols=2)
         t.cell(0, 0).text = "구분"
@@ -294,8 +304,8 @@ def test_vertically_merged_text_appears_once():
         t.cell(2, 1).text = "c"
         t.cell(0, 0).merge(t.cell(2, 0))
 
-    text = extract_text(_table_docx(build), "docx")
-    assert text.count("구분") == 1
+    lines = extract_text(_table_docx(build), "docx").splitlines()
+    assert lines == ["구분 | a", " | b", " | c"]
 
 
 def test_table_text_cap_applies_while_accumulating(monkeypatch):
@@ -321,3 +331,11 @@ def test_table_cell_count_cap(monkeypatch):
 
     with pytest.raises(DocumentTooLarge):
         extract_text(_table_docx(build), "docx")
+
+
+def test_article_number_digits_do_not_backtrack():
+    clauses = split_clauses("제1조(목적) 본문\n제12조의23에 따른다.\n제2조(범위) x")
+    assert [c.label for c in clauses] == ["제1조", "제2조"]
+    assert split_clauses("제12조의23(가지) x")[0].label == "제12조의23"
+    assert [c.label for c in split_clauses("제1조 가\n제12조 본문")] == ["제1조", "제12조"]
+    assert [c.label for c in split_clauses("제1조 가\n제123조에 따른다")] == ["제1조"]
