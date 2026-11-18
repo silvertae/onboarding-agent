@@ -47,6 +47,13 @@ async function fail(error: { message: string; code?: string }, status: number): 
   throw err
 }
 
+// supabase-js StorageError는 status(또는 statusCode)와 메시지만 준다. 만료된 토큰이면 DbError로 바꿔 같은 로그아웃 경로를 탄다.
+async function storageFail(error: { message: string; status?: number | string; statusCode?: number | string }): Promise<never> {
+  const status = Number(error.status ?? error.statusCode) || 0
+  const code = /jwt/i.test(error.message) ? 'PGRST301' : undefined
+  return fail({ message: error.message, code }, status)
+}
+
 function agentMessage(err: unknown): string {
   if (err instanceof AgentError) return err.status === 429 ? `${err.message}. 내일 다시 이용해 주세요.` : err.message
   return '문서를 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
@@ -118,8 +125,12 @@ export async function uploadDocument(
 
   const upload = await supabase.storage.from(BUCKET).upload(filePath, file, { contentType: DOC_TYPES[ext], upsert: false })
   if (upload.error) {
-    await supabase.from('policy_documents').delete().eq('id', id) // 고아 행 정리(실패해도 업로드 오류를 우선한다)
-    throw upload.error
+    try {
+      await supabase.from('policy_documents').delete().eq('id', id) // 고아 행 정리(실패해도 업로드 오류를 우선한다)
+    } catch {
+      // 정리 실패는 무시하고 업로드 오류를 던진다
+    }
+    return storageFail(upload.error)
   }
 
   try {
@@ -133,7 +144,7 @@ export async function uploadDocument(
 // 순서: storage remove(정책이 문서 행으로 범위를 확인하므로 행이 남아 있을 때) → 행 delete(조항 cascade).
 export async function deleteDocument(doc: Pick<PolicyDocument, 'id' | 'file_path'>): Promise<void> {
   const removed = await supabase.storage.from(BUCKET).remove([doc.file_path])
-  if (removed.error) throw removed.error
+  if (removed.error) return storageFail(removed.error)
   const { error, status } = await supabase.from('policy_documents').delete().eq('id', doc.id)
   if (error) await fail(error, status)
 }
@@ -143,7 +154,9 @@ type Draft = { question: string; answer: string; category: string; clause_ids: s
 // 초안 API는 DB에 쓰지 않는다. 받은 초안을 RPC로 저장하고 저장한 개수를 돌려준다.
 export async function makeKnowledgeDrafts(documentId: string, count = 5): Promise<number> {
   const res = await agentFetch('/knowledge/draft-from-document', { document_id: documentId, count })
-  const { drafts } = (await res.json()) as { drafts: Draft[] }
+  const body = (await res.json()) as { drafts?: unknown }
+  if (!Array.isArray(body.drafts) || body.drafts.length === 0) throw new Error('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')
+  const drafts = (body.drafts as Draft[]).slice(0, 10)
   const { data, error, status } = await supabase.rpc('save_knowledge_drafts', { p_items: drafts })
   if (error) await fail(error, status)
   return data as number

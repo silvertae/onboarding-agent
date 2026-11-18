@@ -134,6 +134,24 @@ describe('uploadDocument', () => {
     expect(agentFetch).not.toHaveBeenCalled()
   })
 
+  it('업로드 오류가 인증 오류면 로그아웃한 뒤 던진다', async () => {
+    results.set('policy_documents.insert', { data: row, error: null, status: 201 })
+    storage.upload.mockResolvedValue({ data: null, error: { message: 'jwt expired', statusCode: '401' } })
+    await expect(uploadDocument(ops, 't', file('a.pdf'))).rejects.toBeInstanceOf(DbError)
+    expect(signOut).toHaveBeenCalled()
+  })
+
+  it('정리 delete가 거절돼도 업로드 오류를 던진다', async () => {
+    results.set('policy_documents.insert', { data: row, error: null, status: 201 })
+    storage.upload.mockResolvedValue({ data: null, error: { message: 'too big' } })
+    const original = results.get.bind(results)
+    vi.spyOn(results, 'get').mockImplementation((k) => {
+      if (k === 'policy_documents.delete') throw new Error('network')
+      return original(k)
+    })
+    await expect(uploadDocument(ops, 't', file('a.pdf'))).rejects.toThrow('too big')
+  })
+
   it('insert가 실패하면 업로드하지 않고 던진다', async () => {
     results.set('policy_documents.insert', { data: null, error: { message: 'denied', code: '42501' }, status: 403 })
     await expect(uploadDocument(ops, 't', file('a.pdf'))).rejects.toBeInstanceOf(DbError)
@@ -171,6 +189,13 @@ describe('deleteDocument', () => {
     expect(calls[2].args).toEqual(['id', 'd1'])
   })
 
+  it('remove가 인증 오류면 로그아웃하고 행을 지우지 않고 던진다', async () => {
+    storage.remove.mockResolvedValue({ data: null, error: { message: 'Invalid JWT', status: 400 } })
+    await expect(deleteDocument({ id: 'd1', file_path: 'p' })).rejects.toBeInstanceOf(DbError)
+    expect(signOut).toHaveBeenCalled()
+    expect(order()).not.toContain('policy_documents.delete')
+  })
+
   it('remove가 실패하면 행을 지우지 않고 던진다', async () => {
     storage.remove.mockResolvedValue({ data: null, error: { message: 'nope' } })
     await expect(deleteDocument({ id: 'd1', file_path: 'org-1/d1.pdf' })).rejects.toThrow('nope')
@@ -190,6 +215,20 @@ describe('makeKnowledgeDrafts', () => {
     await expect(makeKnowledgeDrafts('d1')).resolves.toBe(1)
     expect(calls[0]).toEqual({ table: 'agent', op: '/knowledge/draft-from-document', args: [{ document_id: 'd1', count: 5 }] })
     expect(calls[1]).toEqual({ table: 'rpc:save_knowledge_drafts', op: 'rpc', args: [{ p_items: drafts }] })
+  })
+
+  it.each([{}, { drafts: [] }, { drafts: 'x' }])('drafts가 없거나 비면 저장하지 않고 던진다 %j', async (body) => {
+    agentFetch.mockResolvedValue(new Response(JSON.stringify(body)))
+    await expect(makeKnowledgeDrafts('d1')).rejects.toThrow('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')
+    expect(calls.some((c) => c.table.startsWith('rpc:'))).toBe(false)
+  })
+
+  it('drafts는 최대 10개까지만 저장한다', async () => {
+    const drafts = Array.from({ length: 12 }, (_, i) => ({ question: `q${i}`, answer: 'a', category: 'c', clause_ids: ['c1'] }))
+    agentFetch.mockResolvedValue(new Response(JSON.stringify({ drafts })))
+    results.set('rpc:save_knowledge_drafts', { data: 10, error: null, status: 200 })
+    await makeKnowledgeDrafts('d1')
+    expect((calls.find((c) => c.table.startsWith('rpc:'))!.args[0] as { p_items: unknown[] }).p_items).toHaveLength(10)
   })
 
   it('에이전트가 429면 AgentError를 던지고 저장하지 않는다', async () => {
