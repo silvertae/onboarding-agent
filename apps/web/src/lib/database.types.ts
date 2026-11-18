@@ -927,6 +927,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      seed_demo_bank: { Args: { p_org: string }; Returns: number };
       seed_demo_knowledge: { Args: { p_org: string }; Returns: number };
       start_onboarding: { Args: { p_new_hire: string }; Returns: number };
       submit_task: {
