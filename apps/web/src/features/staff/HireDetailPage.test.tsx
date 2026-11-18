@@ -33,6 +33,12 @@ vi.mock('@/lib/tasks', async (importOriginal) => ({
   useTaskActions: () => actions,
 }))
 vi.mock('./hires', () => ({ useHires: () => ({ data: HIRES, isLoading: false, isError: false }) }))
+// 평가 카드의 응시 시험 줄은 AssessmentCard.test.tsx에서 본다.
+vi.mock('./sittings', () => ({
+  useSittings: () => ({ data: [], isLoading: false, isError: false }),
+  useAssignExam: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false }),
+}))
+vi.mock('@/features/exam/exams', () => ({ useExams: () => ({ data: [], isLoading: false, isError: false }) }))
 
 import { HireDetailPage } from './HireDetailPage'
 
