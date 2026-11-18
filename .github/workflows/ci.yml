@@ -1,4 +1,4 @@
-# PR 검사: 웹 테스트·빌드 → 로컬 Supabase에서 pgTAP·에이전트 pytest → 스테이징 설정 웹을 미리보기 채널에 배포.
+# PR 검사: 디자인 규칙·웹 테스트·빌드 → 로컬 Supabase에서 pgTAP·에이전트 pytest → 스테이징 설정 웹을 미리보기 채널에 배포.
 # 외부 PR 코드가 비밀값에 닿지 않도록 pull_request(pull_request_target 아님)만 쓴다.
 name: ci
 
@@ -26,6 +26,8 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
+      - name: 디자인 규칙 검사 (.interface-design/system.md)
+        run: bash scripts/check-design.sh
       - run: npm --prefix apps/web ci
       - run: npm run test:web
       - run: npm --prefix apps/web run build
@@ -43,8 +45,12 @@ jobs:
         run: bash scripts/tests/deploy_agent_test.sh
       - name: keepalive.sh 판정 로직 (가짜 서버)
         run: bash scripts/tests/keepalive_test.sh
+      - name: check-design.sh 규칙 (가짜 소스)
+        run: bash scripts/tests/check_design_test.sh
+      - name: push-shots.sh 업로드·실패 처리 (임시 로컬 원격)
+        run: bash scripts/tests/push_shots_test.sh
       - name: shellcheck
-        run: shellcheck scripts/*.sh scripts/tests/*.sh
+        run: shellcheck scripts/*.sh scripts/tests/*.sh scripts/design/*.sh
 
   backend:
     name: pgTAP·에이전트 테스트

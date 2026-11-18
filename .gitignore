@@ -21,6 +21,8 @@ gha-creds-*.json
 
 # Claude Code 개인 설정 (.claude/settings.json은 커밋)
 .claude/settings.local.json
+# 하위 에이전트용 임시 worktree
+.claude/worktrees/
 
 # Node / Vite
 node_modules/

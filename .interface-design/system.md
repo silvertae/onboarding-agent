@@ -2,6 +2,9 @@
 
 기준 시안은 `docs/design/onboarding-design/`이다(`assets/ui.css`, `screens/S0-system.html`). 이 문서는 그 결정을 요약하고 코드(`apps/web/src/index.css`)와의 대응을 적는다. 시안과 이 문서가 다르면 시안을 따른다.
 
+- **자동 검사:** 기계로 잡을 수 있는 규칙(색 hex, 임의 글자 크기, `font-bold`, `bg-white`, `transition-all`, 직접 만든 탭·라디오, 네이티브 select·체크박스, Button 높이 덮어쓰기)은 `scripts/check-design.sh`가 CI에서 막는다. 규칙을 바꾸면 이 검사도 함께 고친다.
+- **판단 검토:** 위계·구성·상태는 PR 전에 `/design-review`로 본다. 작업 순서는 CLAUDE.md "UI 작업"을 따른다.
+
 ## 방향
 
 - **사용자:** 입사 첫 주의 신입은 노트북과 휴대폰으로 "오늘 뭘 해야 하지"를 확인한다. 교육 담당자와 경영지원 담당자는 데스크톱에서 확인 대기를 처리한다.

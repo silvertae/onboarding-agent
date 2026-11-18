@@ -1,0 +1,8 @@
+{
+  "name": "onboarding-design-tools",
+  "private": true,
+  "description": "PR용 화면 전·후 스크린샷 도구(scripts/design/README.md). 웹 앱 의존성과 분리한다.",
+  "devDependencies": {
+    "playwright": "1.65.1"
+  }
+}
