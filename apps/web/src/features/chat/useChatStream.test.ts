@@ -60,8 +60,27 @@ describe('useChatStream', () => {
     await act(() => result.current.send('첫 질문'))
     await act(() => result.current.send('동호회 가입비 얼마야?'))
 
-    expect(result.current.messages[1]).toEqual({ role: 'assistant', text: '답', sources })
+    expect(result.current.messages[1]).toEqual({ role: 'assistant', text: '답', sources: { ...sources, documents: [] } })
     expect(result.current.messages[3]).toEqual({ role: 'assistant', text: '확인되지 않은 내용이에요.', unanswered: true })
+  })
+
+  it('sources 이벤트의 documents를 메시지에 담는다', async () => {
+    const documents = [{ id: 'c1', document_title: '복리후생 규정(가상)', label: '제8조', heading: '경조금', body: '본문' }]
+    agent.agentFetch.mockResolvedValueOnce(answer('답', [{ type: 'sources', knowledge: [], tasks: [], documents }]))
+    const { result } = renderHook(() => useChatStream())
+
+    await act(() => result.current.send('경조금 얼마야?'))
+
+    expect(result.current.messages[1].sources?.documents).toEqual(documents)
+  })
+
+  it('documents가 없는 sources 이벤트는 documents를 빈 배열로 둔다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(answer('답', [{ type: 'sources', knowledge: [], tasks: [] }]))
+    const { result } = renderHook(() => useChatStream())
+
+    await act(() => result.current.send('질문'))
+
+    expect(result.current.messages[1].sources?.documents).toEqual([])
   })
 
   it('두 번째 질문의 history에 첫 질문과 답이 들어간다', async () => {

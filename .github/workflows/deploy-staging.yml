@@ -91,6 +91,9 @@ jobs:
         env:
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           ALLOWED_ORIGIN_REGEX: ${{ vars.ALLOWED_ORIGIN_REGEX }}
+          # (선택) 테스트 기간에 하루 한도를 올릴 때만 둔다. 없으면 서비스 기본값
+          CHAT_DAILY_LIMIT: ${{ vars.CHAT_DAILY_LIMIT }}
+          EXAM_DAILY_LIMIT: ${{ vars.EXAM_DAILY_LIMIT }}
         run: bash scripts/deploy-agent.sh staging "$GITHUB_SHA"
 
       - uses: actions/setup-node@v7

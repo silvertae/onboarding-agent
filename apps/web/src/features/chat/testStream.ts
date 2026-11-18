@@ -2,7 +2,7 @@
 
 export type StreamEvent =
   | { type: 'token'; text: string }
-  | { type: 'sources'; knowledge: { id: string; question: string }[]; tasks: { id: string; code: string; title: string }[] }
+  | { type: 'sources'; knowledge: { id: string; question: string }[]; tasks: { id: string; code: string; title: string }[]; documents?: { id: string; document_title: string; label: string; heading: string; body: string }[] }
   | { type: 'unanswered' }
   | { type: 'error'; message: string }
   | { type: 'done' }

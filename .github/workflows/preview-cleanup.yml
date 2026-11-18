@@ -1,0 +1,62 @@
+# PR이 닫히면(머지·닫기) 그 PR의 웹 미리보기 채널(pr-<번호>)을 지운다.
+# 스테이징 웹 사이트의 미리보기 채널은 50개까지라, 닫힌 PR의 채널이 7일 만료를 기다리며 쌓이면
+# 새 PR의 "웹 미리보기 배포"가 실패한다(2026-11-18 PR #62에서 발생).
+# 외부 PR 코드가 비밀값에 닿지 않도록 pull_request(pull_request_target 아님)만 쓰고, PR 코드는 실행하지 않는다.
+name: preview-cleanup
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  delete-channel:
+    name: 미리보기 채널 삭제
+    # 같은 저장소의 PR만(포크 PR에는 미리보기를 만들지 않는다)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # firebase CLI는 firebase.json이 있는 폴더에서만 돈다(ci.yml 미리보기 배포와 같은 두 파일)
+          sparse-checkout: |
+            firebase.json
+            .firebaserc
+          sparse-checkout-cone-mode: false
+      # ci.yml의 미리보기 배포와 같은 계정(스테이징 프로젝트의 Hosting 권한만)
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ vars.GCP_PREVIEW_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_PREVIEW_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PREVIEW_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: 채널 삭제
+        env:
+          CHANNEL: pr-${{ github.event.pull_request.number }}
+          PROJECT: ${{ vars.GCP_PREVIEW_PROJECT_ID }}
+        run: |
+          site="$(jq -r --arg p "$PROJECT" '.targets[$p].hosting.staging[0] // empty' .firebaserc)"
+          if [ -z "$site" ]; then
+            echo "::error::.firebaserc에서 스테이징 Hosting 사이트를 찾지 못했습니다."
+            exit 1
+          fi
+          out="$(npx --yes firebase-tools@15.36.0 hosting:channel:delete "$CHANNEL" \
+            --site "$site" --project "$PROJECT" --force --json 2>/dev/null || true)"
+          if [ "$(jq -r '.status // empty' <<<"$out" 2>/dev/null)" = success ]; then
+            echo "$CHANNEL 채널을 지웠습니다."
+            exit 0
+          fi
+          # 채널이 없으면(문서만 바뀌어 미리보기를 건너뛴 PR, 이미 만료된 채널) 할 일이 없다
+          if jq -e '(.error // "") | test("HTTP Error: 404")' <<<"$out" >/dev/null 2>&1; then
+            echo "$CHANNEL 채널이 없습니다(건너뛴 미리보기 또는 만료)."
+            exit 0
+          fi
+          jq '{status, error}' <<<"$out" 2>/dev/null || echo "$out"
+          exit 1

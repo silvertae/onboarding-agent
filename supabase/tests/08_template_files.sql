@@ -1,7 +1,7 @@
 -- 과제 서식 저장소 테스트(버킷, task_template_files 테이블·RLS, storage.objects 정책). 픽스처를 더해 확인하고 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(70);
+select plan(80);
 
 -- ── 픽스처 ──────────────────────────────────────────────────────────
 -- 시드 조직 O, AI팀(T), 다른 팀 T2, 다른 조직 X. 사람·문서는 모두 가상.
@@ -252,7 +252,18 @@ select is_empty($$select 1 from public.task_template_files where template_id = '
   '신입B: 신입A 전용 템플릿 서식은 0행 (Review Focus 1)');
 set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000201';  -- 교육 담당자(T)
 select is((select count(*)::int from public.task_template_files where template_id = 'a8000000-0000-0000-0000-000000000604'), 1,
-  '교육 담당자: 신입A 전용 템플릿 서식이 보인다');
+  '교육 담당자(T, 담당): 신입A 전용 템플릿 서식이 보인다');
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000202';  -- 교육 담당자(T2)
+select is_empty($$select 1 from public.task_template_files where template_id = 'a8000000-0000-0000-0000-000000000604'$$,
+  '다른 팀 교육 담당자(T2): 신입A 전용 템플릿 서식은 0행');
+select is((select count(*)::int from public.task_template_files where template_id = 'a8000000-0000-0000-0000-000000000601'), 5,
+  '다른 팀 교육 담당자(T2): 일반 템플릿 서식 5개는 그대로 보인다');
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000301';  -- 경영지원(hr)
+select is_empty($$select 1 from public.task_template_files where template_id = 'a8000000-0000-0000-0000-000000000604'$$,
+  '경영지원(hr, 담당 아님): 신입A 전용 템플릿 서식은 0행');
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000401';  -- 관리자
+select is((select count(*)::int from public.task_template_files where template_id = 'a8000000-0000-0000-0000-000000000604'), 1,
+  '관리자: 신입A 전용 템플릿 서식이 보인다(데모 초기화 정리용)');
 set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000501';  -- 다른 조직
 select is_empty($$select 1 from public.task_template_files$$, '다른 조직 사용자: 서식 0행');
 
@@ -329,6 +340,22 @@ set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000102';  -- �
 select is_empty($$select 1 from storage.objects where bucket_id = 'task-forms'
                    and name like '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000604/%'$$,
   'storage: 신입B는 신입A 전용 템플릿 폴더 객체 0행 (Review Focus 1)');
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000201';  -- 교육 담당자(T)
+select is((select count(*)::int from storage.objects where bucket_id = 'task-forms'
+            and name like '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000604/%'), 1,
+  'storage: 교육 담당자(T, 담당)는 신입A 전용 템플릿 폴더 객체가 보인다');
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000202';  -- 교육 담당자(T2)
+select is_empty($$select 1 from storage.objects where bucket_id = 'task-forms'
+                   and name like '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000604/%'$$,
+  'storage: 다른 팀 교육 담당자(T2)는 신입A 전용 템플릿 폴더 객체 0행');
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000301';  -- 경영지원(hr)
+select is_empty($$select 1 from storage.objects where bucket_id = 'task-forms'
+                   and name like '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000604/%'$$,
+  'storage: 경영지원(hr, 담당 아님)은 신입A 전용 템플릿 폴더 객체 0행');
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000401';  -- 관리자
+select is((select count(*)::int from storage.objects where bucket_id = 'task-forms'
+            and name like '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000604/%'), 1,
+  'storage: 관리자는 신입A 전용 템플릿 폴더 객체가 보인다');
 set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000501';  -- 다른 조직
 select is_empty($$select 1 from storage.objects where bucket_id = 'task-forms'$$,
   'storage: 다른 조직 사용자 0행');
@@ -363,6 +390,16 @@ set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000401';  -- �
 select is(pg_temp.affected($$delete from storage.objects where bucket_id = 'task-forms'
   and name = '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000601/a8000000-0000-0000-0000-00000000c001.docx'$$), 1,
   'storage: 관리자가 담당자 서식 객체 delete → 1행');
+
+-- 올리기 경로 형식: {org}/{template}/{uuid}.{pdf|docx|xlsx}만(폴더 두 단계, 파일 이름은 uuid). 테이블 storage_path 검사와 같다.
+-- (위 개수 확인에 섞이지 않게 맨 뒤에서 한다)
+set local request.jwt.claim.sub = 'a8000000-0000-0000-0000-000000000201';  -- 교육 담당자(T)
+select throws_ok($$insert into storage.objects (bucket_id, name) values ('task-forms',
+  '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000601/sub/a8000000-0000-0000-0000-00000000c110.pdf')$$,
+  '42501', null, 'storage: 담당자가 템플릿 폴더 아래 하위 폴더에 올리기 → 42501');
+select throws_ok($$insert into storage.objects (bucket_id, name) values ('task-forms',
+  '00000000-0000-0000-0000-000000000001/a8000000-0000-0000-0000-000000000601/신청서.pdf')$$,
+  '42501', null, 'storage: 담당자가 uuid가 아닌 파일 이름으로 올리기 → 42501');
 
 reset role;
 select is((select count(*)::int from storage.objects where bucket_id = 'task-forms'
