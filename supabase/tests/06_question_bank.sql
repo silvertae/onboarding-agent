@@ -1,7 +1,7 @@
 -- 문제은행·응시 기록 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(53);
+select plan(59);
 
 -- ── 픽스처 (postgres 권한) ───────────────────────────────────────────
 -- 조직 O, 팀 T(우리 팀)·T2(다른 팀). 사람은 모두 가상.
@@ -265,6 +265,32 @@ select throws_ok($$select public.register_exam_to_bank('a6000000-0000-0000-0000-
 select throws_ok(
   $$select public.assign_exam('a6000000-0000-0000-0000-000000000551', 'a6000000-0000-0000-0000-000000000601')$$,
   '42501', null, 'trainer2: 다른 팀 과제 assign_exam → 42501');
+
+-- ── 교육 담당자(T): 편집기에서 고친 은행 문항의 재등록 ──────────────
+-- 위 회귀 구간에서 E1 문항을 출처 없이 다시 넣었으므로(== 와 ===, 배열 map) 먼저 기존 은행 행에 연결된다.
+set local request.jwt.claim.sub = 'a6000000-0000-0000-0000-000000000201';
+select is(public.register_exam_to_bank('a6000000-0000-0000-0000-000000000601'), 0,
+  'register(E1): 출처 없이 다시 넣은 같은 문항은 기존 은행 행에 연결만 한다');
+update public.exam_questions set prompt = '배열 filter의 반환값을 쓰시오.'
+ where exam_id = 'a6000000-0000-0000-0000-000000000601' and prompt = '== 와 === 의 차이를 쓰시오.';
+select is(public.register_exam_to_bank('a6000000-0000-0000-0000-000000000601'), 1,
+  'register(E1): 은행 문항의 문장을 새 문제로 고치면 새 은행 행 1');
+select is(
+  (select bank_item_id from public.exam_questions
+    where exam_id = 'a6000000-0000-0000-0000-000000000601' and prompt = '배열 filter의 반환값을 쓰시오.'),
+  (select id from public.question_bank_items where prompt = '배열 filter의 반환값을 쓰시오.' and source = 'exam'),
+  '고친 문항의 bank_item_id는 새 은행 행');
+select is((select count(*)::int from public.question_bank_items where prompt = '== 와 === 의 차이를 쓰시오.'), 1,
+  '원래 은행 행의 문장은 그대로');
+update public.exam_questions set model_answer = '고친 답'
+ where exam_id = 'a6000000-0000-0000-0000-000000000601' and prompt = '배열 map의 반환값을 쓰시오.';
+select is(public.register_exam_to_bank('a6000000-0000-0000-0000-000000000601'), 0,
+  'register(E1): 답안만 고친 문항은 대상이 아니다');
+select is(
+  (select bank_item_id from public.exam_questions
+    where exam_id = 'a6000000-0000-0000-0000-000000000601' and prompt = '배열 map의 반환값을 쓰시오.'),
+  (select id from public.question_bank_items where prompt = '배열 map의 반환값을 쓰시오.'),
+  '답안만 고친 문항의 bank_item_id는 그대로');
 
 -- ── bank_prompts 상한 ───────────────────────────────────────────────
 reset role;

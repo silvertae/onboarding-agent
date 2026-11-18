@@ -19,13 +19,16 @@ create policy "은행 문항은 우리 팀 것만 수정" on public.exam_questio
   );
 
 -- ── 확정 시험 문항을 은행에 등록 ────────────────────────────────────
--- 출처가 비어 있는 문항만 넣고(같은 문항은 건너뜀), 같은 문항 키의 은행 행으로 출처를 채운다.
+-- 대상: 출처가 비어 있는 문항, 그리고 출처 은행 행과 문장 키가 달라진 문항(편집기에서 새 문제로 고친 경우).
+-- 대상을 은행에 넣고(같은 문항은 건너뜀) 같은 문항 키의 은행 행으로 출처를 바꾼다. 원래 은행 행은 고치지 않는다.
+-- 답안·채점 기준·배점만 고친 문항은 문장 키가 같으므로 대상이 아니다.
 -- 반환: 새로 넣은 은행 행 수. 다시 불러도 중복이 생기지 않는다.
 create function public.register_exam_to_bank(p_exam uuid) returns int
 language plpgsql security invoker set search_path = ''
 as $$
 declare
   v_e public.exams;
+  v_ids uuid[];
   v_count int;
 begin
   select * into v_e from public.exams where id = p_exam;
@@ -36,11 +39,17 @@ begin
     raise exception '확정된 시험만 문제은행에 넣을 수 있습니다' using errcode = '22023';
   end if;
 
+  select coalesce(array_agg(q.id), '{}') into v_ids
+    from public.exam_questions q
+    left join public.question_bank_items b on b.id = q.bank_item_id
+   where q.exam_id = p_exam
+     and (b.id is null or b.prompt_key <> private.prompt_key(q.prompt));
+
   insert into public.question_bank_items
     (org_id, team_id, topic, difficulty, prompt, model_answer, rubric, points, source)
   select v_e.org_id, v_e.team_id, v_e.topic, v_e.difficulty, q.prompt, q.model_answer, q.rubric, q.points, 'exam'
     from public.exam_questions q
-   where q.exam_id = p_exam and q.bank_item_id is null
+   where q.id = any (v_ids)
    order by q.position
   on conflict (team_id, prompt_key) do nothing;
   get diagnostics v_count = row_count;
@@ -48,8 +57,7 @@ begin
   update public.exam_questions q
      set bank_item_id = b.id
     from public.question_bank_items b
-   where q.exam_id = p_exam
-     and q.bank_item_id is null
+   where q.id = any (v_ids)
      and b.team_id = v_e.team_id
      and b.prompt_key = private.prompt_key(q.prompt);
 
