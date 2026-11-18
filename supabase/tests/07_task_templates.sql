@@ -1,7 +1,7 @@
 -- 과제 템플릿 관리 테스트(보관·한 사람용·시드 사본·조회 정책·쓰기 RPC). 시드 조직에 픽스처를 더해 확인하고 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(153);
+select plan(154);
 
 -- ── 픽스처 ──────────────────────────────────────────────────────────
 -- 시드 조직 O, AI팀(T), 다른 팀 T2. 사람은 모두 가상.
@@ -153,6 +153,9 @@ select ok(not has_function_privilege('anon', 'private.next_task_code(uuid, text,
   'next_task_code: anon 실행 불가');
 select ok(not has_function_privilege('authenticated', 'private.next_task_code(uuid, text, boolean)', 'execute'),
   'next_task_code: authenticated 실행 불가(정의자 함수 안에서만 부른다)');
+select ok(not has_function_privilege('authenticated', 'private.template_lock_key(uuid)', 'execute')
+          and not has_function_privilege('anon', 'private.template_lock_key(uuid)', 'execute'),
+  'template_lock_key: authenticated·anon 실행 불가(정의자 함수 안에서만 부른다)');
 select ok(
   has_function_privilege('authenticated',
     'public.save_task_template(uuid, text, text, public.task_kind, public.completion_mode, public.task_stage, int, boolean, jsonb, text[])',

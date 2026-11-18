@@ -1,4 +1,4 @@
--- 0009 과제 템플릿 관리: 보관·한 사람용·시드 표시 컬럼, 시드 사본, 조회 정책 교체, 시작 함수 보강.
+-- 0009 과제 템플릿 관리: 보관·한 사람용·시드 표시 컬럼, 시드 사본, 조회 정책 교체, 조직별 템플릿 잠금, 시작 함수 보강.
 -- 추가만 한다. 단, "같은 조직" 조회 정책은 한 사람용 과제를 다른 신입·담당 밖 직원에게 숨기려고 교체한다(테이블·컬럼 변경이 아님).
 
 alter table public.task_templates
@@ -68,6 +68,17 @@ create policy "같은 조직, 한 사람용은 본인·담당자·관리자" on 
     )
   );
 
+-- ── 조직별 템플릿 잠금 ──────────────────────────────────────────────
+-- 템플릿을 바꾸는 쪽(save_task_template, reset_demo, 코드 부여 next_task_code)은 배타로, 신입에게 템플릿을 할당하는 쪽
+-- (_start_onboarding)은 공유로 잡는다. 시작끼리는 서로 막지 않고, 저장과 시작은 상대가 커밋할 때까지 기다린 뒤
+-- 새 스냅샷(READ COMMITTED)에서 템플릿·인스턴스를 본다. 그래서 시작은 저장 전 템플릿을 읽어 선행을 건너뛰지 않고,
+-- 저장은 그 사이 생긴 인스턴스를 보고 구조 변경을 거부한다. 보관·복원은 행 잠금만 잡는다(진행 중인 신입의 과제는 그대로).
+-- 잠금 순서(교착 방지): 신입별 잠금(여럿이면 id 순) → 이 잠금 → 템플릿 행 잠금 → 과제 행 잠금.
+create function private.template_lock_key(p_org uuid) returns bigint
+language sql immutable set search_path = ''
+as $$ select hashtextextended('task_code:' || p_org::text, 0) $$;
+revoke all on function private.template_lock_key(uuid) from public, anon, authenticated;
+
 -- ── 온보딩 시작: 보관·한 사람용 템플릿은 건너뛴다 ───────────────────
 -- 이미 시작한 신입(기본 과제 인스턴스가 하나라도 있는 신입)에게는 아무것도 더하지 않는다(진행 중인 신입 보호).
 -- bootstrap이 배포마다 다시 부르고 start_onboarding도 다시 부를 수 있으므로, 그 사이 만든 기본 과제가 끼어들면 안 된다.
@@ -84,8 +95,10 @@ begin
     raise exception '신입 계정이 아닙니다' using errcode = '22023';
   end if;
   perform pg_advisory_xact_lock(private.hire_lock_key(v_hire.id));
+  -- 템플릿 저장과 직렬화(공유): 저장 중이면 커밋을 기다렸다가 아래에서 새 템플릿을 읽는다
+  perform pg_advisory_xact_lock_shared(private.template_lock_key(v_hire.org_id));
 
-  -- 잠금을 얻은 뒤의 새 스냅샷에서 본다(같은 신입의 시작·한 사람용 추가와 직렬화)
+  -- 잠금을 얻은 뒤의 새 스냅샷에서 본다(같은 신입의 시작·한 사람용 추가, 템플릿 저장과 직렬화)
   if exists (
     select 1
       from public.task_instances i
