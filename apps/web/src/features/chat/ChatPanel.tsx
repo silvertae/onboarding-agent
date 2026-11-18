@@ -1,4 +1,4 @@
-import { ArrowUp, BookOpen, CircleAlert, Clock, ListChecks, MessageSquare, RotateCw, X } from 'lucide-react'
+import { ArrowUp, BookOpen, ChevronRight, CircleAlert, Clock, ListChecks, MessageSquare, RotateCw, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
@@ -34,6 +34,8 @@ function ChatAside() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const counterId = useId()
+  const introId = useId()
+  const empty = messages.length === 0
 
   const tooLong = input.length > MAX_MESSAGE_LENGTH
   const canSend = !sending && input.trim().length > 0 && !tooLong
@@ -93,10 +95,29 @@ function ChatAside() {
         </header>
 
         <div ref={bodyRef} className="flex flex-1 flex-col gap-4 overflow-y-auto bg-surface-chat p-4 lg:p-5">
-          {messages.length === 0 && (
-            <p className="m-auto max-w-[280px] text-center text-sm text-muted-foreground">
-              온보딩에 대해 궁금한 걸 물어보세요. 등록된 사내 지식과 내 과제로 답해요.
-            </p>
+          {empty && (
+            // 대화 전(시안 S4 ①): 가운데 소개와 추천 질문 카드. 아래 칩 줄은 첫 메시지 뒤에만 보인다.
+            <section aria-labelledby={introId} className="my-auto flex w-full flex-col items-center gap-1 text-center">
+              <img src={symbolUrl} alt="" className="mb-2 size-11 rounded-[12px]" />
+              <p id={introId} className="text-lead font-semibold">
+                온보딩에 대해 물어보세요
+              </p>
+              <p className="text-sm text-muted-foreground">등록된 사내 지식과 내 과제로 답해요</p>
+              <div role="group" aria-label="추천 질문" className="mt-4 flex w-full flex-col gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={sending}
+                    onClick={() => submit(s)}
+                    className="group/suggest flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border border-border bg-card py-2 pr-3 pl-3.5 text-left text-sm outline-none hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {s}
+                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground group-hover/suggest:text-primary" aria-hidden />
+                  </button>
+                ))}
+              </div>
+            </section>
           )}
           {messages.map((message, i) =>
             message.role === 'user' ? (
@@ -119,19 +140,21 @@ function ChatAside() {
         </div>
 
         <div className="flex flex-col gap-2.5 border-t border-border px-3 pt-3 pb-5 lg:px-4 lg:pb-3.5">
-          <div className="-my-1 flex gap-2 overflow-x-auto py-1 [scrollbar-width:none] lg:flex-wrap">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                disabled={sending}
-                onClick={() => submit(s)}
-                className="relative h-9 shrink-0 rounded-full border border-input bg-card px-3.5 text-label outline-none after:absolute after:inset-x-0 after:-inset-y-1 hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+          {!empty && (
+            <div role="group" aria-label="추천 질문" className="-my-1 flex gap-2 overflow-x-auto py-1 [scrollbar-width:none] lg:flex-wrap">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={sending}
+                  onClick={() => submit(s)}
+                  className="relative h-9 shrink-0 rounded-full border border-input bg-card px-3.5 text-label outline-none after:absolute after:inset-x-0 after:-inset-y-1 hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
           <div
             className={cn(
               'flex items-end gap-2 rounded-[14px] border border-input bg-card py-1.5 pr-1.5 pl-3.5 focus-within:border-ring',

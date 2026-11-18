@@ -172,6 +172,51 @@ describe('ChatPanel', () => {
     expect(await chat().findByText('답')).toBeInTheDocument()
   })
 
+  describe('대화 전 빈 상태(S4 ①)', () => {
+    const QUESTIONS = ['오늘 뭐 해야 해?', '회의실 예약 어떻게 해?', '노트북 경비 계정과목이 뭐야?']
+
+    function emptyState() {
+      return chat().queryByRole('region', { name: '온보딩에 대해 물어보세요' })
+    }
+
+    it('본문에 소개와 추천 질문 3개를 카드로 보여 주고, 아래 칩 줄은 없다', () => {
+      renderPanel()
+
+      const intro = emptyState()
+      expect(intro).toBeInTheDocument()
+      expect(within(intro!).getByText('등록된 사내 지식과 내 과제로 답해요')).toBeInTheDocument()
+      const cards = within(within(intro!).getByRole('group', { name: '추천 질문' })).getAllByRole('button')
+      expect(cards.map((b) => b.textContent)).toEqual(QUESTIONS)
+      // 같은 이름의 버튼이 칩 줄에 또 있지 않다
+      for (const q of QUESTIONS) expect(chat().getAllByRole('button', { name: q })).toHaveLength(1)
+      expect(chat().getAllByRole('group', { name: '추천 질문' })).toHaveLength(1)
+    })
+
+    it('추천 질문 카드를 누르면 그 질문으로 /chat 요청', async () => {
+      agent.agentFetch.mockResolvedValueOnce(streamResponse([{ type: 'token', text: '답' }, { type: 'done' }]))
+      renderPanel()
+
+      await userEvent.click(within(emptyState()!).getByRole('button', { name: '노트북 경비 계정과목이 뭐야?' }))
+
+      expect(agent.agentFetch).toHaveBeenCalledWith('/chat', { message: '노트북 경비 계정과목이 뭐야?', history: [] })
+    })
+
+    it('첫 메시지 뒤에는 빈 상태가 사라지고 추천 칩 줄이 입력창 위에 나타난다', async () => {
+      agent.agentFetch.mockResolvedValueOnce(streamResponse([{ type: 'token', text: '답' }, { type: 'done' }]))
+      renderPanel()
+
+      await ask('안녕')
+      expect(await chat().findByText('답')).toBeInTheDocument()
+
+      expect(emptyState()).not.toBeInTheDocument()
+      const chips = chat().getByRole('group', { name: '추천 질문' })
+      expect(within(chips).getAllByRole('button').map((b) => b.textContent)).toEqual(QUESTIONS)
+      for (const q of QUESTIONS) expect(chat().getAllByRole('button', { name: q })).toHaveLength(1)
+      const input = chat().getByLabelText('질문 입력')
+      expect(chips.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+  })
+
   it('chat:ask 이벤트를 받으면 입력창을 채운다(보내지는 않는다)', async () => {
     renderPanel()
 
