@@ -89,19 +89,28 @@ export function useDocuments(): UseQueryResult<PolicyDocument[]> {
   })
 }
 
+const CLAUSE_PAGE = 1000 // PostgREST max_rows와 같다. 한 번에 이보다 많이 오지 않으므로 나눠서 끝까지 읽는다.
+
+export async function loadClauses(documentId: string): Promise<DocumentClause[]> {
+  const all: DocumentClause[] = []
+  for (let from = 0; ; from += CLAUSE_PAGE) {
+    const { data, error, status } = await supabase
+      .from('document_clauses')
+      .select('id, ord, label, heading, body')
+      .eq('document_id', documentId)
+      .order('ord', { ascending: true })
+      .range(from, from + CLAUSE_PAGE - 1)
+    if (error) await fail(error, status)
+    all.push(...data!)
+    if (data!.length < CLAUSE_PAGE) return all
+  }
+}
+
 export function useDocumentClauses(documentId: string | null): UseQueryResult<DocumentClause[]> {
   return useQuery({
     queryKey: ['clauses', documentId],
     enabled: Boolean(documentId),
-    queryFn: async () => {
-      const { data, error, status } = await supabase
-        .from('document_clauses')
-        .select('id, ord, label, heading, body')
-        .eq('document_id', documentId!)
-        .order('ord', { ascending: true })
-      if (error) await fail(error, status)
-      return data!
-    },
+    queryFn: () => loadClauses(documentId!),
   })
 }
 

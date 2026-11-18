@@ -379,6 +379,21 @@ describe('S14 지식 초안 만들기', () => {
     expect(await screen.findByText('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
   })
 
+  it('에이전트가 429면 한도 문구에 "내일 다시 이용해 주세요."를 붙여 보여 준다', async () => {
+    mocks.makeKnowledgeDrafts.mockRejectedValueOnce(new AgentError(429, '오늘 사용 한도를 넘었어요'))
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: '지식 초안 만들기' }))
+    expect(await screen.findByText('오늘 사용 한도를 넘었어요. 내일 다시 이용해 주세요.')).toBeInTheDocument()
+    expect(screen.queryByText('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')).not.toBeInTheDocument()
+  })
+
+  it('에이전트가 502면 그 문구를 그대로 보여 준다', async () => {
+    mocks.makeKnowledgeDrafts.mockRejectedValueOnce(new AgentError(502, '초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.'))
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: '지식 초안 만들기' }))
+    expect(await screen.findByText('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
+  })
+
   it('교육 담당자가 회사 공통 문서를 고르면 지우기 아이콘과 지식 초안 만들기가 없다', () => {
     state.profile = TRAINER
     state.docs = [READY, TEAM_DOC]
