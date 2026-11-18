@@ -1,4 +1,4 @@
-import { ArrowUp, BookOpen, Check, ChevronRight, CircleAlert, Clock, ListChecks, MessageSquare, RotateCw, Send, X } from 'lucide-react'
+import { ArrowUp, BookOpen, Check, ChevronRight, CircleAlert, Clock, FileText, ListChecks, MessageSquare, RotateCw, Send, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
@@ -19,8 +19,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { ErrorText } from '@/features/staff/ui'
 import { cn } from '@/lib/utils'
 import symbolUrl from './blueward-symbol.png'
+import { ClauseDialog } from './ClauseDialog'
 import { requestKnowledge } from './knowledgeRequest'
-import { MAX_MESSAGE_LENGTH, useChatStream, type ChatMessage } from './useChatStream'
+import { MAX_MESSAGE_LENGTH, clauseTitle, useChatStream, type ChatMessage, type ClauseSource } from './useChatStream'
 
 const SUGGESTIONS = ['오늘 뭐 해야 해?', '회의실 예약 어떻게 해?', '노트북 경비 계정과목이 뭐야?']
 const REQUEST_FAILED = '요청을 보내지 못했어요. 다시 시도해 주세요.'
@@ -274,7 +275,7 @@ function AssistantMessage({
     )
   }
 
-  const { knowledge = [], tasks = [] } = message.sources ?? {}
+  const { knowledge = [], tasks = [], documents = [] } = message.sources ?? {}
   return (
     <div className="flex max-w-[92%] flex-col gap-2 self-start">
       <p
@@ -287,6 +288,7 @@ function AssistantMessage({
         {pending && <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-primary align-[-2px]" aria-hidden />}
       </p>
       {message.unanswered && !pending && <KnowledgeRequest question={question} />}
+      {documents.length > 0 && <ClauseSources documents={documents} />}
       {knowledge.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>근거</span>
@@ -314,6 +316,35 @@ function AssistantMessage({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// 규정 원문 줄. 칩을 누르면 조항 창이 열리고, 닫으면 포커스가 칩으로 돌아온다.
+function ClauseSources({ documents }: { documents: ClauseSource[] }) {
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [shown, setShown] = useState<ClauseSource | null>(null)
+  const opener = useRef<HTMLElement | null>(null)
+  return (
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs text-muted-foreground">
+      <span>규정 원문</span>
+      {documents.map((d) => (
+        <button
+          key={d.id}
+          type="button"
+          aria-haspopup="dialog"
+          onClick={(e) => {
+            opener.current = e.currentTarget
+            setShown(d)
+            setOpenId(d.id)
+          }}
+          className="relative inline-flex items-center gap-1 rounded-md bg-background px-2 py-0.5 text-foreground after:absolute after:-inset-y-1 after:inset-x-0 hover:underline"
+        >
+          <FileText className="size-3" aria-hidden />
+          {`${d.document_title} ${clauseTitle(d)}`.trim()}
+        </button>
+      ))}
+      <ClauseDialog returnFocusRef={opener} clause={shown} open={openId !== null} onOpenChange={(o) => !o && setOpenId(null)} />
     </div>
   )
 }
