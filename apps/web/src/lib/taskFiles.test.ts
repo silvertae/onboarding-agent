@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { isAuthError } from './errors'
 
 const m = vi.hoisted(() => ({
   upload: vi.fn(),
@@ -176,6 +177,36 @@ describe('storage 오류 상태', () => {
     await expect(uploadTaskFile({ id: 'tpl', org_id: 'org' }, fileOf('a.pdf', 3))).rejects.toMatchObject({
       status: 403,
     })
+  })
+
+  // storage-api는 토큰 검증 실패를 HTTP 400으로 돌려준다. 401로 담아야 화면이 로그아웃한다(SECURITY.md 웹: 401 → 로그아웃).
+  it('만료·잘못된 토큰(InvalidJWT)은 HTTP 400이어도 401로 담는다', async () => {
+    m.createSignedUrl.mockResolvedValue({
+      data: null,
+      error: { message: 'jwt expired', status: 400, statusCode: 'InvalidJWT', code: 'InvalidJWT' },
+    })
+    const err = await signedDownloadUrl(row).catch((e: unknown) => e)
+    expect(err).toMatchObject({ name: 'DbError', status: 401, code: 'InvalidJWT' })
+    expect(isAuthError(err)).toBe(true)
+  })
+
+  it('토큰 검증 실패를 AccessDenied로 돌려주는 storage-api(로컬 v1.96)도 401로 담는다', async () => {
+    for (const message of ['"exp" claim timestamp check failed', 'signature verification failed', 'jwt malformed']) {
+      m.upload.mockResolvedValue({ data: null, error: { message, status: 400, statusCode: '403', code: 'AccessDenied' } })
+      const err = await uploadTaskFile({ id: 'tpl', org_id: 'org' }, fileOf('a.pdf', 3)).catch((e: unknown) => e)
+      expect(err).toMatchObject({ name: 'DbError', status: 401 })
+      expect(isAuthError(err)).toBe(true)
+    }
+  })
+
+  it('RLS 거부(AccessDenied, 행 보안 정책)는 401로 바꾸지 않는다(로그아웃하지 않는다)', async () => {
+    m.upload.mockResolvedValue({
+      data: null,
+      error: { message: 'new row violates row-level security policy', status: 400, statusCode: '403', code: 'AccessDenied' },
+    })
+    const err = await uploadTaskFile({ id: 'tpl', org_id: 'org' }, fileOf('a.pdf', 3)).catch((e: unknown) => e)
+    expect(err).toMatchObject({ name: 'DbError', status: 400, code: 'AccessDenied' })
+    expect(isAuthError(err)).toBe(false)
   })
 })
 

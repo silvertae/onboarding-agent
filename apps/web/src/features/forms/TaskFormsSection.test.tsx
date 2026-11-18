@@ -1,12 +1,14 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { DbError } from '@/lib/errors'
 import type { TaskFile } from '@/lib/taskFiles'
 
 const state = vi.hoisted(() => ({ files: [] as TaskFile[], isPending: false, isError: false, refetch: vi.fn() }))
 const download = vi.hoisted(() => vi.fn())
+const signOut = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/supabase', () => ({ supabase: {} }))
+vi.mock('@/lib/supabase', () => ({ supabase: { auth: { signOut } } }))
 vi.mock('@/lib/taskFiles', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/taskFiles')>()),
   useTemplateFiles: () => ({
@@ -48,6 +50,7 @@ beforeEach(() => {
   state.isError = false
   state.refetch.mockReset()
   download.mockReset()
+  signOut.mockReset()
   download.mockResolvedValue(undefined)
 })
 
@@ -97,6 +100,14 @@ describe('작성할 서식', () => {
     const rows = screen.getAllByRole('listitem')
     expect(within(rows[1]).getByRole('alert')).toHaveTextContent('파일을 내려받지 못했어요. 다시 시도해 주세요.')
     expect(within(rows[0]).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('세션이 만료돼(401) 내려받지 못하면 로그아웃한다', async () => {
+    state.files = [XLSX]
+    download.mockRejectedValue(new DbError(401, 'jwt expired', 'InvalidJWT'))
+    render(<TaskFormsSection templateId="tpl" />)
+    await userEvent.click(btns('법인카드 신청서.xlsx')[0])
+    await vi.waitFor(() => expect(signOut).toHaveBeenCalledTimes(1))
   })
 
   it('파일 이름은 텍스트로만 그린다', () => {

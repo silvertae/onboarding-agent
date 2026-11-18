@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, Check, Download, Loader2, Trash2, TriangleAlert, Upload, X } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type DragEvent } from 'react'
+import { useEffect, useId, useRef, useState, type DragEvent as ReactDragEvent } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus } from '@/components/LoadingStatus'
@@ -119,25 +119,56 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
   const nextKey = useRef(0)
   // 올리기 전 검사·같은 이름으로 거절한 파일 문구
   const [rejected, setRejected] = useState<string[]>([])
-  // "N개 올렸어요"·"지웠어요". focus면 결과 문구로 포커스를 옮긴다(지운 행의 버튼이 사라지므로)
-  const [result, setResult] = useState<{ text: string; focus: boolean } | null>(null)
+  const rejectedRef = useRef<HTMLDivElement>(null)
+  // "N개 올렸어요"·"지웠어요"
+  const [result, setResult] = useState<string | null>(null)
   const resultRef = useRef<HTMLDivElement>(null)
+  // 포커스가 있던 행·버튼이 사라질 때 옮길 곳(결과 문구 또는 거절 문구). 문구가 그려진 뒤 아래 효과가 옮긴다.
+  const focusNext = useRef<'result' | 'rejected' | null>(null)
+  // 올리는 중·실패 행의 요소("다시 시도"를 누르면 버튼이 사라지므로 그 행으로 포커스를 옮긴다)
+  const pendingRows = useRef(new Map<number, HTMLLIElement>())
   // 행별 내려받기·지우기 진행과 실패 문구. 상태 갱신 전 두 번째 클릭은 inFlight가 막는다.
   const [rowBusy, setRowBusy] = useState<ReadonlyMap<string, RowBusy>>(new Map())
   const [rowErrors, setRowErrors] = useState<ReadonlyMap<string, string>>(new Map())
   const inFlight = useRef(new Set<string>())
   // 지우기 확인 창. 닫히는 동안 제목이 비지 않게 대상은 닫아도 남겨 둔다.
+  // 행마다 Trigger를 두지 않으므로, 닫히면 창을 연 지우기 버튼으로 포커스를 직접 돌려준다.
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [target, setTarget] = useState<TaskFile | null>(null)
+  const opener = useRef<HTMLElement | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
 
   useEffect(() => {
-    if (result?.focus) resultRef.current?.focus()
-  }, [result])
+    if (focusNext.current === 'result' && result) {
+      focusNext.current = null
+      resultRef.current?.focus()
+    } else if (focusNext.current === 'rejected' && rejected.length > 0) {
+      focusNext.current = null
+      rejectedRef.current?.focus()
+    }
+  }, [result, rejected])
+
+  // 업로드 영역 밖에 파일을 놓으면 브라우저가 그 파일을 열어 쓰던 내용과 올리는 중인 파일을 잃는다.
+  // 업로드 영역이 있는 동안 창 전체에서 파일 끌기의 기본 동작을 막는다(업로드 영역이 이미 처리한 것은 건너뛴다).
+  useEffect(() => {
+    if (archived) return
+    function block(e: DragEvent) {
+      if (e.defaultPrevented || !Array.from(e.dataTransfer?.types ?? []).includes('Files')) return
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'none'
+    }
+    window.addEventListener('dragover', block)
+    window.addEventListener('drop', block)
+    return () => {
+      window.removeEventListener('dragover', block)
+      window.removeEventListener('drop', block)
+    }
+  }, [archived])
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: FILES_KEY })
+  const rowHasFocus = (key: number) => pendingRows.current.get(key)?.contains(document.activeElement) ?? false
 
   function startRow(id: string, kind: RowBusy): boolean {
     if (inFlight.current.has(id)) return false
@@ -172,6 +203,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
       }
       await refresh()
       if (err instanceof DbError && err.code === '23505') {
+        if (rowHasFocus(entry.key)) focusNext.current = 'rejected'
         setPending((list) => list.filter((p) => p.key !== entry.key))
         setRejected((list) => [...list, duplicate(entry.file.name)])
       } else {
@@ -180,6 +212,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
       return false
     }
     await refresh()
+    if (rowHasFocus(entry.key)) focusNext.current = 'result'
     setPending((list) => list.filter((p) => p.key !== entry.key))
     return true
   }
@@ -199,13 +232,15 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
     if (entries.length === 0) return
     setPending((list) => [...list, ...entries])
     const done = (await Promise.all(entries.map(send))).filter(Boolean).length
-    if (done > 0) setResult({ text: uploaded(done), focus: false })
+    if (done > 0) setResult(uploaded(done))
   }
 
   async function retry(entry: Pending) {
+    // 누른 "다시 시도"가 사라지므로 다시 올리는 그 행으로 포커스를 옮긴다
+    pendingRows.current.get(entry.key)?.focus()
     setResult(null)
     setPending((list) => list.map((p) => (p.key === entry.key ? { ...p, failed: false } : p)))
-    if (await send(entry)) setResult({ text: uploaded(1), focus: false })
+    if (await send(entry)) setResult(uploaded(1))
   }
 
   async function download(file: TaskFile) {
@@ -238,35 +273,38 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
     }
     await refresh()
     endRow(file.id)
-    setResult({ text: DELETED, focus: true })
+    // 지운 행과 그 버튼이 사라지므로 결과 문구로 포커스를 옮긴다
+    focusNext.current = 'result'
+    setResult(DELETED)
   }
 
-  function askDelete(file: TaskFile) {
+  function askDelete(file: TaskFile, button: HTMLElement) {
     if (inFlight.current.has(file.id)) return
+    opener.current = button
     setTarget(file)
     setConfirmOpen(true)
   }
 
-  function hasFiles(e: DragEvent) {
+  function hasFiles(e: ReactDragEvent) {
     return Array.from(e.dataTransfer?.types ?? []).includes('Files')
   }
 
-  const list = files.data ?? []
-  const showList = !files.isLoading && !files.isError && (pending.length > 0 || list.length > 0)
+  // 올리는 중·실패 행은 목록을 불러오는 중이거나 불러오지 못했어도 보인다(업로드 영역은 그대로 쓸 수 있다)
+  const loaded = !files.isLoading && !files.isError
+  const list = loaded ? (files.data ?? []) : []
 
   return (
     <>
-      {files.isLoading ? (
-        <FilesSkeleton />
-      ) : files.isError ? (
-        <LoadError retrying={files.isFetching} onRetry={() => void files.refetch()}>
-          {LOAD_FAILED}
-        </LoadError>
-      ) : showList ? (
+      {(pending.length > 0 || list.length > 0) && (
         <ul className="overflow-hidden rounded-lg border border-border bg-card">
           {pending.map((entry) => (
             <FileRow
               key={`pending-${entry.key}`}
+              ref={(el) => {
+                if (el) pendingRows.current.set(entry.key, el)
+                else pendingRows.current.delete(entry.key)
+              }}
+              focusable
               file={{ file_name: entry.file.name, size_bytes: entry.file.size }}
               busy={!entry.failed}
               meta={UPLOADING}
@@ -320,7 +358,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
                         aria-label={`${file.file_name} 지우기`}
                         aria-disabled={busy ? true : undefined}
                         className="text-[var(--text-secondary)] hover:bg-alert-err-bg hover:text-destructive aria-disabled:opacity-50"
-                        onClick={() => askDelete(file)}
+                        onClick={(e) => askDelete(file, e.currentTarget)}
                       >
                         {busy === 'delete' ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Trash2 aria-hidden />}
                       </Button>
@@ -331,8 +369,15 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
             )
           })}
         </ul>
-      ) : (
-        !archived && <p className="text-sm text-[var(--text-secondary)]">{EMPTY}</p>
+      )}
+      {files.isLoading && <FilesSkeleton />}
+      {files.isError && (
+        <LoadError retrying={files.isFetching} onRetry={() => void files.refetch()}>
+          {LOAD_FAILED}
+        </LoadError>
+      )}
+      {loaded && !archived && pending.length === 0 && list.length === 0 && (
+        <p className="text-sm text-[var(--text-secondary)]">{EMPTY}</p>
       )}
 
       {!archived && (
@@ -398,7 +443,13 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
       )}
 
       {rejected.length > 0 && (
-        <Alert variant="destructive" role="alert" className="items-start has-[>svg]:grid-cols-[auto_1fr_auto]">
+        <Alert
+          ref={rejectedRef}
+          tabIndex={-1}
+          variant="destructive"
+          role="alert"
+          className="items-start outline-none has-[>svg]:grid-cols-[auto_1fr_auto]"
+        >
           <AlertCircle aria-hidden />
           <div className="flex flex-col gap-0.5">
             {rejected.map((text, i) => (
@@ -421,12 +472,17 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
       {result && (
         <Alert ref={resultRef} tabIndex={-1} variant="success" role="status" className="outline-none">
           <Check aria-hidden />
-          <p className="self-center">{result.text}</p>
+          <p className="self-center">{result}</p>
         </Alert>
       )}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onCloseAutoFocus={(e) => {
+            e.preventDefault()
+            opener.current?.focus()
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lead font-semibold">{target ? deleteTitle(target.file_name) : ''}</AlertDialogTitle>
             <AlertDialogDescription>{DELETE_DESCRIPTION}</AlertDialogDescription>

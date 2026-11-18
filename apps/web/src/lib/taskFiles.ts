@@ -137,12 +137,27 @@ export async function downloadTaskFile(file: TaskFile): Promise<void> {
   a.remove()
 }
 
+// storage-api는 토큰 검증 실패(만료·서명 오류)를 HTTP 400으로 돌려준다. 새 버전은 code 'InvalidJWT',
+// 로컬 v1.96은 code 'AccessDenied'에 토큰 검증 문구를 담는다. RLS 거부도 'AccessDenied'라 문구로 가른다.
+const JWT_FAILURE = /\bjwt\b|\bjws\b|"exp" claim|signature verification failed/i
+
+function isTokenFailure(err: { message: string; code?: string }): boolean {
+  return err.code === 'InvalidJWT' || (err.code === 'AccessDenied' && JWT_FAILURE.test(err.message))
+}
+
 // storage-js StorageApiError: status는 숫자(HTTP), statusCode는 문자열, code는 서비스 코드(예: ResourceAlreadyExists).
+// 토큰 검증 실패는 401로 담아 화면이 로그아웃하게 한다(isAuthError). RLS 거부는 그대로 둔다(로그아웃하지 않는다).
 function storageError(
   err: { message: string; status?: number; statusCode?: string | number; code?: string } | null,
 ): DbError {
   const fromCode = Number(err?.statusCode)
   const status =
-    typeof err?.status === 'number' && err.status > 0 ? err.status : fromCode > 0 ? fromCode : 500
+    err && isTokenFailure(err)
+      ? 401
+      : typeof err?.status === 'number' && err.status > 0
+        ? err.status
+        : fromCode > 0
+          ? fromCode
+          : 500
   return new DbError(status, err?.message ?? 'Storage 오류', err?.code)
 }

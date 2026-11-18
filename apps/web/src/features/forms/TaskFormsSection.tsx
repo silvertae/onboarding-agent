@@ -2,6 +2,8 @@ import { Download, Loader2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { LoadError } from '@/components/LoadError'
 import { Button } from '@/components/ui/button'
+import { isAuthError } from '@/lib/errors'
+import { supabase } from '@/lib/supabase'
 import { downloadTaskFile, useTemplateFiles, type TaskFile } from '@/lib/taskFiles'
 import { FileRow } from './FileRow'
 
@@ -38,8 +40,10 @@ export function TaskFormsSection({ templateId }: { templateId: string }) {
     })
     try {
       await downloadTaskFile(file)
-    } catch {
+    } catch (err) {
       setFailedIds((s) => new Set(s).add(file.id))
+      // 쿼리·뮤테이션을 거치지 않으므로 여기서 로그아웃한다(SECURITY.md 웹: 401 → 로그아웃)
+      if (isAuthError(err)) void supabase.auth.signOut()
     } finally {
       inFlight.current.delete(file.id)
       setBusyIds((s) => {

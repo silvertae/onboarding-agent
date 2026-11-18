@@ -251,6 +251,15 @@ describe('TemplateFilesPanel 파일 행', () => {
   })
 })
 
+describe('TemplateFilesPanel 내려받기 인증', () => {
+  it('세션이 만료돼(401) 내려받지 못하면 로그아웃한다', async () => {
+    m.download.mockRejectedValueOnce(new DbError(401, 'jwt expired', 'InvalidJWT'))
+    renderPanel()
+    await userEvent.click(screen.getByRole('button', { name: '카드 신청 안내.pdf 내려받기' }))
+    await vi.waitFor(() => expect(m.signOut).toHaveBeenCalledTimes(1))
+  })
+})
+
 describe('TemplateFilesPanel 올리기', () => {
   it('파일 2개를 고르면 하나씩 올리고, 올리는 동안 목록 맨 위에 "올리는 중" 행, 끝나면 "2개 올렸어요"', async () => {
     const user = userEvent.setup()
@@ -360,6 +369,81 @@ describe('TemplateFilesPanel 올리기', () => {
     await vi.waitFor(() => expect(m.signOut).toHaveBeenCalledTimes(1))
   })
 
+  it('목록을 불러오지 못한 동안에도 올리는 중·실패 행을 보인다', async () => {
+    const user = userEvent.setup()
+    const call = deferred<TaskFile>()
+    m.upload.mockReturnValueOnce(call.promise)
+    const { input } = renderPanel({ status: 'error' })
+    await user.upload(input(), fileOf('카드 이용 약관.pdf'))
+
+    expect(within(section()).getByText('서식을 불러오지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(rows()).toHaveLength(1)
+    expect(rows()[0]).toHaveTextContent('카드 이용 약관.pdf')
+    expect(within(rows()[0]).getByRole('status')).toHaveTextContent('올리는 중')
+
+    call.reject(new DbError(500, 'boom'))
+    expect(await within(rows()[0]).findByText('올리지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(within(rows()[0]).getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+  })
+
+  it('목록을 불러오는 동안에도 올리는 중 행을 보인다', async () => {
+    const user = userEvent.setup()
+    m.upload.mockReturnValueOnce(deferred<TaskFile>().promise)
+    const { input } = renderPanel({ status: 'loading' })
+    await user.upload(input(), fileOf('카드 이용 약관.pdf'))
+    expect(rows()).toHaveLength(1)
+    expect(within(rows()[0]).getByText('올리는 중')).toBeInTheDocument()
+    expect(within(section()).getByText('불러오는 중…')).toBeInTheDocument()
+  })
+
+  it('"다시 시도"를 누르면 버튼이 사라지므로 그 행으로 포커스를 옮기고, 올라가면 결과 문구로 옮긴다', async () => {
+    const user = userEvent.setup()
+    m.upload.mockRejectedValueOnce(new DbError(500, 'boom'))
+    const { input } = renderPanel()
+    await user.upload(input(), fileOf('카드 이용 약관.pdf'))
+    const row = (await screen.findByText('올리지 못했어요. 다시 시도해 주세요.')).closest('li')!
+
+    const call = deferred<TaskFile>()
+    m.upload.mockReturnValueOnce(call.promise)
+    await user.click(within(row).getByRole('button', { name: '다시 시도' }))
+    expect(within(row).getByRole('status')).toHaveTextContent('올리는 중')
+    expect(row).toHaveFocus()
+
+    call.resolve(await addsToList('카드 이용 약관.pdf')())
+    const done = await screen.findByText('1개 올렸어요')
+    expect(done.closest('[role="status"]')).toHaveFocus()
+  })
+
+  it('"다시 시도"가 같은 이름(23505)으로 끝나면 그 행이 사라지므로 거절 문구로 포커스를 옮긴다', async () => {
+    const user = userEvent.setup()
+    m.upload.mockRejectedValueOnce(new DbError(500, 'boom')).mockRejectedValueOnce(new DbError(409, 'dup', '23505'))
+    const { input } = renderPanel()
+    await user.upload(input(), fileOf('카드 신청 안내.pdf'))
+    const row = (await screen.findByText('올리지 못했어요. 다시 시도해 주세요.')).closest('li')!
+    await user.click(within(row).getByRole('button', { name: '다시 시도' }))
+
+    const alert = await within(section()).findByRole('alert')
+    expect(alert).toHaveTextContent("'카드 신청 안내.pdf' 서식이 이미 있어요. 바꾸려면 기존 서식을 지운 뒤 올려 주세요.")
+    expect(alert).toHaveFocus()
+  })
+
+  it('업로드 영역이 있으면 영역 밖에 파일을 놓아도 브라우저가 파일을 열지 않는다(파일 끌기만 막는다)', () => {
+    const { unmount } = renderPanel()
+    const dragged = { types: ['Files'], files: [fileOf('카드 이용 약관.pdf')] }
+    expect(fireEvent.dragOver(document.body, { dataTransfer: dragged })).toBe(false)
+    expect(fireEvent.drop(document.body, { dataTransfer: dragged })).toBe(false)
+    expect(m.upload).not.toHaveBeenCalled()
+    // 글자 끌기 같은 다른 끌기는 그대로 둔다
+    expect(fireEvent.drop(document.body, { dataTransfer: { types: ['text/plain'], files: [] } })).toBe(true)
+    unmount()
+    expect(fireEvent.drop(document.body, { dataTransfer: dragged })).toBe(true)
+  })
+
+  it('보관한 과제(업로드 영역 없음)에서는 창의 기본 동작을 막지 않는다', () => {
+    renderPanel({ archived: true })
+    expect(fireEvent.drop(document.body, { dataTransfer: { types: ['Files'], files: [fileOf('a.pdf')] } })).toBe(true)
+  })
+
   it('파일을 끌어 올리면 "놓으면 바로 올려요", 놓으면 올리고, 벗어나면 원래대로', async () => {
     m.upload.mockImplementation(addsToList('카드 이용 약관.pdf'))
     renderPanel()
@@ -404,12 +488,20 @@ describe('TemplateFilesPanel 지우기', () => {
     expect(done.closest('[role="status"]')).toHaveFocus()
   })
 
-  it('취소하면 지우지 않는다', async () => {
+  it('취소하면 지우지 않고, 취소·Esc로 닫으면 포커스가 그 행의 지우기 버튼으로 돌아온다', async () => {
     const user = userEvent.setup()
     renderPanel()
-    await user.click(screen.getByRole('button', { name: '카드 신청 안내.pdf 지우기' }))
+    const button = screen.getByRole('button', { name: '카드 신청 안내.pdf 지우기' })
+    await user.click(button)
     await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: '취소' }))
     expect(m.remove).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(button).toHaveFocus())
+
+    await user.click(button)
+    await screen.findByRole('alertdialog')
+    await user.keyboard('{Escape}')
+    await vi.waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(button).toHaveFocus()
   })
 
   it('지우지 못하면 그 행에 문구를 보이고 목록을 다시 읽는다', async () => {
@@ -422,6 +514,8 @@ describe('TemplateFilesPanel 지우기', () => {
     expect(await within(rows()[1]).findByRole('alert')).toHaveTextContent('지우지 못했어요. 잠시 후 다시 시도해 주세요.')
     expect(screen.queryByText('지웠어요')).not.toBeInTheDocument()
     filesInvalidated()
+    // 행이 남아 있으므로 포커스는 그 행의 지우기 버튼에 있다
+    expect(screen.getByRole('button', { name: '카드 신청 안내.pdf 지우기' })).toHaveFocus()
   })
 
   it('세션이 만료돼(401) 지우지 못하면 로그아웃한다', async () => {
