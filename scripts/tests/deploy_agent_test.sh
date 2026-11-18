@@ -76,5 +76,23 @@ OPENAI_MODEL="" run staging abc
 check "필수 변수 없으면 거부" test "$code" -ne 0
 check "누락 변수 이름을 알려 줌" grep -q OPENAI_MODEL "$work/err"
 
+# 하루 한도는 선택 값이다. 없으면 환경변수 파일에 넣지 않아 서비스 기본값(채팅 50, 시험 10)을 쓴다.
+run staging abc
+check "한도 값이 없으면 파일에 넣지 않음" bash -c "! grep -q DAILY_LIMIT '$work/env.yaml'"
+
+CHAT_DAILY_LIMIT=1000 EXAM_DAILY_LIMIT=200 run staging abc
+check "한도 값이 있으면 배포 성공" test "$code" -eq 0
+check "채팅 한도 전달" grep -qx "CHAT_DAILY_LIMIT: '1000'" "$work/env.yaml"
+check "시험 한도 전달" grep -qx "EXAM_DAILY_LIMIT: '200'" "$work/env.yaml"
+
+for bad in abc 0 -5 1.5 '10 '; do
+  CHAT_DAILY_LIMIT="$bad" run staging abc
+  check "잘못된 채팅 한도 '$bad' 거부" test "$code" -ne 0
+  check "잘못된 채팅 한도 '$bad'면 gcloud 호출 없음" test ! -s "$work/log"
+done
+EXAM_DAILY_LIMIT=x run staging abc
+check "잘못된 시험 한도 거부" test "$code" -ne 0
+check "잘못된 한도 변수 이름을 알려 줌" grep -q EXAM_DAILY_LIMIT "$work/err"
+
 if [ "$failures" -ne 0 ]; then echo "${failures}개 실패"; exit 1; fi
 echo "모두 통과"
