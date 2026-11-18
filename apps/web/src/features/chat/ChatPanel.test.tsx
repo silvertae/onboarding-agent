@@ -146,6 +146,7 @@ describe('ChatPanel', () => {
 
     expect(db.from).toHaveBeenCalledWith('unanswered_questions')
     expect(db.insert).toHaveBeenCalledExactlyOnceWith({
+      id: expect.stringMatching(/^[0-9a-f-]{36}$/),
       org_id: 'org-1',
       asked_by: 'hire-1',
       team_id: 'team-1',
@@ -186,7 +187,48 @@ describe('ChatPanel', () => {
     await user.click(within(dialog).getByRole('button', { name: '요청 보내기' }))
 
     expect(db.insert).toHaveBeenCalledTimes(2)
+    // 다시 보내도 같은 요청 id를 쓴다(앞선 요청이 실제로는 저장됐어도 행이 하나만 생긴다)
+    expect(db.insert.mock.calls[1][0].id).toBe(db.insert.mock.calls[0][0].id)
     expect(await chat().findByText(/담당자에게 요청했어요/)).toBeInTheDocument()
+  })
+
+  it('등록 요청: 저장됐는데 응답을 못 받은 뒤 다시 보내면(같은 id 중복 23505) 보낸 것으로 본다', async () => {
+    db.insert
+      .mockResolvedValueOnce({ error: { message: 'Failed to fetch', code: '' }, status: 0 })
+      .mockResolvedValueOnce({ error: { message: 'duplicate key', code: '23505' }, status: 409 })
+    agent.agentFetch.mockResolvedValueOnce(unansweredReply())
+    renderPanel()
+    const user = userEvent.setup()
+
+    await ask('동호회 가입비 얼마야?')
+    await user.click(await chat().findByRole('button', { name: '담당자에게 등록 요청' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '요청 보내기' }))
+    expect(await within(dialog).findByRole('alert')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: '요청 보내기' }))
+
+    expect(db.insert.mock.calls[1][0].id).toBe(db.insert.mock.calls[0][0].id)
+    expect(await chat().findByText(/담당자에게 요청했어요/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('등록 요청: 답변마다 다른 요청 id를 쓴다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(unansweredReply()).mockResolvedValueOnce(unansweredReply())
+    renderPanel()
+    const user = userEvent.setup()
+
+    await ask('동호회 가입비 얼마야?')
+    await chat().findByRole('button', { name: '담당자에게 등록 요청' })
+    await ask('사우회 회비 얼마야?')
+    await vi.waitFor(() => expect(chat().getAllByRole('button', { name: '담당자에게 등록 요청' })).toHaveLength(2))
+    for (const button of chat().getAllByRole('button', { name: '담당자에게 등록 요청' })) {
+      await user.click(button)
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '요청 보내기' }))
+      await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    }
+
+    expect(db.insert).toHaveBeenCalledTimes(2)
+    expect(db.insert.mock.calls[1][0].id).not.toBe(db.insert.mock.calls[0][0].id)
   })
 
   it('AgentError(0) → 연결 실패 안내와 다시 시도, 다시 시도하면 같은 질문을 다시 보낸다', async () => {

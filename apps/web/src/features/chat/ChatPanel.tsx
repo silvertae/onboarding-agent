@@ -330,6 +330,8 @@ function KnowledgeRequest({ question }: { question: string }) {
   const [error, setError] = useState<string | null>(null)
   const running = useRef(false)
   const doneRef = useRef<HTMLParagraphElement>(null)
+  // 이 답변의 요청 id. 다시 보내도 같은 id를 써서 중복 요청이 생기지 않게 한다.
+  const [requestId] = useState(() => crypto.randomUUID())
 
   const trimmed = text.trim()
   const canSend = !busy && trimmed.length > 0 && profile !== null
@@ -349,7 +351,7 @@ function KnowledgeRequest({ question }: { question: string }) {
     setBusy(true)
     setError(null)
     try {
-      await requestKnowledge(profile, trimmed)
+      await requestKnowledge(profile, requestId, trimmed)
       setOpen(false)
       setSent(true)
     } catch {
