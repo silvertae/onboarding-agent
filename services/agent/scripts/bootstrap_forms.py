@@ -19,7 +19,8 @@ from supabase import create_client
 
 ORG_ID = "00000000-0000-0000-0000-000000000001"
 BUCKET = "task-forms"
-SEED_DIR = Path(__file__).resolve().parents[3] / "supabase" / "seed-forms"
+# 테스트에서만 SEED_FORMS_DIR로 다른 폴더를 가리킨다. 기본은 저장소의 seed-forms.
+SEED_DIR = Path(os.environ.get("SEED_FORMS_DIR") or Path(__file__).resolve().parents[3] / "supabase" / "seed-forms")
 SEED_FORMS: list[tuple[str, str]] = [
     ("AC-01", "법인카드 신청서.xlsx"),
     ("AC-01", "법인카드 사용 동의서.docx"),
@@ -44,35 +45,33 @@ def main() -> int:
     url = _require("SUPABASE_URL")
     service_key = _require("SUPABASE_SERVICE_ROLE_KEY")
 
-    # 파일과 템플릿이 모두 있는지 먼저 확인한다(일부만 올리지 않는다).
-    client = create_client(url, service_key)
-    plan = []
-    missing = []
-    for code, file_name in SEED_FORMS:
-        path = SEED_DIR / code / file_name
-        if not path.is_file():
-            missing.append(f"파일 {code}/{file_name}")
-            continue
-        rows = (
-            client.table("task_templates").select("id").eq("org_id", ORG_ID).eq("code", code).execute().data
-        )
-        if not rows:
-            missing.append(f"템플릿 {code}")
-            continue
-        plan.append((code, file_name, path, rows[0]["id"]))
-    if missing:
-        print(f"[bootstrap-forms] 없음: {', '.join(missing)}", file=sys.stderr)
-        return 2
-
     try:
+        # 파일과 템플릿이 모두 있는지 먼저 확인한다(일부만 올리지 않는다).
+        client = create_client(url, service_key)
+        plan = []
+        missing = []
+        for code, file_name in SEED_FORMS:
+            path = SEED_DIR / code / file_name
+            if not path.is_file():
+                missing.append(f"파일 {code}/{file_name}")
+                continue
+            rows = (
+                client.table("task_templates").select("id").eq("org_id", ORG_ID).eq("code", code).execute().data
+            )
+            if not rows:
+                missing.append(f"템플릿 {code}")
+                continue
+            plan.append((code, file_name, path, rows[0]["id"]))
+        if missing:
+            print(f"[bootstrap-forms] 없음: {', '.join(missing)}", file=sys.stderr)
+            return 2
+
         for code, file_name, path, template_id in plan:
             ext = file_name.rsplit(".", 1)[-1].lower()
             object_id = uuid.uuid5(uuid.NAMESPACE_URL, f"{code}/{file_name}")
             storage_path = f"{ORG_ID}/{template_id}/{object_id}.{ext}"
             data = path.read_bytes()
-            client.storage.from_(BUCKET).upload(
-                storage_path, data, {"content-type": CONTENT_TYPES[ext], "upsert": "true"}
-            )
+            # 행(is_seed = true)을 먼저 넣어, 객체가 생기는 순간부터 삭제 정책이 보호한다.
             client.table("task_template_files").upsert(
                 {
                     "org_id": ORG_ID,
@@ -85,9 +84,12 @@ def main() -> int:
                 },
                 on_conflict="template_id,file_name",
             ).execute()
+            client.storage.from_(BUCKET).upload(
+                storage_path, data, {"content-type": CONTENT_TYPES[ext], "upsert": "true"}
+            )
             print(f"[bootstrap-forms] {code} {file_name}: 등록 ({len(data)}바이트)")
     except Exception as exc:  # noqa: BLE001 - 원인만 알리고 키는 출력하지 않는다
-        print(f"[bootstrap-forms] 실패: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print(f"[bootstrap-forms] 실패: {type(exc).__name__}: {str(exc)[:200]}", file=sys.stderr)
         return 1
     print(f"[bootstrap-forms] 완료: 기본 서식 {len(plan)}개")
     return 0

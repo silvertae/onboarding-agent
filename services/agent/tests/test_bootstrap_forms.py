@@ -85,5 +85,24 @@ def test_missing_service_key_exits_2_without_leaking():
     env = {k: v for k, v in os.environ.items() if k != "SUPABASE_SERVICE_ROLE_KEY"}
     r = _run(env)
     assert r.returncode == 2
+    assert "SUPABASE_SERVICE_ROLE_KEY" in r.stderr
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
     assert key and key not in r.stdout + r.stderr
+
+
+def test_missing_seed_files_exit_2_and_name_them(tmp_path):
+    env = {**os.environ, "SEED_FORMS_DIR": str(tmp_path)}
+    r = _run(env)
+    assert r.returncode == 2
+    for code, name in SEED_FORMS:
+        assert f"{code}/{name}" in r.stderr
+    assert os.environ["SUPABASE_SERVICE_ROLE_KEY"] not in r.stdout + r.stderr
+
+
+def test_unreachable_server_exits_1_without_traceback_or_key():
+    env = {**os.environ, "SUPABASE_URL": "http://127.0.0.1:9"}
+    r = _run(env)
+    assert r.returncode == 1
+    assert "Traceback" not in r.stderr
+    assert "실패" in r.stderr
+    assert os.environ["SUPABASE_SERVICE_ROLE_KEY"] not in r.stdout + r.stderr
