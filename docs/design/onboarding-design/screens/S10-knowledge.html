@@ -12,14 +12,21 @@
 <style>
 body{margin:0}
 a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
+.state-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 24px;align-items:start}
+.state-label{font-size:13px;font-weight:600;color:var(--secondary)}
+/* 근거 조항 칩: 채팅의 "규정 원문" 칩과 같은 모양(FileText 아이콘) */
+.clause-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.clause-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 8px;border-radius:6px;background:var(--canvas);color:var(--foreground);border:0;font-family:inherit;cursor:pointer}
+.clause-chip:hover{color:var(--link)}
+.field-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
 </style>
 
-<div style="min-height: 1000px; background: var(--canvas)">
+<div style="min-height: 1500px; background: var(--canvas)">
   <header class="topbar">
     <div class="topbar-in">
       <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
       <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
-      <nav class="nav" aria-label="주 메뉴"><a href="S5-team.html">팀 신입 현황</a><a href="S7-exam-editor.html">시험 출제</a><a class="on" href="#">지식 관리</a></nav>
+      <nav class="nav" aria-label="주 메뉴"><a href="S5-team.html">팀 신입 현황</a><a href="S7-exam-editor.html">시험 출제</a><a class="on" href="#" aria-current="page">지식 관리</a><a href="S14-documents.html">규정 문서</a></nav>
       <div class="user">
         <span class="avatar">서준</span>
         <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">박서준</b><span class="caption">AI팀</span></div>
@@ -46,8 +53,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
               <table class="tbl">
                 <thead><tr><th>질문</th><th>물은 시각</th><th>물은 사람의 팀</th><th></th></tr></thead>
                 <tbody>
-                  <tr class="sel"><td><b>동호회 가입비 얼마야?</b></td><td class="muted">오늘 14:02</td><td>AI팀</td><td style="text-align: right"><button class="btn btn-primary btn-xs" type="button">답 등록</button></td></tr>
-                  <tr><td><b>야근 식대는 몇 시부터 신청할 수 있어?</b></td><td class="muted">어제 19:48</td><td>AI팀</td><td style="text-align: right"><button class="btn btn-outline btn-xs" type="button">답 등록</button></td></tr>
+                  <tr class="sel"><td><b>야근 식대는 몇 시부터 신청할 수 있어?</b></td><td class="muted">오늘 14:02</td><td>AI팀</td><td style="text-align: right"><button class="btn btn-primary btn-xs" type="button">답 등록</button></td></tr>
+                  <tr><td><b>동호회 가입비 얼마야?</b></td><td class="muted">어제 19:48</td><td>AI팀</td><td style="text-align: right"><button class="btn btn-outline btn-xs" type="button">답 등록</button></td></tr>
                 </tbody>
               </table>
             </div>
@@ -59,12 +66,18 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           <form class="split-side sheet" aria-label="지식 작성">
             <div class="card-hd" style="padding: 18px 20px"><h2 style="font-size: 17px">지식 작성</h2><span class="caption">미답변에서 가져옴</span></div>
             <div class="card-bd col" style="gap: 16px; padding: 20px">
-              <div class="field"><label class="label" for="kq">질문</label><input class="input" id="kq" value="동호회 가입비 얼마야?"></div>
-              <div class="field"><label class="label" for="ka">답변</label><textarea class="textarea" id="ka" style="min-height: 120px">사내 동호회 가입비는 동호회마다 월 1~2만 원이고, 회사가 1인당 월 2만 원까지 지원해요. 가입은 그룹웨어 › 동호회 게시판에서 신청합니다.</textarea></div>
+              <div class="field"><label class="label" for="kq">질문</label><input class="input" id="kq" value="야근 식대는 몇 시부터 신청할 수 있어?"></div>
+              <!-- 규정에서 답 초안 찾기: 답변 칸 머리 오른쪽. 찾으면 답변 칸을 채우고 아래에 근거 조항 칩과 검토 안내를 둔다 -->
+              <div class="field">
+                <div class="field-hd"><label class="label" for="ka">답변</label><button class="btn btn-outline btn-xs" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"></path></svg>규정에서 답 초안 찾기</button></div>
+                <textarea class="textarea" id="ka" style="min-height: 120px">오후 8시 이후까지 근무하면 야근 식대 1만 2천 원(가상 금액)을 받을 수 있어요(복리후생 규정 제14조). 근태 시스템에서 연장근무를 등록한 날만 신청할 수 있어요.</textarea>
+                <div class="clause-chips"><span>근거 조항</span><button class="clause-chip" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>복리후생 규정(가상) 제14조 야근 식대</button></div>
+              </div>
               <div class="grid-2" style="gap: 12px">
                 <div class="field"><label class="label" for="kc">분류</label><select class="select" id="kc"><option>복지·생활</option><option>개발 환경</option><option>경비·회계</option></select></div>
                 <div class="field"><label class="label" for="ks">범위</label><select class="select" id="ks"><option>AI팀</option></select></div>
               </div>
+              <div class="alert alert-warn" role="note" style="padding: 10px 14px; font-size: 13px">AI가 규정 조항으로 만든 초안이에요. 금액·기준이 조항과 맞는지 확인하고 게시해 주세요.</div>
               <div class="alert alert-info" style="padding: 10px 14px; font-size: 13px">게시하면 이 미답변은 해결됨으로 바뀌고, 같은 질문에 바로 답해요.</div>
             </div>
             <div style="padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px"><button class="btn btn-ghost btn-sm" type="button">초안 저장</button><button class="btn btn-primary btn-sm" type="submit">게시</button></div>
@@ -74,6 +87,63 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
     
 
     
+
+    <!-- 상태별 시안 -->
+    <section style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px">
+      <div class="between"><h2 style="font-size: 18px">상태별 화면</h2><span class="caption">규정에서 답 초안 찾기와 지식 목록의 AI 초안</span></div>
+      <div class="state-grid">
+        <div class="col" style="gap: 8px">
+          <span class="state-label">① 찾는 중</span>
+          <div class="sheet card-bd col" style="gap: 10px; padding: 20px">
+            <div class="field-hd"><span class="label">답변</span><button class="btn btn-outline btn-xs" type="button" disabled><svg class="ic spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.22-8.56"></path></svg>찾는 중…</button></div>
+            <div class="col" style="gap: 10px; padding: 12px; border: 1px solid var(--border-strong); border-radius: 8px" aria-hidden="true"><span class="skel skel-line" style="width: 92%"></span><span class="skel skel-line" style="width: 80%"></span><span class="skel skel-line" style="width: 45%"></span></div>
+            <span class="caption" role="status">규정 조항에서 근거를 찾고 있어요.</span>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">② 근거를 찾지 못했을 때 · 오류</span>
+          <div class="sheet card-bd col" style="gap: 12px; padding: 20px">
+            <div class="alert alert-info" role="status" style="padding: 10px 14px; font-size: 13px">올린 규정 문서에서 근거를 찾지 못했어요. 답을 직접 써 주세요.</div>
+            <div class="alert alert-err" role="alert" style="padding: 10px 14px; font-size: 13px">초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.</div>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="state-label">③ 규정 문서가 하나도 없을 때</span>
+          <div class="sheet card-bd col" style="gap: 10px; padding: 20px">
+            <div class="field-hd"><span class="label">답변</span><button class="btn btn-outline btn-xs" type="button" disabled>규정에서 답 초안 찾기</button></div>
+            <span class="caption">올린 규정 문서가 없어요. <a href="S14-documents.html">규정 문서</a>에서 먼저 올려 주세요.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col" style="gap: 8px; margin-top: 8px">
+        <span class="state-label">④ 지식 목록 탭 · AI 초안 필터</span>
+        <section class="card" style="gap: 0">
+          <div class="card-hd">
+            <div class="tabs" role="tablist" aria-label="지식 관리 보기">
+              <button type="button" role="tab" aria-selected="false" tabindex="-1">미답변 질문 <span class="count">2</span></button>
+              <button type="button" role="tab" class="on" aria-selected="true">지식 목록</button>
+            </div>
+            <div class="row" style="gap: 8px"><input class="input" placeholder="질문·답변 검색" style="width: 220px"><button class="btn btn-outline btn-sm" type="button">지식 추가</button></div>
+          </div>
+          <div class="row" style="gap: 8px; padding: 14px 24px; border-bottom: 1px solid var(--border)" role="group" aria-label="지식 거르기">
+            <button class="chip" type="button" aria-pressed="false">전체 <span class="caption">32</span></button>
+            <button class="chip on" type="button" aria-pressed="true">AI 초안 <span>5</span></button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>질문</th><th>분류</th><th>상태</th><th>근거</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><div class="col" style="gap: 4px"><b style="font-weight: 500">결혼하면 경조금과 휴가는 얼마나 받아?</b><span class="badge" style="align-self: flex-start"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"></path></svg>AI 작성</span></div></td><td>복지</td><td><span class="st st-blocked">초안</span></td><td class="muted">제8조</td><td style="text-align: right"><button class="btn btn-outline btn-xs" type="button">검토</button></td></tr>
+                <tr><td><div class="col" style="gap: 4px"><b style="font-weight: 500">복지포인트는 언제 들어와?</b><span class="badge" style="align-self: flex-start"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"></path></svg>AI 작성</span></div></td><td>복지</td><td><span class="st st-blocked">초안</span></td><td class="muted">제12조</td><td style="text-align: right"><button class="btn btn-outline btn-xs" type="button">검토</button></td></tr>
+                <tr><td><div class="col" style="gap: 4px"><b style="font-weight: 500">가족이 돌아가시면 휴가를 며칠 받아?</b><span class="badge" style="align-self: flex-start"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"></path></svg>AI 작성</span></div></td><td>복지</td><td><span class="st st-blocked">초안</span></td><td class="muted">제9조</td><td style="text-align: right"><button class="btn btn-outline btn-xs" type="button">검토</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <span class="caption">"AI 작성" 배지는 게시한 뒤에도 남아요. 게시된 AI 작성 지식은 "전체"에서 상태가 "게시"로 보여요.</span>
+      </div>
+    </section>
   </main>
 </div>
 
