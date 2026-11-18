@@ -272,7 +272,7 @@ npm run test:web && npm run test:agent && npm run db:test
 | [심사위원 안내](judge-guide.md) | 접속, 역할별 계정, 5분 체험 순서, 사용 한도 |
 | [시연 스크립트](demo-script.md) | 시연 흐름과 기대 결과, 리허설·실패 조건 점검 기록 |
 | [설계](superpowers/specs/2026-11-17-onboarding-agent-design.md) | 목표, 비목표, 실패 조건, 결정된 구조 |
-| [화면 명세](screens.md) | 화면 S1~S13 |
+| [화면 명세](screens.md) | 화면 S1~S14 |
 | [API·환경변수 계약](contracts.md) | 웹·에이전트·DB 사이의 기준 |
 | [배포 안내](deploy.md) | 환경 구성, 배포 흐름, 되돌리기, 운영 점검 |
 | [구현 계획](superpowers/plans/2026-11-17-onboarding-agent.md) | 작업 단위, 인터페이스, 테스트 |
