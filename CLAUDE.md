@@ -8,7 +8,7 @@
 |---|---|
 | `docs/contracts.md` | API·환경변수 계약. 웹·에이전트·DB 사이의 기준 |
 | `docs/architecture.md` | 아키텍처, 데이터 모델, 권한, 배포 구조 |
-| `docs/screens.md` | 화면 S1~S12와 상태 문구 |
+| `docs/screens.md` | 화면 S1~S13과 상태 문구 |
 | `docs/design/onboarding-design/README.md` | 디자인 토큰(색·라운드·글꼴), 화면 시안 |
 | `.interface-design/system.md` | 디자인 시스템 규칙(색·글자·크기·상태·컴포넌트). UI를 만들거나 고치기 전에 읽는다 |
 | `docs/deploy.md` | 클라우드 준비, 배포 흐름, 되돌리기, 운영 점검 |

@@ -14,6 +14,7 @@ const NAV_BY_ROLE: Record<Enums<'user_role'>, { to: string; label: string }[]> =
   team_trainer: [
     { to: '/team', label: '팀 신입 현황' },
     { to: '/team/exams', label: '시험 출제' },
+    { to: '/team/bank', label: '문제은행' },
     { to: '/knowledge', label: '지식 관리' },
   ],
   ops_staff: [

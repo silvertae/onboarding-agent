@@ -1,6 +1,7 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { UsersPage } from '@/features/admin/UsersPage'
+import { BankPage } from '@/features/exam/BankPage'
 import { ExamEditorPage } from '@/features/exam/ExamEditorPage'
 import { ExamListPage } from '@/features/exam/ExamListPage'
 import { ExamPrintPage } from '@/features/exam/ExamPrintPage'
@@ -52,6 +53,7 @@ export function AppRoutes() {
           <Route path="/team/exams" element={<ExamListPage />} />
           <Route path="/team/exams/:id" element={<ExamEditorPage />} />
           <Route path="/team/exams/:id/print" element={<ExamPrintPage />} />
+          <Route path="/team/bank" element={<BankPage />} />
         </Route>
         <Route element={<RoleGuard allow={['ops_staff']} />}>
           <Route path="/ops" element={<OpsInboxPage />} />
