@@ -47,6 +47,10 @@ export function makeTask(
       form_schema: null,
       due_offset_days: 0,
       sort_order: seq,
+      archived_at: null,
+      assigned_to: null,
+      created_by: null,
+      is_seed: true,
       ...template,
     },
   }

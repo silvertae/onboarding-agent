@@ -47,6 +47,10 @@ function task(
       form_schema: null,
       due_offset_days: 0,
       sort_order: overrides.sort ?? 0,
+      archived_at: null,
+      assigned_to: null,
+      created_by: null,
+      is_seed: true,
     },
   }
 }
