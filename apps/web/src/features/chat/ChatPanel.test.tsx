@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
@@ -173,7 +173,7 @@ describe('ChatPanel', () => {
       await close()
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(chip).toHaveFocus()
+      await waitFor(() => expect(chip).toHaveFocus())
     })
 
     it('조항 본문은 글자로만 보인다', async () => {
