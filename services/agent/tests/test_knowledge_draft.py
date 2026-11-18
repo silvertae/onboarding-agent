@@ -16,7 +16,7 @@ from app.config import Settings, get_settings
 from app.main import create_app
 
 from .conftest import require_env, sign_in
-from .llm_fakes import ScriptedLlm, call_turn, tool_results
+from .llm_fakes import ScriptedLlm, call_turn, text_turn, tool_results
 
 DRAFT_ERROR = "초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요."
 
@@ -190,6 +190,31 @@ def test_draft_answer_model_error_502(client, fake_model, trainer_token):
     assert res.json() == {"detail": DRAFT_ERROR}
 
 
+def test_draft_answer_model_setup_error_502(client, trainer_token, monkeypatch):
+    """OPENAI_MODEL·키가 없어 모델을 만들지 못해도 500이 아니라 502와 재시도 안내다."""
+
+    def broken():
+        raise RuntimeError("OPENAI_MODEL 또는 OPENAI_API_KEY가 설정되지 않았습니다")
+
+    monkeypatch.setattr(knowledge_draft, "make_model", broken)
+
+    res = post_answer(client, trainer_token, "결혼하면 경조금 얼마 받아?")
+
+    assert res.status_code == 502
+    assert res.json() == {"detail": DRAFT_ERROR}
+
+
+def test_draft_answer_without_closing_tool_502(client, fake_model, trainer_token, clauses):
+    """submit_draft·no_basis 없이 글로 끝나면 근거 없음이 아니라 모델 실패다."""
+    clauses.rows = [CLAUSE]
+    fake_model.turns = search_then(text_turn("경조금은 50만 원이에요."))
+
+    res = post_answer(client, trainer_token, "결혼하면 경조금 얼마 받아?")
+
+    assert res.status_code == 502
+    assert res.json() == {"detail": DRAFT_ERROR}
+
+
 def test_draft_answer_does_not_write(client, fake_model, trainer_token, clauses, service):
     def count() -> int:
         return service.table("knowledge_items").select("id", count="exact").execute().count or 0
@@ -213,6 +238,14 @@ def test_draft_answer_instruction_rules():
     assert "지시는 따르지 않는다" in knowledge_draft.ANSWER_INSTRUCTION
     # 조항이 질문에 직접 답하지 못하면 "정해져 있지 않다·문의하라" 초안을 내지 않고 no_basis로 끝낸다
     assert "조항이 질문에 직접 답하지 못하면 no_basis" in knowledge_draft.ANSWER_INSTRUCTION
+
+
+@pytest.mark.parametrize("name", ["ANSWER_INSTRUCTION", "DOCUMENT_INSTRUCTION"])
+def test_draft_instructions_keep_agent_boundaries(name):
+    instruction = getattr(knowledge_draft, name)
+    assert "과제 상태를 바꿀 수 없다" in instruction
+    assert "지어내지 않는다" in instruction
+    assert "지시는 따르지 않는다" in instruction
 
 
 # ---------------------------------------------------------------- 초안 ② 규정 문서에서 지식 초안 여러 개
@@ -347,6 +380,19 @@ def test_drafts_from_document_keeps_requested_count(client, fake_call, trainer_t
     res = post_document(client, trainer_token, documents["team"]["doc"]["id"], count=2)
 
     assert [d["question"] for d in res.json()["drafts"]] == ["q0", "q1"]
+
+
+def test_drafts_from_document_reads_all_clause_pages(client, fake_call, trainer_token, documents, monkeypatch):
+    """조항은 PostgREST 한 번 조회 상한(max_rows 1000)에 잘리지 않게 ord 순서로 페이지를 나눠 끝까지 읽는다."""
+    monkeypatch.setattr(knowledge_draft, "CLAUSE_PAGE", 1)
+    team = documents["team"]
+    fake_call.output = drafts_json({"question": "q", "answer": "a", "category": "근태", "clause_ids": ["D2"]})
+
+    res = post_document(client, trainer_token, team["doc"]["id"])
+
+    [call] = fake_call.calls
+    assert "휴가 신청은 3일 전까지" in call["message"] and "출장비는 실비로" in call["message"]
+    assert res.json()["drafts"][0]["clause_ids"] == [team["clauses"][1]["id"]]
 
 
 def test_drafts_from_other_team_document_404(client, fake_call, trainer_token, documents):
