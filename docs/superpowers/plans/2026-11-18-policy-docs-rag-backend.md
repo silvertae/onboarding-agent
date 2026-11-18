@@ -22,6 +22,11 @@
 
 ## Global Constraints
 
+- **번호 예약(다른 세션과 겹치지 않게)**: 과제 템플릿·서식 작업(`2026-11-18-onboarding-tasks-and-forms.md`)이 마이그레이션 `0008`~`0011`과 pgTAP `07`·`08`을 쓴다. 이 계획은 마이그레이션 `0012_policy_documents.sql`, `0013_policy_documents_rpc.sql`과 pgTAP `09_policy_documents.sql`을 쓴다. DB PR을 시작할 때 `origin/main`의 `supabase/migrations/`를 다시 확인하고, `0012` 이상이 이미 있으면 그다음 번호로 민다. 번호는 커밋하기 전에 확정한다.
+- **DB 작업 시작 조건**: Task 1~2는 과제 템플릿·서식 작업의 마이그레이션 `0008`~`0011`이 `main`에 머지된 뒤 시작한다. 공용 로컬 DB나 스테이징에 `0012`가 먼저 적용되면, 나중에 들어오는 `0008`~`0011`을 Supabase CLI가 순서가 어긋났다며 거부한다(`--include-all`이 필요해진다). 그전에는 DB와 관계없는 Task 3~4(설정·임베딩·조항 분리)만 진행할 수 있다.
+- `reset_demo`는 건드리지 않는다. 과제 템플릿 작업이 `0011`에서 교체한다. 이 기능의 문서와 조항은 초기화 대상이 아니다.
+- pgTAP 픽스처 UUID는 다른 테스트와 겹치지 않게 `a9000000-...` 접두사를 쓴다(`06`은 `a6`).
+
 - 마이그레이션은 추가만 한다. 기존 함수의 동작을 바꿀 때는 새 마이그레이션에서 `create or replace`를 쓴다. 칼럼·테이블 삭제나 이름 변경은 하지 않는다.
 - 모든 새 테이블에 `org_id`를 두고, RLS를 켜고, 필요한 `grant`를 명시한다. `anon`에는 아무 권한도 주지 않는다.
 - 에이전트는 `user_client(user.token)`으로만 DB에 접근한다. `service_client()`는 `services/agent/scripts/`와 `admin_routes.py`에서만 쓴다(`tests/test_service_client_usage.py`가 검사한다).
@@ -46,11 +51,11 @@
 
 ---
 
-### Task 1: 문서·조항 스키마, RLS, 버킷 (`0008_policy_documents.sql`)
+### Task 1: 문서·조항 스키마, RLS, 버킷 (`0012_policy_documents.sql`)
 
 **Files:**
-- Create: `supabase/migrations/0008_policy_documents.sql`
-- Create: `supabase/tests/07_policy_documents.sql`
+- Create: `supabase/migrations/0012_policy_documents.sql`
+- Create: `supabase/tests/09_policy_documents.sql`
 
 **Interfaces:**
 - Produces
@@ -71,7 +76,7 @@
   - `select file_size_limit, allowed_mime_types, public from storage.buckets where id='policy-docs'` = `(10485760, {application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document}, false)`
   - trainer로 `storage.objects`에 `policy-docs/{org}/{팀T2문서}.pdf` insert는 실패하고, 신입A로 select는 0행이다.
 
-- [ ] **Step 2: 실행해 실패 확인.** `npm run db:test`를 돌려 07에서 `has_table` 등이 실패하는지 본다. 공용 로컬 DB이므로 reset 없이 `supabase migration up`으로만 반영한다.
+- [ ] **Step 2: 실행해 실패 확인.** `npm run db:test`를 돌려 09에서 `has_table` 등이 실패하는지 본다. 공용 로컬 DB이므로 reset 없이 `supabase migration up`으로만 반영한다.
 
 - [ ] **Step 3: 마이그레이션 작성**
   - `create extension if not exists vector with schema extensions`
@@ -84,15 +89,15 @@
   - 버킷: `insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) ... on conflict do nothing`
   - storage 정책: 경로의 두 번째 부분인 document_id로 `policy_documents`를 찾아 `can_manage_scope`로 판정한다.
 
-- [ ] **Step 4: 통과 확인.** `npm run db:test`를 실행한다. 07이 통과하고 01~06은 그대로 통과해야 한다. 04의 문제은행 시드 개수 실패는 공용 로컬 DB에 남은 데이터 때문에 이미 알려진 실패이며, CI에서는 깨끗하다.
+- [ ] **Step 4: 통과 확인.** `npm run db:test`를 실행한다. 09가 통과하고 나머지 pgTAP은 그대로 통과해야 한다. 04의 문제은행 시드 개수 실패는 공용 로컬 DB에 남은 데이터 때문에 이미 알려진 실패이며, CI에서는 깨끗하다.
 
 - [ ] **Step 5: 커밋.** `feat(db): policy documents, clauses and bucket with scope RLS`
 
-### Task 2: 조항 검색·교체 RPC, 원자적 지식 저장, 한도 종류 (`0009_policy_documents_rpc.sql`)
+### Task 2: 조항 검색·교체 RPC, 원자적 지식 저장, 한도 종류 (`0013_policy_documents_rpc.sql`)
 
 **Files:**
-- Create: `supabase/migrations/0009_policy_documents_rpc.sql`
-- Modify: `supabase/tests/07_policy_documents.sql`(plan 수 늘림)
+- Create: `supabase/migrations/0013_policy_documents_rpc.sql`
+- Modify: `supabase/tests/09_policy_documents.sql`(plan 수 늘림)
 - Modify: `supabase/tests/03_quota.sql`(새 kind)
 
 **Interfaces:**
@@ -117,7 +122,7 @@
   - `consume_quota`가 받는 kind: `chat`, `exam`, `document`, `draft`
 
 - [ ] **Step 1: 실패하는 pgTAP 추가**
-  - 07에 넣을 단언
+  - 09에 넣을 단언
     - 같은 문서에 `replace_document_clauses`를 두 번 부르면 두 번째 뒤 조항 수가 두 번째 입력 수와 같다(Review Focus 1).
     - `p_error`를 넘기면 status는 `failed`, clause_count는 0이다.
     - trainer가 회사 문서에 부르면 `throws_ok`가 난다.
