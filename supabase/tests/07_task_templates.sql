@@ -1,7 +1,7 @@
 -- 과제 템플릿 관리 테스트(보관·한 사람용·시드 사본·조회 정책·쓰기 RPC). 시드 조직에 픽스처를 더해 확인하고 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(137);
+select plan(153);
 
 -- ── 픽스처 ──────────────────────────────────────────────────────────
 -- 시드 조직 O, AI팀(T), 다른 팀 T2. 사람은 모두 가상.
@@ -119,13 +119,17 @@ set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000201';
 select is((select count(*)::int from public.task_templates where assigned_to = 'a7000000-0000-0000-0000-000000000101'), 1,
   '교육 담당자: 한 사람용 행이 보인다');
 
+-- 한 사람용은 대상 신입과 그 템플릿의 담당자(같은 팀 교육 담당자·같은 부서 경영지원), 같은 조직 관리자만 본다
 set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000202';
-select is((select count(*)::int from public.task_templates where assigned_to = 'a7000000-0000-0000-0000-000000000101'), 1,
-  '다른 팀 교육 담당자(T2): 한 사람용 행이 보인다');
+select is((select count(*)::int from public.task_templates where assigned_to = 'a7000000-0000-0000-0000-000000000101'), 0,
+  '다른 팀 교육 담당자(T2): 팀 T 한 사람용 행은 안 보인다');
+select ok((select count(*) from public.task_templates
+            where assigned_to is null and team_id = '00000000-0000-0000-0000-000000000002') > 0,
+  '다른 팀 교육 담당자(T2): 팀 T 일반 템플릿은 그대로 보인다');
 
 set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000301';
-select is((select count(*)::int from public.task_templates where assigned_to = 'a7000000-0000-0000-0000-000000000101'), 1,
-  '경영지원: 한 사람용 행이 보인다');
+select is((select count(*)::int from public.task_templates where assigned_to = 'a7000000-0000-0000-0000-000000000101'), 0,
+  '경영지원(hr): 팀 T 한 사람용 행은 안 보인다(담당 아님)');
 
 set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000401';
 select is((select count(*)::int from public.task_templates where assigned_to = 'a7000000-0000-0000-0000-000000000101'), 1,
@@ -147,6 +151,8 @@ select ok(not has_function_privilege('anon',
   'execute'), 'add_task_for_hire: anon 실행 불가');
 select ok(not has_function_privilege('anon', 'private.next_task_code(uuid, text, boolean)', 'execute'),
   'next_task_code: anon 실행 불가');
+select ok(not has_function_privilege('authenticated', 'private.next_task_code(uuid, text, boolean)', 'execute'),
+  'next_task_code: authenticated 실행 불가(정의자 함수 안에서만 부른다)');
 select ok(
   has_function_privilege('authenticated',
     'public.save_task_template(uuid, text, text, public.task_kind, public.completion_mode, public.task_stage, int, boolean, jsonb, text[])',
@@ -431,6 +437,9 @@ select throws_ok($$select public.save_task_template(pg_temp.tid('AI-P01'), '한 
 select throws_ok($$select public.archive_task_template(pg_temp.tid('AI-P01'))$$,
   '22023', '한 사람용 과제는 보관하지 않습니다. 신입의 과제에서 해당 없음으로 처리해 주세요',
   '한 사람용 템플릿 보관 → 22023');
+select throws_ok($$select public.restore_task_template(pg_temp.tid('AI-P01'))$$,
+  '22023', '한 사람용 과제는 복원하지 않습니다',
+  '한 사람용 템플릿 복원 → 22023');
 
 set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000202';  -- 교육 담당자(T2)
 select throws_ok($$select public.add_task_for_hire('a7000000-0000-0000-0000-000000000101', '남의 팀 신입', '', 'ops', 'self',
@@ -444,6 +453,12 @@ select is((public.add_task_for_hire('a7000000-0000-0000-0000-000000000101', '인
 select is((pg_temp.tpl('HR-P01')).assigned_to, 'a7000000-0000-0000-0000-000000000101'::uuid,
   '경영지원(hr) 한 사람용 → HR-P01, assigned_to = 신입A');
 select is((pg_temp.tpl('HR-P01')).department, 'hr'::public.ops_department, 'HR-P01 담당 = hr');
+select is((select count(*)::int from public.task_templates where code = 'HR-P01'), 1,
+  '경영지원(hr, 담당): HR-P01 행이 보인다');
+set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000302';  -- 경영지원(ga)
+select is((select count(*)::int from public.task_templates where code = 'HR-P01'), 0,
+  '경영지원(ga, 다른 부서): HR-P01 행은 안 보인다');
+set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000301';  -- 경영지원(hr)
 select throws_ok($$select public.add_task_for_hire('a7000000-0000-0000-0000-000000000101', '평가', '', 'assessment',
                    'staff_only', 'week1', 0, false, null)$$,
   '42501', null, '경영지원이 한 사람용 assessment → 42501');
@@ -466,6 +481,24 @@ select is((select count(*)::int from public.task_instances i join public.task_te
             where i.new_hire_id = 'a7000000-0000-0000-0000-000000000101' and t.code in ('AI-P01', 'HR-P01')), 2,
   '신입A: 한 사람용 과제 2개가 보인다');
 
+-- ── 한 사람용 과제 빼기: 담당자는 해당 없음 허용과 상관없이 해당 없음(사유 필수) ──
+-- AI-P01은 allow_na = false로 만들었다. 한 사람용은 고치거나 보관할 수 없으므로 이것이 유일한 빼는 길이다.
+select throws_ok($$select public.mark_na((pg_temp.inst('AI-P01', 'a7000000-0000-0000-0000-000000000101')).id, '안 할래요')$$,
+  '22023', '해당 없음을 선택할 수 없는 과제입니다', '신입A 본인이 한 사람용(allow_na=false) 해당 없음 → 22023');
+set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000202';  -- 교육 담당자(T2)
+select throws_ok($$select public.mark_na((pg_temp.inst('AI-P01', 'a7000000-0000-0000-0000-000000000101')).id, '대상 아님')$$,
+  '42501', null, '다른 팀 교육 담당자(T2)가 한 사람용 해당 없음 → 42501');
+set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000201';  -- 교육 담당자(T)
+select throws_ok($$select public.mark_na((pg_temp.inst('AI-09', 'a7000000-0000-0000-0000-000000000101')).id, '대상 아님')$$,
+  '22023', '해당 없음을 선택할 수 없는 과제입니다', '담당자도 기본 과제(allow_na=false)는 해당 없음 → 22023');
+select throws_ok($$select public.mark_na((pg_temp.inst('AI-P01', 'a7000000-0000-0000-0000-000000000101')).id, E' \t')$$,
+  '22023', '사유를 입력해 주세요', '담당자가 한 사람용 해당 없음, 사유 공백 → 22023');
+select lives_ok($$select public.mark_na((pg_temp.inst('AI-P01', 'a7000000-0000-0000-0000-000000000101')).id,
+                  '  잘못 추가한 과제 ')$$,
+  '담당자(T)가 한 사람용(allow_na=false) 해당 없음 → 성공');
+select is((select row(i.status, i.na_reason)::text from pg_temp.inst('AI-P01', 'a7000000-0000-0000-0000-000000000101') i),
+  row('na'::public.task_status, '잘못 추가한 과제')::text, '한 사람용 과제 → na, 사유 저장');
+
 set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000102';  -- 신입B
 select is((select count(*)::int from public.task_templates where code in ('AI-P01', 'HR-P01')), 0,
   '신입B: 신입A의 한 사람용 템플릿 행이 안 보인다');
@@ -483,6 +516,31 @@ select ok((pg_temp.inst('HR-02', 'a7000000-0000-0000-0000-000000000106')).id is 
   '보관한 HR-02는 신입F에게 안 들어간다');
 select is((pg_temp.inst('HR-03', 'a7000000-0000-0000-0000-000000000106')).status::text, 'todo',
   '보관한 HR-02를 선행으로 둔 HR-03은 신입F에게 잠기지 않는다');
+
+-- ── 진행 중인 신입 보호: 이미 시작한 신입에게 다시 시작해도 그 뒤 만든 기본 과제가 들어가지 않는다 ──
+-- 신입A는 AI-11·AI-12·AI-13·AI-14·GA-09를 만들기 전에 시작했다(배포마다 bootstrap이 다시 부른다)
+set local role authenticated;
+set local request.jwt.claim.sub = 'a7000000-0000-0000-0000-000000000301';  -- 경영지원(hr)
+select is(public.start_onboarding('a7000000-0000-0000-0000-000000000101'), 0,
+  '이미 시작한 신입A에게 start_onboarding 다시 호출 → 0개');
+reset role;
+select is(public._start_onboarding('a7000000-0000-0000-0000-000000000101'), 0,
+  '이미 시작한 신입A에게 _start_onboarding 다시 호출 → 0개');
+select is((select count(*)::int from public.task_instances i join public.task_templates t on t.id = i.template_id
+            where i.new_hire_id = 'a7000000-0000-0000-0000-000000000101'
+              and t.code in ('AI-11', 'AI-12', 'AI-13', 'AI-14', 'GA-09')), 0,
+  '시작 뒤 새로 만든 기본 과제는 신입A에게 안 들어간다');
+
+-- 한 사람용 과제만 먼저 받은 신입G는 아직 시작 전이다: 시작하면 기본 과제가 모두 들어간다
+create temp table hire_g_regular as
+  select count(*)::int as n from public.task_templates
+   where org_id = '00000000-0000-0000-0000-000000000001'
+     and (department is not null or team_id = '00000000-0000-0000-0000-000000000002')
+     and archived_at is null and assigned_to is null;
+select is(public._start_onboarding('a7000000-0000-0000-0000-000000000107'), (select n from hire_g_regular),
+  '한 사람용 과제만 있던 신입G 시작 → 기본 과제를 모두 만든다');
+select is((select count(*)::int from public.task_instances where new_hire_id = 'a7000000-0000-0000-0000-000000000107'),
+  (select n + 1 from hire_g_regular), '신입G: 기본 과제 + 먼저 받은 한 사람용 1개');
 
 -- ── anon ────────────────────────────────────────────────────────────
 set local role anon;

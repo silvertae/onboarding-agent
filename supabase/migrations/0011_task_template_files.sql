@@ -105,9 +105,12 @@ create policy "과제 서식: 볼 수 있는 템플릿" on storage.objects for s
     )
   );
 
+-- 경로 모양도 테이블 storage_path 검사와 같게: 폴더 두 단계, 파일 이름은 uuid.{pdf|docx|xlsx}
 create policy "과제 서식: 담당자 올리기" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'task-forms'
+    and array_length(storage.foldername(objects.name), 1) = 2
+    and storage.filename(objects.name) ~ '^[0-9a-f-]{36}\.(pdf|docx|xlsx)$'
     and (storage.foldername(objects.name))[1] = (select private.my_org())::text
     and exists (
       select 1 from public.task_templates t
