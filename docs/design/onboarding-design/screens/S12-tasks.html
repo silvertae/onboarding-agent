@@ -33,9 +33,10 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
 /* 체크리스트 항목 편집 */
 .items{display:flex;flex-direction:column;gap:8px}
 .item{display:flex;align-items:center;gap:6px}
-/* 비활성 칸은 코드(components/ui)의 disabled:opacity-50과 같게 */
-.input:disabled,.textarea:disabled,.select:disabled{opacity:.5;cursor:not-allowed}
-.check:has(input:disabled){opacity:.5;cursor:not-allowed}
+/* 읽기 전용 칸(사용 중 잠금·보관): 흐리게 하지 않는다. muted 바탕에 글자는 그대로, 세그먼트는 고른 값만 그대로(system.md "읽기 전용 칸") */
+.input:disabled,.textarea:disabled,.select:disabled{background:var(--canvas);color:var(--foreground);opacity:1;cursor:not-allowed}
+.seg label:has(input:disabled:checked){opacity:1}
+.check:has(input:disabled){cursor:not-allowed}
 /* 패널 동작 줄(편집 칸 아래). 결과·오류 문구는 왼쪽 */
 .panel-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border)}
 /* 서식 영역(편집 칸 동작 줄 아래, 저장과 따로 바로 올라간다) */
@@ -44,7 +45,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
 .ok-text{font-size:14px;color:var(--st-done-fg)}
 .err-text{font-size:14px;color:var(--destructive)}
 .empty{padding:56px 24px;text-align:center;color:var(--muted);font-size:14px}
-.dialog{padding:24px;display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 40px rgba(0,0,0,.12)}
+/* 확인 창: 그림자 없이 진한 테두리(깊이는 테두리로만) */
+.dialog{padding:24px;display:flex;flex-direction:column;gap:10px;border-color:var(--border-strong)}
 .states{display:flex;flex-direction:column;gap:16px;margin-top:12px}
 .states h3{font-size:15px;color:var(--secondary)}
 .state-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px;align-items:start}
@@ -449,14 +451,14 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           <div class="alert alert-err" role="alert" style="padding: 12px 14px; font-size: 13px">
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
             <div style="display: flex; flex-direction: column; gap: 2px; flex: 1">
-              <span>'법인카드 사본.jpg'은 올릴 수 없어요. docx, xlsx, pdf 파일만 올릴 수 있어요.</span>
-              <span>'카드 이용 약관.pdf'이 10MB를 넘어요. 10MB 이하로 줄여서 올려 주세요.</span>
-              <span>'카드 신청 안내.pdf'이 이미 있어요. 바꾸려면 기존 서식을 지운 뒤 올려 주세요.</span>
+              <span>'법인카드 사본.jpg' 파일은 올릴 수 없어요. docx, xlsx, pdf 파일만 올릴 수 있어요.</span>
+              <span>'카드 이용 약관.pdf' 파일이 10MB를 넘어요. 10MB 이하로 줄여서 올려 주세요.</span>
+              <span>'카드 신청 안내.pdf' 서식이 이미 있어요. 바꾸려면 기존 서식을 지운 뒤 올려 주세요.</span>
             </div>
             <button class="icon-btn" type="button" aria-label="알림 닫기" style="width: 28px; height: 28px; color: var(--alert-err-fg)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <div role="alertdialog" aria-labelledby="del-t" aria-describedby="del-d" class="card dialog">
-            <h2 id="del-t" style="font-size: 17px">'카드 신청 안내.pdf'을 지울까요?</h2>
+            <h2 id="del-t" style="font-size: 17px">'카드 신청 안내.pdf' 서식을 지울까요?</h2>
             <p id="del-d" class="secondary">이 과제를 받은 신입 모두의 화면에서 사라져요.</p>
             <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 8px"><button class="btn btn-ghost btn-sm" type="button">취소</button><button class="btn btn-destructive btn-sm" type="button">지우기</button></div>
           </div>
@@ -468,7 +470,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
         <div class="col" style="gap: 8px">
           <span class="state-label">보관 확인</span>
           <div role="alertdialog" aria-labelledby="arc-t" aria-describedby="arc-d" class="card dialog">
-            <h2 id="arc-t" style="font-size: 17px">'프린터 사용'을 보관할까요?</h2>
+            <h2 id="arc-t" style="font-size: 17px">'프린터 사용' 과제를 보관할까요?</h2>
             <p id="arc-d" class="secondary">이후 온보딩을 시작하는 신입에게 들어가지 않아요. 진행 중인 신입의 과제는 그대로예요.</p>
             <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 8px"><button class="btn btn-ghost btn-sm" type="button">취소</button><button class="btn btn-primary btn-sm" type="button">보관</button></div>
           </div>

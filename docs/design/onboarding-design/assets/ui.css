@@ -239,7 +239,7 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 /* Side sheet */
 .sheet{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden}
 
-/* Form files (S3 작성할 서식, S12 과제 서식) */
+/* Form files (S3 작성할 서식, S12 온보딩 과제) */
 .files{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
 .file{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)}
 .file:last-child{border-bottom:0}

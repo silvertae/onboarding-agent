@@ -274,17 +274,17 @@ PR ③을 연다(⓪ Leo 확인 뒤).
   - 저장 전 → 안내 문구만, 업로드 영역 없음
   - 서식 없음 → "아직 올린 서식이 없어요. 신입이 작성해야 할 Word·Excel·PDF 양식을 올려 주세요."
   - 파일 2개 선택 → `uploadTaskFile` 2회, 진행 중 목록 맨 위에 "올리는 중" 행, 끝나면 "2개 올렸어요"
-  - `메모.txt` 선택 → "'메모.txt'은 올릴 수 없어요. docx, xlsx, pdf 파일만 올릴 수 있어요."(screens.md 문구와 같게), `uploadTaskFile` 호출 없음
-  - 11MB 파일 → "'큰 파일.pdf'이 10MB를 넘어요. 10MB 이하로 줄여서 올려 주세요."
-  - `23505` → "'법인카드 신청서.xlsx'이 이미 있어요. 바꾸려면 기존 서식을 지운 뒤 올려 주세요."  *(Review Focus 3)*
+  - `메모.txt` 선택 → "'메모.txt' 파일은 올릴 수 없어요. docx, xlsx, pdf 파일만 올릴 수 있어요."(screens.md 문구와 같게), `uploadTaskFile` 호출 없음
+  - 11MB 파일 → "'큰 파일.pdf' 파일이 10MB를 넘어요. 10MB 이하로 줄여서 올려 주세요."
+  - `23505` → "'법인카드 신청서.xlsx' 서식이 이미 있어요. 바꾸려면 기존 서식을 지운 뒤 올려 주세요."  *(Review Focus 3)*
   - 그 밖의 실패 → 행에 "올리지 못했어요. 다시 시도해 주세요." + "다시 시도" → 같은 파일로 `uploadTaskFile` 재호출
   - 끌어 올린 상태 → "놓으면 바로 올려요"
-  - 지우기 → 확인 창 "'파일 이름'을 지울까요?" / "이 과제를 받은 신입 모두의 화면에서 사라져요." → 확인 시 `deleteTaskFile`, "지웠어요"
+  - 지우기 → 확인 창 "'파일 이름' 서식을 지울까요?" / "이 과제를 받은 신입 모두의 화면에서 사라져요." → 확인 시 `deleteTaskFile`, "지웠어요"
   - 기본 서식 행: "기본 서식" 배지, 지우기 버튼 없음
   - `archived` → 업로드 영역 없음, 보관 문구
   - `TemplatesPage`: 사용 중(잠금) 과제를 골라도 업로드 영역이 활성; "과제 추가" 직후에는 저장 전 문구; 새 과제를 저장하면 같은 패널에 업로드 영역이 나타난다
 - [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — 시안 `S12-tasks.html` 그대로. 조사('은/이')는 screens.md 표의 글자를 따른다.
+- [ ] **Step 3: 구현** — 시안 `S12-tasks.html` 그대로. 문구는 screens.md 표의 글자를 따른다(따옴표 이름 뒤에 "파일"·"서식"을 붙여 조사가 이름에 따라 바뀌지 않게 한다).
 - [ ] **Step 4: 통과 확인** — `npm run test:web`, `bash scripts/check-design.sh`.
 - [ ] **Step 5:** `/design-review` blocker 0. 커밋 `feat(web): manage task forms on the onboarding tasks page`
 

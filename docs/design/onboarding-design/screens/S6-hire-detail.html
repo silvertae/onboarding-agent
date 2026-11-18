@@ -51,8 +51,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
         <section class="card">
           <div class="card-hd">
             <div class="row" style="gap: 12px; flex-wrap: wrap"><h2 style="font-size: 18px">팀 과제</h2><span class="caption">경영지원 과제는 표시되지 않아요</span></div>
-            <!-- 이 신입에게 과제 추가: 대화 상자를 연다(아래 상태별 화면). 추가하면 닫히고 버튼 옆에 결과 문구 -->
-            <div class="row" style="gap: 12px"><span role="status" class="ok-text">추가했어요</span><button class="btn btn-ghost btn-sm" type="button" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>이 신입에게 과제 추가</button></div>
+            <!-- 이 신입에게 과제 추가: 대화 상자를 연다(아래 상태별 화면). 추가하면 닫히고 버튼 옆에 결과 문구(아래 "추가한 뒤") -->
+            <div class="row" style="gap: 12px"><button class="btn btn-ghost btn-sm" type="button" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>이 신입에게 과제 추가</button></div>
           </div>
           <div class="tbl-wrap">
             <table class="tbl">
@@ -138,7 +138,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       <div class="grid-2" style="gap: 24px; align-items: start">
         <div class="col" style="gap: 8px">
           <span class="state-label">대화 상자 — S12 편집 칸에서 선행 과제를 뺀 것. 교육 담당자에게는 종류 "평가"가 있다</span>
-          <div role="dialog" aria-modal="true" aria-labelledby="add-t" aria-describedby="add-d" class="card" style="overflow: hidden; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12)">
+          <div role="dialog" aria-modal="true" aria-labelledby="add-t" aria-describedby="add-d" class="card" style="overflow: hidden; border-color: var(--border-strong)">
             <div class="col" style="gap: 6px; padding: 24px 24px 0">
               <h2 id="add-t" style="font-size: 17px">'김하늘'님에게 과제 추가</h2>
               <p id="add-d" class="secondary">이 신입에게만 들어가고, 바로 할 일로 보여요.</p>
@@ -162,8 +162,14 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           </div>
         </div>
         <div class="col" style="gap: 8px">
-          <span class="state-label">추가한 뒤</span>
-          <p class="secondary">대화 상자가 닫히고 "팀 과제" 머리의 버튼 옆에 "추가했어요"가 보인다(위 화면). 추가한 과제는 표에 "이 신입만" 배지를 달고, 이 신입에게만 바로 할 일로 들어간다. 빼려면 해당 없음으로 처리한다.</p>
+          <span class="state-label">추가한 뒤 — 대화 상자가 닫히고 "팀 과제" 머리의 버튼 옆에 결과 문구</span>
+          <section class="card" style="overflow: hidden">
+            <div class="card-hd">
+              <div class="row" style="gap: 12px; flex-wrap: wrap"><h2 style="font-size: 18px">팀 과제</h2><span class="caption">경영지원 과제는 표시되지 않아요</span></div>
+              <div class="row" style="gap: 12px"><span role="status" class="ok-text">추가했어요</span><button class="btn btn-ghost btn-sm" type="button" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>이 신입에게 과제 추가</button></div>
+            </div>
+          </section>
+          <p class="secondary">추가한 과제는 표에 "이 신입만" 배지를 달고(위 화면의 "React 기초 보충 학습"), 이 신입에게만 바로 할 일로 들어간다. 빼려면 해당 없음으로 처리한다.</p>
           <p class="secondary">실패하면 대화 상자를 연 채 입력을 그대로 두고 동작 줄 왼쪽에 "추가하지 못했어요. 다시 시도해 주세요."를 보인다(S9 시안).</p>
         </div>
       </div>
