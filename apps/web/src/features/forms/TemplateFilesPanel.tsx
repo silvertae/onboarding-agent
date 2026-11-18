@@ -414,7 +414,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
             <div className={cn('col-start-1 row-start-1 flex flex-col items-center gap-2', over && 'invisible')}>
               <div className="flex flex-wrap items-center justify-center gap-2.5">
                 <span>파일을 여기로 끌어다 놓거나</span>
-                <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
+                <Button type="button" variant="outline" className="border-primary text-primary" onClick={() => inputRef.current?.click()}>
                   파일 선택
                 </Button>
               </div>

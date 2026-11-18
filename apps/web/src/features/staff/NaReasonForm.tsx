@@ -33,6 +33,7 @@ export function NaReasonForm({ pending, onCancel, onConfirm }: Props) {
       </Label>
       <Textarea
         id={id}
+        autoFocus
         value={reason}
         required
         placeholder="신입에게 보여질 사유를 적어 주세요"

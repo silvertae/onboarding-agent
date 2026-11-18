@@ -62,7 +62,7 @@ const READ_ONLY_CHECK = 'disabled:aria-checked:opacity-100'
 const LABEL = 'text-label font-semibold'
 const LEGEND = 'mb-1.5 text-label font-semibold'
 // 넓으면 두 칸, 좁으면 한 칸(시안 .form-grid)
-const TWO_COLUMNS = 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-5'
+const TWO_COLUMNS = 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-5'
 const CHECK_LABEL = 'flex cursor-pointer items-center gap-2.5 text-sm has-[:disabled]:cursor-not-allowed'
 // 세그먼트 칸은 같은 너비로 나누되 글자보다 좁아지지 않게 한다("체크리스트"가 줄바꿈되지 않게. 시안 .seg label flex:1)
 const SEGMENT_FIT = 'auto-cols-[minmax(max-content,1fr)]'

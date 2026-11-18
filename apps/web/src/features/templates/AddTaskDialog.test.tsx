@@ -125,4 +125,29 @@ describe('AddTaskButton (S6·S9 "이 신입에게 과제 추가")', () => {
     await user.click(screen.getByRole('button', { name: '이 신입에게 과제 추가' }))
     expect(screen.getByLabelText('제목')).toHaveValue('')
   })
+
+  it('취소하면 초점이 "이 신입에게 과제 추가" 버튼으로 돌아온다', async () => {
+    const user = userEvent.setup()
+    render(<AddTaskButton hire={HIRE} allowAssessment />)
+    const opener = screen.getByRole('button', { name: '이 신입에게 과제 추가' })
+    await user.click(opener)
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    expect(opener).toHaveFocus()
+  })
+
+  it('Esc로 닫아도, 추가에 성공해도 초점이 같은 버튼으로 돌아온다', async () => {
+    const user = userEvent.setup()
+    actions.addForHire.mockResolvedValueOnce({ id: 'new-task' })
+    render(<AddTaskButton hire={HIRE} allowAssessment />)
+    const opener = screen.getByRole('button', { name: '이 신입에게 과제 추가' })
+    await user.click(opener)
+    await user.keyboard('{Escape}')
+    expect(opener).toHaveFocus()
+
+    await user.click(opener)
+    await user.type(screen.getByLabelText('제목'), '가상 보충 학습')
+    await user.click(screen.getByRole('button', { name: '추가' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('추가했어요')
+    expect(opener).toHaveFocus()
+  })
 })

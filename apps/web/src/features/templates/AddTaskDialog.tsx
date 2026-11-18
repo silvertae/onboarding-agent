@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import type { Hire } from '@/features/staff/hires'
 import { ErrorText } from '@/features/staff/ui'
 import { useGuardedAction } from '@/features/staff/useGuardedAction'
@@ -20,11 +20,13 @@ type Props = {
   allowAssessment: boolean
   // 추가에 성공해 대화 상자를 닫은 뒤
   onAdded?(): void
+  // 대화 상자를 여는 버튼. Dialog 안에 두어야 닫을 때 초점이 이 버튼으로 돌아온다.
+  trigger?: ReactNode
 }
 
 // "이 신입에게 과제 추가"(S6·S9). 칸은 S12 편집 칸에서 선행 과제를 뺀 것이고, 기본값도 S12 새 과제와 같다.
 // add_task_for_hire가 이 신입만 쓰는 숨은 템플릿과 할 일을 만든다. 한 사람용 과제에 서식을 올리는 자리는 없다.
-export function AddTaskDialog({ hire, open, onOpenChange, allowAssessment, onAdded }: Props) {
+export function AddTaskDialog({ hire, open, onOpenChange, allowAssessment, onAdded, trigger }: Props) {
   const { addForHire } = useTemplateActions()
   const action = useGuardedAction()
   const [value, setValue] = useState<TemplateInput>(NEW_TEMPLATE_INPUT)
@@ -63,6 +65,7 @@ export function AddTaskDialog({ hire, open, onOpenChange, allowAssessment, onAdd
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         showCloseButton={false}
         className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden rounded-[18px] p-0 sm:max-w-2xl"
@@ -111,18 +114,18 @@ export function AddTaskButton({ hire, allowAssessment }: { hire: Hire; allowAsse
           {ADDED}
         </p>
       )}
-      <Button
-        type="button"
-        variant="secondary"
-        aria-haspopup="dialog"
-        onClick={() => {
-          setAdded(false)
-          setOpen(true)
-        }}
-      >
-        <Plus aria-hidden />이 신입에게 과제 추가
-      </Button>
-      <AddTaskDialog hire={hire} open={open} onOpenChange={setOpen} allowAssessment={allowAssessment} onAdded={() => setAdded(true)} />
+      <AddTaskDialog
+        hire={hire}
+        open={open}
+        onOpenChange={setOpen}
+        allowAssessment={allowAssessment}
+        onAdded={() => setAdded(true)}
+        trigger={
+          <Button type="button" variant="secondary" onClick={() => setAdded(false)}>
+            <Plus aria-hidden />이 신입에게 과제 추가
+          </Button>
+        }
+      />
     </div>
   )
 }
