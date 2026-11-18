@@ -11,6 +11,7 @@ import { HireDetailPage } from '@/features/staff/HireDetailPage'
 import { KnowledgePage } from '@/features/staff/KnowledgePage'
 import { OpsInboxPage } from '@/features/staff/OpsInboxPage'
 import { TeamOverviewPage } from '@/features/staff/TeamOverviewPage'
+import { TemplatesPage } from '@/features/templates/TemplatesPage'
 import { isAuthError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import { AuthProvider, useAuth } from './AuthProvider'
@@ -60,6 +61,7 @@ export function AppRoutes() {
         </Route>
         <Route element={<RoleGuard allow={['team_trainer', 'ops_staff']} />}>
           <Route path="/knowledge" element={<KnowledgePage />} />
+          <Route path="/tasks" element={<TemplatesPage />} />
         </Route>
         <Route element={<RoleGuard allow={['admin']} />}>
           <Route path="/admin/users" element={<UsersPage />} />
