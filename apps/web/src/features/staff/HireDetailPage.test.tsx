@@ -139,6 +139,9 @@ describe('HireDetailPage (S6)', () => {
     renderPage([{ ...btp, status: 'done', result: { checked: ['SAP 계정', 'cf cli', 'mbt', 'cds cli'] } }])
     const card = screen.getByRole('region', { name: 'BTP 세팅 체크리스트' })
     expect(within(card).getByText('4 / 4')).toBeInTheDocument()
+    const bar = within(card).getByRole('progressbar', { name: '체크리스트 진행률' })
+    expect(bar).toHaveAttribute('aria-valuenow', '4')
+    expect(bar).toHaveAttribute('aria-valuemax', '4')
   })
 
   it('평가 카드: 일정만 저장하면 recordAssessment(id, {result:null, ...})', async () => {

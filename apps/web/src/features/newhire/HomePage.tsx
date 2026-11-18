@@ -5,6 +5,7 @@ import { useAuth } from '@/app/AuthProvider'
 import { FilterChips } from '@/components/FilterChips'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus } from '@/components/LoadingStatus'
+import { ProgressBar } from '@/components/ProgressBar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STAGE_LABEL } from '@/lib/labels'
@@ -197,16 +198,7 @@ export function HomePage() {
             <b className="text-label">전체 진행률</b>
             <span className="text-title font-semibold tabular-nums">{percent}%</span>
           </div>
-          <div
-            role="progressbar"
-            aria-label="전체 진행률"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-            className="h-2 overflow-hidden rounded-full bg-track"
-          >
-            <span className="block h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
-          </div>
+          <ProgressBar label="전체 진행률" value={percent} max={100} />
           <span className="flex justify-between text-xs text-muted-foreground">
             <span>
               완료 {doneCount} + 해당 없음 {finished - doneCount}
@@ -241,7 +233,7 @@ export function HomePage() {
               className="h-11 w-full rounded-none border-t border-border text-label text-[var(--text-secondary)] hover:bg-surface-subtle"
             >
               {nowExpanded ? '접기' : `나머지 ${hiddenCount}건 보기`}
-              <ChevronDown className={cn('size-3.5 transition-transform duration-150', nowExpanded && 'rotate-180')} aria-hidden />
+              <ChevronDown className={cn('size-3.5 transition-transform duration-150 ease-out-ui motion-reduce:transition-none', nowExpanded && 'rotate-180')} aria-hidden />
             </Button>
           )}
         </Card>
@@ -294,7 +286,7 @@ function StageSection({
       <h3>
         <Collapsible.Trigger className="flex w-full items-center gap-2.5 border-border bg-surface-subtle px-4 py-3 text-left group-data-[state=open]/stage:border-b outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-6">
           <ChevronRight
-            className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 group-data-[state=open]/stage:rotate-90 motion-reduce:transition-none"
+            className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-out-ui group-data-[state=open]/stage:rotate-90 motion-reduce:transition-none"
             aria-hidden
           />
           <span className="text-sm font-semibold">{STAGE_LABEL[stage]}</span>

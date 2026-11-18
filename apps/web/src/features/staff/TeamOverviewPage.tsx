@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus } from '@/components/LoadingStatus'
+import { ProgressBar } from '@/components/ProgressBar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { progress, useVisibleTasks, type TaskView } from '@/lib/tasks'
@@ -52,16 +53,7 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
             {finished} / {total} · {percent}%
           </b>
         </div>
-        <div
-          role="progressbar"
-          aria-label="팀 과제 진행률"
-          aria-valuemin={0}
-          aria-valuemax={total}
-          aria-valuenow={finished}
-          className="mt-2 h-2 overflow-hidden rounded-full bg-track"
-        >
-          <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
-        </div>
+        <ProgressBar label="팀 과제 진행률" value={finished} max={total} className="mt-2" />
       </div>
 
       {assessments.length > 0 && (
