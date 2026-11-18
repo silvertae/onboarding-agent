@@ -147,7 +147,8 @@ function isTokenFailure(err: { message: string; code?: string }): boolean {
 
 // storage-js StorageApiError: status는 숫자(HTTP), statusCode는 문자열, code는 서비스 코드(예: ResourceAlreadyExists).
 // 토큰 검증 실패는 401로 담아 화면이 로그아웃하게 한다(isAuthError). RLS 거부는 그대로 둔다(로그아웃하지 않는다).
-function storageError(
+// 데모 초기화(features/admin/users.ts)도 같은 방식으로 DbError로 바꾼다.
+export function storageError(
   err: { message: string; status?: number; statusCode?: string | number; code?: string } | null,
 ): DbError {
   const fromCode = Number(err?.statusCode)
