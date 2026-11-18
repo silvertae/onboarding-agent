@@ -30,6 +30,9 @@ function file(over: Partial<TaskFile>): TaskFile {
   } as TaskFile
 }
 
+// 같은 행에 모바일(아이콘)·데스크톱(글자) 버튼이 함께 있다. 화면 폭에 따라 CSS가 하나만 보인다.
+const btns = (name: string) => screen.getAllByRole('button', { name: `${name} 내려받기` })
+
 const XLSX = file({})
 const DOCX = file({ id: 'f2', file_name: '법인카드 사용 동의서.docx', size_bytes: 32 * 1024 })
 
@@ -67,20 +70,22 @@ describe('작성할 서식', () => {
     let finish!: () => void
     download.mockReturnValue(new Promise<void>((r) => (finish = r)))
     render(<TaskFormsSection templateId="tpl" />)
-    await userEvent.click(screen.getByRole('button', { name: '법인카드 신청서.xlsx 내려받기' }))
+    await userEvent.click(btns('법인카드 신청서.xlsx')[0])
     expect(download).toHaveBeenCalledTimes(1)
     expect(download).toHaveBeenCalledWith(XLSX)
-    expect(screen.getByRole('button', { name: '법인카드 신청서.xlsx 내려받기' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '법인카드 사용 동의서.docx 내려받기' })).toBeEnabled()
+    for (const b of btns('법인카드 신청서.xlsx')) expect(b).toBeDisabled()
+    for (const b of btns('법인카드 사용 동의서.docx')) expect(b).toBeEnabled()
     finish()
-    expect(await screen.findByRole('button', { name: '법인카드 신청서.xlsx 내려받기' })).toBeEnabled()
+    await vi.waitFor(() => {
+      for (const b of btns('법인카드 신청서.xlsx')) expect(b).toBeEnabled()
+    })
   })
 
   it('실패하면 그 행 아래에 안내를 보인다', async () => {
     state.files = [XLSX, DOCX]
     download.mockRejectedValue(new Error('x'))
     render(<TaskFormsSection templateId="tpl" />)
-    await userEvent.click(screen.getByRole('button', { name: '법인카드 사용 동의서.docx 내려받기' }))
+    await userEvent.click(btns('법인카드 사용 동의서.docx')[0])
     const rows = screen.getAllByRole('listitem')
     expect(within(rows[1]).getByRole('alert')).toHaveTextContent('파일을 내려받지 못했어요. 다시 시도해 주세요.')
     expect(within(rows[0]).queryByRole('alert')).not.toBeInTheDocument()
@@ -91,5 +96,18 @@ describe('작성할 서식', () => {
     const { container } = render(<TaskFormsSection templateId="tpl" />)
     expect(container.querySelector('img')).toBeNull()
     expect(screen.getByText('<img src=x>')).toBeInTheDocument()
+  })
+
+  it('크기: 모바일은 44px 아이콘 버튼, 데스크톱은 lg(44px) 버튼이고 높이·여백을 덮어쓰지 않는다', () => {
+    state.files = [XLSX]
+    render(<TaskFormsSection templateId="tpl" />)
+    const [mobile, desktop] = btns('법인카드 신청서.xlsx')
+    expect(mobile).toHaveAttribute('data-size', 'icon-lg')
+    expect(mobile).toHaveClass('sm:hidden')
+    expect(mobile).toHaveTextContent('')
+    expect(desktop).toHaveAttribute('data-size', 'lg')
+    expect(desktop).toHaveClass('hidden', 'sm:inline-flex')
+    expect(desktop).toHaveTextContent('내려받기')
+    expect(desktop.className).not.toMatch(/sm:(py-|px-|h-|size-)|(^|\s)py-/)
   })
 })

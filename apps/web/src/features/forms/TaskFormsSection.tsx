@@ -45,23 +45,37 @@ export function TaskFormsSection({ templateId }: { templateId: string }) {
       <ul className="overflow-hidden rounded-xl border border-border bg-card">
         {files.map((file) => {
           const busy = busyIds.has(file.id)
+          const label = `${file.file_name} 내려받기`
           return (
             <FileRow
               key={file.id}
               file={file}
               error={failedIds.has(file.id) ? FAIL_TEXT : undefined}
               actions={
-                <Button
-                  variant="outline"
-                  size="icon-lg"
-                  disabled={busy}
-                  aria-label={`${file.file_name} 내려받기`}
-                  className="sm:size-auto sm:px-4 sm:py-2"
-                  onClick={() => void download(file)}
-                >
-                  {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Download aria-hidden />}
-                  <span className="hidden sm:inline">{busy ? '내려받는 중' : '내려받기'}</span>
-                </Button>
+                <>
+                  {/* 모바일은 44px 아이콘 버튼, 데스크톱은 44px 글자 버튼(system.md). CSS로만 전환한다. */}
+                  <Button
+                    variant="outline"
+                    size="icon-lg"
+                    disabled={busy}
+                    aria-label={label}
+                    className="sm:hidden"
+                    onClick={() => void download(file)}
+                  >
+                    {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Download aria-hidden />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    disabled={busy}
+                    aria-label={label}
+                    className="hidden sm:inline-flex"
+                    onClick={() => void download(file)}
+                  >
+                    {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Download aria-hidden />}
+                    {busy ? '내려받는 중' : '내려받기'}
+                  </Button>
+                </>
               }
             />
           )

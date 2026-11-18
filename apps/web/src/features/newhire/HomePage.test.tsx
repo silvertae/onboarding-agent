@@ -269,16 +269,22 @@ describe('신입 홈 — 지금 할 일 초점', () => {
 describe('신입 홈 — 서식 표시', () => {
   beforeEach(() => {
     state.query = { isPending: false, isError: false, isFetching: false }
+    state.counts = new Map()
   })
 
-  it('서식이 있는 과제 행에 "서식 N"을 보이고, 없으면 표시하지 않는다', () => {
+  it('서식이 있는 과제 행에만 "서식 N"을 보인다', () => {
     const a = makeTask({ code: 'GA-01', title: '법인카드 신청서 작성' })
     const b = makeTask({ code: 'GA-02', title: '카드사 온라인 동의' })
-    state.counts = new Map([[a.template_id, 2]])
-    renderHome([a, b])
-    expect(screen.getAllByText('서식 2').length).toBeGreaterThan(0)
-    expect(screen.queryByText('서식 0')).not.toBeInTheDocument()
-    state.counts = new Map()
+    const c = makeTask({ code: 'GA-03', title: '보험 안내 확인' })
+    state.counts = new Map([
+      [a.template_id, 2],
+      [c.template_id, 0],
+    ])
+    renderHome([a, b, c])
+    const row = (title: string) => screen.getAllByRole('link').find((l) => l.textContent?.includes(title))!
+    expect(within(row('법인카드 신청서 작성')).getByText('서식 2')).toBeInTheDocument()
+    expect(within(row('카드사 온라인 동의')).queryByText(/서식/)).not.toBeInTheDocument()
+    expect(within(row('보험 안내 확인')).queryByText(/서식/)).not.toBeInTheDocument()
   })
 })
 
