@@ -47,7 +47,8 @@ declare
   v_doc public.policy_documents;
   v_count int := 0;
 begin
-  select * into v_doc from public.policy_documents where id = p_document_id;
+  -- 한 번만 읽으며 바로 잠근다(같은 문서를 동시에 색인하거나 지우는 호출과 겹치지 않게).
+  select * into v_doc from public.policy_documents where id = p_document_id for update;
   if not found or (not v_service and v_doc.org_id is distinct from (select private.my_org())) then
     raise exception '문서를 찾을 수 없습니다' using errcode = 'P0002';
   end if;
@@ -58,8 +59,6 @@ begin
     raise exception '조항 목록 형식이 올바르지 않습니다' using errcode = '22023';
   end if;
 
-  -- 같은 문서를 동시에 색인하지 않도록 잠근다.
-  perform 1 from public.policy_documents where id = p_document_id for update;
   delete from public.document_clauses where document_id = p_document_id;
 
   if p_error is not null then
@@ -96,7 +95,8 @@ begin
   end if;
 
   v_k := public.resolve_unanswered(p_id, p_question, p_answer, p_category);
-  update public.knowledge_items set origin = p_origin where id = v_k.id;
+  -- 이미 같은 origin이면 건드리지 않는다(연타 때 불필요한 쓰기 방지).
+  update public.knowledge_items set origin = p_origin where id = v_k.id and origin is distinct from p_origin;
 
   insert into public.knowledge_sources (knowledge_id, clause_id, org_id)
   select v_k.id, c.id, c.org_id
@@ -115,6 +115,7 @@ $$;
 -- ── 지식 초안 일괄 저장 ─────────────────────────────────────────────
 -- p_items: [{question, answer, category, clause_ids:[uuid]}] 1~10개. invoker라 RLS가 그대로 적용된다.
 -- 범위는 호출자 역할로 정한다: ops = 회사 공통, trainer = 우리 팀. 근거는 호출자가 읽을 수 있는 조항만 연결한다(나머지는 오류 없이 빠진다).
+-- clause_ids가 없거나 배열이 아니면 근거 없이 저장하고, uuid 모양이 아닌 값은 건너뛴다.
 -- 한 호출이 한 트랜잭션이라 하나라도 실패하면 모두 취소된다. 저장한 지식 수를 돌려준다.
 create function public.save_knowledge_drafts(p_items jsonb)
 returns int
@@ -157,7 +158,11 @@ begin
     insert into public.knowledge_sources (knowledge_id, clause_id, org_id)
     select v_id, c.id, c.org_id
       from public.document_clauses c
-     where c.id in (select value::uuid from jsonb_array_elements_text(coalesce(v_item -> 'clause_ids', '[]'::jsonb)));
+     where jsonb_typeof(v_item -> 'clause_ids') = 'array'
+       and c.id in (
+         select e.value::uuid
+           from jsonb_array_elements_text(v_item -> 'clause_ids') e
+          where e.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 
     v_count := v_count + 1;
   end loop;

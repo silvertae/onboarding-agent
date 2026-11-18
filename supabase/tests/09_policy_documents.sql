@@ -1,7 +1,7 @@
 -- 규정 문서·조항 스키마, RLS, 버킷 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(101);
+select plan(105);
 
 -- ── 픽스처 (postgres 권한) ───────────────────────────────────────────
 -- 조직 O(팀 T·T2)와 다른 조직 O2. 사람·문서는 모두 가상.
@@ -283,6 +283,12 @@ select results_eq(
 
 -- ── 총무(ops): 지식 초안 일괄 저장 ──────────────────────────────────
 select is(
+  (select array_agg(public.can_manage_document(i) order by o) from unnest(array[
+    'a9000000-0000-0000-0000-0000000000d1', 'a9000000-0000-0000-0000-0000000000d3',
+    'a9000000-0000-0000-0000-0000000000d5']::uuid[]) with ordinality t(i, o)),
+  array[true, false, false],
+  'ga: can_manage_document 회사 true, 팀T false, 다른 조직 false');
+select is(
   public.save_knowledge_drafts($$[
     {"question":"초안 질문1","answer":"초안 답1","category":"휴가","clause_ids":["a9000000-0000-0000-0000-000000000c01","a9000000-0000-0000-0000-000000000c02"]},
     {"question":"초안 질문2","answer":"초안 답2","category":"휴가","clause_ids":["a9000000-0000-0000-0000-000000000c01","a9000000-0000-0000-0000-000000000c03","a9000000-0000-0000-0000-000000000c05"]}
@@ -301,6 +307,15 @@ select results_eq(
            ('초안 질문1'::text, 'a9000000-0000-0000-0000-000000000c02'::uuid),
            ('초안 질문2'::text, 'a9000000-0000-0000-0000-000000000c01'::uuid)$$,
   'ga: 읽을 수 없는 조항(팀 조항·다른 조직)은 오류 없이 빠지고 나머지만 연결');
+select is(
+  public.save_knowledge_drafts($$[
+    {"question":"느슨 질문1","answer":"답","category":"","clause_ids":null},
+    {"question":"느슨 질문2","answer":"답","category":"","clause_ids":["not-a-uuid","a9000000-0000-0000-0000-000000000c01"]}
+  ]$$::jsonb),
+  2, 'ga: clause_ids가 null이거나 uuid가 아닌 값이 섞여도 초안은 모두 저장된다');
+select is((select count(*) from public.knowledge_sources ks join public.knowledge_items k on k.id = ks.knowledge_id
+            where k.question like '느슨 질문%'), 1::bigint,
+  'ga: 연결은 uuid 모양의 읽을 수 있는 조항 1건뿐');
 select throws_ok($$select public.save_knowledge_drafts('[]'::jsonb)$$, '22023', null, 'ga: 빈 배열은 거부');
 select throws_ok(
   $$select public.save_knowledge_drafts((select jsonb_agg(jsonb_build_object('question', 'q' || i, 'answer', 'a', 'category', '', 'clause_ids', '[]'::jsonb))
@@ -357,10 +372,18 @@ select results_eq(
       from public.unanswered_questions where id = 'a9000000-0000-0000-0000-0000000000f2'$$,
   $$values ('resolved'::text, true)$$,
   'trainer: 미답변이 resolved로 바뀌고 지식과 연결된다');
-select lives_ok(
-  $$select public.resolve_unanswered_with_sources('a9000000-0000-0000-0000-0000000000f2', '야근 수당', '야근 수당 답', '근무',
-      array['a9000000-0000-0000-0000-000000000c01', 'a9000000-0000-0000-0000-000000000c03']::uuid[], 'ai_draft')$$,
-  'trainer: 같은 호출을 다시 불러도 오류 없다(연타)');
+create temp table t09_before as
+  select id, xmin::text as x, updated_at from public.knowledge_items where question = '야근 수당';
+select is(
+  (select public.resolve_unanswered_with_sources('a9000000-0000-0000-0000-0000000000f2', '야근 수당', '야근 수당 답', '근무',
+      array['a9000000-0000-0000-0000-000000000c01', 'a9000000-0000-0000-0000-000000000c03']::uuid[], 'ai_draft')),
+  (select id from t09_before),
+  'trainer: 같은 호출을 다시 불러도 같은 지식 id를 돌려준다(연타)');
+select results_eq(
+  $$select k.xmin::text = b.x, k.updated_at = b.updated_at
+      from public.knowledge_items k join t09_before b on b.id = k.id$$,
+  $$values (true, true)$$,
+  'trainer: 다시 불러도 지식 행을 다시 쓰지 않는다(xmin·updated_at 그대로)');
 select results_eq(
   $$select (select count(*) from public.knowledge_items where question = '야근 수당'),
            (select count(*) from public.knowledge_sources ks join public.knowledge_items k on k.id = ks.knowledge_id where k.question = '야근 수당')$$,
