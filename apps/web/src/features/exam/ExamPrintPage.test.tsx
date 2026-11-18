@@ -24,7 +24,7 @@ const QUESTIONS = [
 const exam: ExamWithQuestions = {
   id: 'e1', org_id: 'org-1', team_id: 'team-ai', created_by: 'trainer', created_at: '2026-11-17T00:00:00Z',
   title: 'JS 기본기 — 비동기·스코프', topic: 'JavaScript', difficulty: 'beginner', status: 'final',
-  questions: QUESTIONS.map((q, i) => ({ ...q, id: `q${i}`, exam_id: 'e1', org_id: 'org-1', position: i })),
+  questions: QUESTIONS.map((q, i) => ({ ...q, id: `q${i}`, exam_id: 'e1', org_id: 'org-1', position: i, bank_item_id: null })),
 }
 
 function renderAt(search: string) {
