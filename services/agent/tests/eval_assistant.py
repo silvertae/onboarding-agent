@@ -4,7 +4,7 @@
 
     bash scripts/with-local-env.sh sh -c 'cd services/agent && \
       OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
-      OPENAI_MODEL=gpt-6.1-terra uv run python tests/eval_assistant.py'
+      OPENAI_MODEL=gpt-6-luna uv run python tests/eval_assistant.py'
 
 신입 계정(newhire@demo.test)으로 /chat에 5문항을 보내고 기대 동작을 확인한다.
 평가가 남긴 미답변 기록은 끝에 지운다. 답변은 앞부분만 출력한다.
