@@ -3,7 +3,8 @@ import { createElement, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'
 
-const { rpc, agentFetch, selectResult } = vi.hoisted(() => ({
+const { rpc, agentFetch, selectResult, inFn } = vi.hoisted(() => ({
+  inFn: vi.fn(),
   rpc: vi.fn(),
   agentFetch: vi.fn(),
   selectResult: { value: { data: [] as unknown, error: null as unknown, status: 200 } },
@@ -17,6 +18,7 @@ vi.mock('@/lib/supabase', () => ({
       const b: Record<string, unknown> = {}
       b.select = () => b
       b.eq = () => b
+      b.in = inFn.mockImplementation(() => b)
       b.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve(selectResult.value).then(resolve, reject)
       return b
     },
@@ -27,7 +29,7 @@ vi.mock('@/app/AuthProvider', () => ({
   useAuth: () => ({ profile: { id: 'trainer', org_id: 'org-1', role: 'team_trainer', team_id: 'team-ai' } }),
 }))
 
-import { draftAnswer, useKnowledgeActions, useKnowledgeSources } from './knowledge'
+import { draftAnswer, useKnowledgeActions, useKnowledgeSources, useKnowledgeSourcesFor } from './knowledge'
 
 const VALUES = { question: ' 야근 식대는? ', answer: ' 1만 2천 원이에요. ', category: ' 복지 ' }
 
@@ -111,6 +113,34 @@ describe('useKnowledgeSources', () => {
   it('knowledgeId가 없으면 불러오지 않는다', () => {
     const { Wrapper } = wrapper()
     const { result } = renderHook(() => useKnowledgeSources(null), { wrapper: Wrapper })
+    expect(result.current.fetchStatus).toBe('idle')
+  })
+})
+
+describe('useKnowledgeSourcesFor', () => {
+  it('한 번의 in 조회로 지식 id별로 묶는다', async () => {
+    selectResult.value = {
+      data: [
+        { knowledge_id: 'k1', clause_id: 'c1', document_clauses: { id: 'c1', label: '제14조', heading: 'h', policy_documents: { title: 'T' } } },
+        { knowledge_id: 'k2', clause_id: 'c2', document_clauses: { id: 'c2', label: null, heading: '제목', policy_documents: { title: 'T' } } },
+        { knowledge_id: 'k1', clause_id: 'c3', document_clauses: { id: 'c3', label: '제8조', heading: 'h', policy_documents: { title: 'T' } } },
+      ],
+      error: null,
+      status: 200,
+    }
+    const { Wrapper } = wrapper()
+    const { result } = renderHook(() => useKnowledgeSourcesFor(['k2', 'k1']), { wrapper: Wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(inFn).toHaveBeenCalledTimes(1)
+    expect(inFn).toHaveBeenCalledWith('knowledge_id', ['k1', 'k2'])
+    expect(result.current.data?.k1.map((c) => c.id)).toEqual(['c1', 'c3'])
+    expect(result.current.data?.k2.map((c) => c.id)).toEqual(['c2'])
+  })
+
+  it('id가 없으면 불러오지 않는다', () => {
+    const { Wrapper } = wrapper()
+    const { result } = renderHook(() => useKnowledgeSourcesFor([]), { wrapper: Wrapper })
     expect(result.current.fetchStatus).toBe('idle')
   })
 })

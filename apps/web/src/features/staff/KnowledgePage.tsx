@@ -1,5 +1,5 @@
 import { Plus, Search, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { FilterChips } from '@/components/FilterChips'
 import { LoadError } from '@/components/LoadError'
@@ -16,6 +16,7 @@ import {
   useKnowledge,
   useKnowledgeActions,
   useKnowledgeSources,
+  useKnowledgeSourcesFor,
   useTeamName,
   useUnanswered,
   type DraftClause,
@@ -44,10 +45,8 @@ function initialValues(editing: Editing): KnowledgeValues {
 }
 
 // AI 초안 필터에서 질문 아래 배지 옆에 둘 조항 번호(label이 없으면 제목).
-function SourceCaption({ knowledgeId }: { knowledgeId: string }) {
-  const { data } = useKnowledgeSources(knowledgeId)
-  const text = (data ?? []).map((c) => c.label || c.heading).filter(Boolean).join(', ')
-  return text ? <span className="text-xs text-muted-foreground">{text}</span> : null
+function captionOf(clauses: DraftClause[] | undefined): string {
+  return (clauses ?? []).map((c) => c.label || c.heading).filter(Boolean).join(', ')
 }
 
 const th = 'px-4 py-3 font-semibold whitespace-nowrap'
@@ -71,6 +70,8 @@ export function KnowledgePage() {
   // 이 폼에서 받은 AI 초안의 근거 조항. 폼이 바뀌면 지운다(origin도 함께 초기화).
   const [draft, setDraft] = useState<{ clauses: DraftClause[] } | null>(null)
   const documentsQuery = useDocuments()
+  // 폼을 열 때마다 올린다. 늦게 도착한 초안 응답이 다른 폼에 들어가지 않게 한다.
+  const formSeq = useRef(0)
   const [editing, setEditingState] = useState<Editing | null>(null)
   const { clearError } = formAction
 
@@ -78,6 +79,7 @@ export function KnowledgePage() {
   function setEditing(next: Editing | null) {
     clearError()
     setDraft(null)
+    formSeq.current += 1
     setEditingState(next)
   }
 
@@ -91,15 +93,18 @@ export function KnowledgePage() {
       (filter === 'all' || isAiDraft(k)) &&
       (!keyword || k.question.toLowerCase().includes(keyword) || k.answer.toLowerCase().includes(keyword)),
   )
+  const aiRowIds = filter === 'ai' ? items.filter((k) => k.origin === 'ai_draft').map((k) => k.id) : []
+  const captions = useKnowledgeSourcesFor(aiRowIds).data
   const editingItemId = editing?.mode === 'edit' ? editing.item.id : null
   const editSources = useKnowledgeSources(editingItemId).data
   // 문서 목록을 불러오는 중이거나 실패했을 때는 막지 않는다(서버가 근거 없음으로 답한다).
   const noDocuments = documentsQuery.data !== undefined && !documentsQuery.data.some((d) => d.status === 'ready')
 
   async function onDraft(question: string) {
+    const seq = formSeq.current
     try {
       const found = await draftAnswer(question)
-      if (found) setDraft({ clauses: found.clauses })
+      if (found && seq === formSeq.current) setDraft({ clauses: found.clauses })
       return found
     } catch (err) {
       throw new Error(agentMessage(err))
@@ -275,7 +280,7 @@ export function KnowledgePage() {
                       {items.length === 0 && (
                         <tr>
                           <td colSpan={7}>
-                            <EmptyState>{keyword ? '검색 결과가 없어요' : '등록된 지식이 없어요'}</EmptyState>
+                            <EmptyState>{keyword ? '검색 결과가 없어요' : filter === 'ai' ? 'AI 초안이 없어요' : '등록된 지식이 없어요'}</EmptyState>
                           </td>
                         </tr>
                       )}
@@ -289,7 +294,9 @@ export function KnowledgePage() {
                                   <Sparkles aria-hidden />
                                   AI 작성
                                 </Badge>
-                                {filter === 'ai' && <SourceCaption knowledgeId={k.id} />}
+                                {filter === 'ai' && captionOf(captions?.[k.id]) && (
+                                <span className="text-xs text-muted-foreground">{captionOf(captions?.[k.id])}</span>
+                              )}
                               </div>
                             )}
                           </td>

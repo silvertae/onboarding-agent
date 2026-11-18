@@ -60,7 +60,16 @@ export async function draftAnswer(question: string): Promise<{ answer: string; c
 }
 
 type SourceRow = {
+  knowledge_id?: string
   document_clauses: { id: string; label: string | null; heading: string | null; policy_documents: { title: string } | null } | null
+}
+
+const SOURCE_SELECT = 'knowledge_id, clause_id, document_clauses(id, label, heading, policy_documents(title))'
+
+function toClause(row: SourceRow): DraftClause[] {
+  const c = row.document_clauses
+  if (!c) return []
+  return [{ id: c.id, document_title: c.policy_documents?.title ?? '', label: c.label ?? '', heading: c.heading ?? '' }]
 }
 
 // 지식의 근거 조항. 읽을 수 없는 조항은 RLS가 걸러 목록에서 빠진다.
@@ -69,23 +78,27 @@ export function useKnowledgeSources(knowledgeId: string | null): UseQueryResult<
     queryKey: [...SOURCES_KEY, knowledgeId],
     enabled: Boolean(knowledgeId),
     queryFn: async () => {
-      const { data, error, status } = await supabase
-        .from('knowledge_sources')
-        .select('clause_id, document_clauses(id, label, heading, policy_documents(title))')
-        .eq('knowledge_id', knowledgeId!)
+      const { data, error, status } = await supabase.from('knowledge_sources').select(SOURCE_SELECT).eq('knowledge_id', knowledgeId!)
       if (error) fail(error, status)
-      return (data as unknown as SourceRow[]).flatMap((row) =>
-        row.document_clauses
-          ? [
-              {
-                id: row.document_clauses.id,
-                document_title: row.document_clauses.policy_documents?.title ?? '',
-                label: row.document_clauses.label ?? '',
-                heading: row.document_clauses.heading ?? '',
-              },
-            ]
-          : [],
-      )
+      return (data as unknown as SourceRow[]).flatMap(toClause)
+    },
+  })
+}
+
+// 목록의 여러 지식에 대한 근거 조항을 한 번에 불러온다(지식 id별로 묶음).
+export function useKnowledgeSourcesFor(knowledgeIds: string[]): UseQueryResult<Record<string, DraftClause[]>> {
+  const ids = [...knowledgeIds].sort()
+  return useQuery({
+    queryKey: [...SOURCES_KEY, 'batch', ids],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data, error, status } = await supabase.from('knowledge_sources').select(SOURCE_SELECT).in('knowledge_id', ids)
+      if (error) fail(error, status)
+      const map: Record<string, DraftClause[]> = {}
+      for (const row of data as unknown as SourceRow[]) {
+        if (row.knowledge_id) (map[row.knowledge_id] ??= []).push(...toClause(row))
+      }
+      return map
     },
   })
 }

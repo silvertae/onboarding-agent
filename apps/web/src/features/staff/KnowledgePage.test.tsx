@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
@@ -9,7 +9,8 @@ import type { KnowledgeItem, UnansweredQuestion } from './knowledge'
 const TRAINER: Partial<Profile> = { id: 'trainer', org_id: 'org-1', role: 'team_trainer', department: null, team_id: 'team-ai', full_name: '가상 서준' }
 const OPS: Partial<Profile> = { id: 'ops-hr', org_id: 'org-1', role: 'ops_staff', department: 'hr', team_id: null, full_name: '가상 지은' }
 
-const { actions, state, draftAnswer } = vi.hoisted(() => ({
+const { actions, state, draftAnswer, useKnowledgeSourcesFor } = vi.hoisted(() => ({
+  useKnowledgeSourcesFor: vi.fn(),
   actions: {
     save: vi.fn(async () => {}),
     setStatus: vi.fn(async () => {}),
@@ -35,6 +36,7 @@ vi.mock('./knowledge', () => ({
   useKnowledgeActions: () => actions,
   useTeamName: (teamId: string | null) => (teamId ? 'AI팀' : null),
   useKnowledgeSources: (id: string | null) => ({ data: id ? (state.sources[id] ?? []) : undefined }),
+  useKnowledgeSourcesFor,
   draftAnswer,
 }))
 vi.mock('@/features/documents/documents', async (importOriginal) => ({
@@ -116,6 +118,10 @@ function form() {
 beforeEach(() => {
   Object.values(actions).forEach((fn) => fn.mockClear())
   draftAnswer.mockReset()
+  useKnowledgeSourcesFor.mockReset()
+  useKnowledgeSourcesFor.mockImplementation((ids: string[]) => ({
+    data: ids.length ? Object.fromEntries(ids.map((id) => [id, state.sources[id] ?? []])) : undefined,
+  }))
   state.documents = [{ id: 'd1', status: 'ready' }]
   state.sources = {}
 })
@@ -377,6 +383,28 @@ describe('KnowledgePage (S10) 규정에서 답 초안 찾기', () => {
     expect(actions.resolve).toHaveBeenCalledWith('u2', { question: '야근 식대는 몇 시부터 신청할 수 있어?', answer: '직접 쓴 답', category: '' })
   })
 
+  it('질문이 비면 버튼이 비활성이다', async () => {
+    const user = await openResolve()
+    await user.clear(within(form()).getByLabelText('질문'))
+    expect(findButton()).toBeDisabled()
+  })
+
+  it('늦게 도착한 초안은 다른 질문의 폼에 들어가지 않는다', async () => {
+    let finish!: (v: unknown) => void
+    draftAnswer.mockReturnValue(new Promise((r) => (finish = r)))
+    const user = await openResolve()
+    await user.click(findButton())
+
+    await user.click(within(screen.getByRole('row', { name: /동호회 가입비/ })).getByRole('button', { name: '답 등록' }))
+    await act(async () => finish(DRAFT))
+
+    expect(within(form()).queryByRole('note')).not.toBeInTheDocument()
+    expect(within(form()).queryByText('근거 조항')).not.toBeInTheDocument()
+    await user.type(within(form()).getByLabelText('답변'), '직접')
+    await user.click(within(form()).getByRole('button', { name: '게시' }))
+    expect(actions.resolve).toHaveBeenCalledWith('u1', { question: '동호회 가입비 얼마야?', answer: '직접', category: '' })
+  })
+
   it('근거가 없으면 안내만 보이고 칸은 그대로다', async () => {
     draftAnswer.mockResolvedValue(null)
     const user = await openResolve()
@@ -463,5 +491,28 @@ describe('KnowledgePage (S10) AI 작성 지식', () => {
     expect(within(form()).getByText('복리후생 규정(가상) 제14조 야근 식대')).toBeInTheDocument()
     expect(within(form()).queryByRole('button', { name: '규정에서 답 초안 찾기' })).not.toBeInTheDocument()
     expect(within(form()).queryByRole('note')).not.toBeInTheDocument()
+  })
+
+  it('AI 초안 필터에서 조항 캡션은 한 번의 조회로 모든 행에 나뉘어 보인다', async () => {
+    const items = ['k5', 'k6', 'k7'].map((id, i) => ({ ...knowledge[0], id, question: `AI 질문 ${i}`, status: 'draft' as const, origin: 'ai_draft' }))
+    state.sources = { k5: [CLAUSE], k6: [{ ...CLAUSE, id: 'c6', label: '제6조' }], k7: [{ ...CLAUSE, id: 'c7', label: '제7조' }] }
+    const user = userEvent.setup()
+    renderPage({ items })
+    await user.click(screen.getByRole('tab', { name: /지식 목록/ }))
+    await user.click(screen.getByRole('button', { name: /AI 초안 3/ }))
+
+    const calls = useKnowledgeSourcesFor.mock.calls.filter((c) => (c[0] as string[]).length > 0)
+    expect(calls.every((c) => [...(c[0] as string[])].sort().join() === 'k5,k6,k7')).toBe(true)
+    expect(listRows()[0]).toHaveTextContent('제14조')
+    expect(listRows()[1]).toHaveTextContent('제6조')
+    expect(listRows()[2]).toHaveTextContent('제7조')
+  })
+
+  it('AI 초안이 없으면 필터 전용 빈 상태를 보인다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('tab', { name: /지식 목록/ }))
+    await user.click(screen.getByRole('button', { name: 'AI 초안 0' }))
+    expect(screen.getByText('AI 초안이 없어요')).toBeInTheDocument()
   })
 })

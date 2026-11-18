@@ -85,7 +85,7 @@ export function KnowledgeForm({ mode, initial, scopeLabel, busy, error, onDraft,
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={busy || drafting.busy || Boolean(draftDisabledReason)}
+                disabled={busy || drafting.busy || Boolean(draftDisabledReason) || values.question.trim() === ''}
                 aria-describedby={draftDisabledReason ? `${id}-nodoc` : undefined}
                 onClick={() => void findDraft()}
               >
