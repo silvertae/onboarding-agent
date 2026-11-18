@@ -24,13 +24,13 @@ Claude Code에 이 폴더를 컨텍스트로 주고 구현을 요청할 때 쓰�
 | S4-chat-mobile, S4-chat-mobile-empty, S4-chat-states | S2·S3 오른쪽 패널, 모바일은 전체 화면(대화 전 상태는 S4-chat-mobile-empty, S4-chat-states ①) | 신입 |
 | S4-chat-sources | S4 답변의 "규정 원문" 칩과 조항 창(데스크톱 Dialog, 모바일 아래 시트) | 신입 |
 | S5-team | `/team` | 교육 담당자 |
-| S6-hire-detail | `/team/hires/:id` | 교육 담당자 |
+| S6-hire-detail | `/team/hires/:id`(아래에 "이 신입에게 과제 추가" 대화 상자) | 교육 담당자 |
 | S7-exam-editor | `/team/exams/:id` | 교육 담당자 |
 | S8-print-paper / answers | `/team/exams/:id/print?variant=paper\|answers` | 교육 담당자 |
-| S9-ops | `/ops` | 경영지원 |
+| S9-ops | `/ops`(아래에 입사자 한 명을 고른 상태와 과제 추가 대화 상자) | 경영지원 |
 | S10-knowledge | `/knowledge` | 교육 담당자·경영지원 |
 | S11-admin-users | `/admin/users` | 관리자 |
-| S12-forms | `/forms` | 교육 담당자·경영지원 |
+| S12-tasks | `/tasks`(과제 편집 + 서식. 아래에 새 과제·사용 중 잠금·보관 보기·서식·목록 상태) | 교육 담당자·경영지원 |
 | S13-bank (S13-bank-mobile은 좁은 화면 확인용) | `/team/bank` | 교육 담당자 |
 | S14-documents | `/documents` | 경영지원·교육 담당자 |
 
