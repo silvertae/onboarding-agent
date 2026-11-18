@@ -25,6 +25,10 @@ import { MAX_MESSAGE_LENGTH, useChatStream, type ChatMessage } from './useChatSt
 const SUGGESTIONS = ['오늘 뭐 해야 해?', '회의실 예약 어떻게 해?', '노트북 경비 계정과목이 뭐야?']
 const REQUEST_FAILED = '요청을 보내지 못했어요. 다시 시도해 주세요.'
 const QUOTA_HINT = '내일 오전 0시에 다시 쓸 수 있어요. 급한 내용은 담당자에게 문의해 주세요.'
+// 첫 글자가 오기 전 답변 자리(docs/screens.md S4 "답변 기다리는 중"). 에이전트는 모델을 부르기 전에 지식과 과제를 조회한다.
+const WAITING_TEXT = '사내 지식과 내 과제를 확인하고 있어요'
+const SLOW_TEXT = '답변이 조금 늦어지고 있어요. 잠시만 기다려 주세요.'
+const SLOW_AFTER_MS = 8000
 
 type ChatAskEvent = CustomEvent<{ text?: string }>
 
@@ -223,6 +227,29 @@ function ChatAside() {
   )
 }
 
+// 답변과 같은 말풍선이라 첫 글자가 오면 자리가 바뀌지 않고 글자만 바뀐다. 기다릴 때마다 새로 그려 시간도 새로 잰다.
+function WaitingBubble() {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), SLOW_AFTER_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <div
+      role="status"
+      className="flex max-w-[92%] items-center gap-2.5 self-start rounded-[18px_18px_18px_4px] border border-border bg-card px-3.5 py-3 text-sm text-muted-foreground"
+    >
+      <span aria-hidden className="inline-flex shrink-0 gap-1">
+        <i className="size-1.5 animate-pulse rounded-full bg-tertiary" />
+        <i className="size-1.5 animate-pulse rounded-full bg-tertiary/70 [animation-delay:150ms]" />
+        <i className="size-1.5 animate-pulse rounded-full bg-tertiary/45 [animation-delay:300ms]" />
+      </span>
+      <span className="text-pretty">{slow ? SLOW_TEXT : WAITING_TEXT}</span>
+    </div>
+  )
+}
+
 function AssistantMessage({
   message,
   question,
@@ -260,19 +287,7 @@ function AssistantMessage({
     )
   }
 
-  if (pending && !message.text) {
-    return (
-      <span
-        role="status"
-        aria-label="답변 중"
-        className="inline-flex gap-1 self-start rounded-[18px_18px_18px_4px] border border-border bg-card px-3.5 py-4"
-      >
-        <i className="size-1.5 animate-pulse rounded-full bg-tertiary" />
-        <i className="size-1.5 animate-pulse rounded-full bg-tertiary/70 [animation-delay:150ms]" />
-        <i className="size-1.5 animate-pulse rounded-full bg-tertiary/45 [animation-delay:300ms]" />
-      </span>
-    )
-  }
+  if (pending && !message.text) return <WaitingBubble />
 
   const { knowledge = [], tasks = [] } = message.sources ?? {}
   return (
