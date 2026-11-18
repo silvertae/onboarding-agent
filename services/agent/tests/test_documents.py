@@ -127,3 +127,19 @@ def test_extract_garbage_bytes_raises_unreadable(file_type):
     with pytest.raises(UnreadableDocument) as e:
         extract_text(b"not a pdf", file_type)
     assert str(e.value) == UNREADABLE
+
+
+def test_heading_does_not_cross_newline():
+    c = split_clauses("제1조\n(1) 내용 하나")[0]
+    assert (c.label, c.heading, c.body) == ("제1조", "", "(1) 내용 하나")
+
+
+def test_heading_with_space_before_parenthesis():
+    c = split_clauses("제1조 (목적) 본문")[0]
+    assert (c.label, c.heading, c.body) == ("제1조", "목적", "본문")
+
+
+def test_article_body_length_boundary():
+    assert len(split_clauses("제1조(경계) " + "가" * 2000)) == 1
+    two = split_clauses("제1조(경계) " + "가" * 2001)
+    assert [c.label for c in two] == ["제1조 (1/2)", "제1조 (2/2)"]

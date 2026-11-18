@@ -14,7 +14,7 @@ ARTICLE_MAX = 2000  # 조항 하나(조각)의 최대 글자 수
 CHUNK_TARGET = 800  # 조항 표시가 없을 때 단락 묶음의 목표 글자 수
 CHUNK_CAP = 1000  # 같은 경우의 상한
 
-_ARTICLE_RE = re.compile(r"^\s*(제\s*\d+\s*조(?:의\s*\d+)?)\s*(?:\(([^)\n]*)\))?", re.M)
+_ARTICLE_RE = re.compile(r"^[ \t]*(제[ \t]*\d+[ \t]*조(?:의[ \t]*\d+)?)[ \t]*(?:\(([^)\n]*)\))?", re.M)
 _SENTENCE_END_RE = re.compile(r"(?<=[.!?。])\s+")
 # pdf 글꼴에 따라 공백이 제어 문자로 나오는 경우가 있다(줄바꿈·탭은 둔다)
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
