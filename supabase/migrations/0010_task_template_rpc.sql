@@ -2,9 +2,17 @@
 -- 템플릿 쓰기는 이 함수로만 한다(테이블 쓰기 권한·정책 없음). 담당 범위와 사용 중 잠금을 DB에서 확인한다.
 -- 오류 코드: 42501 범위 밖, 22023 검증·잠금, P0002 없음.
 
+-- ── 조직별 템플릿 잠금 ──────────────────────────────────────────────
+-- 같은 조직의 템플릿 생성(코드 번호)과 선행 변경(순환 검사)을 트랜잭션 잠금으로 직렬화한다.
+-- 잠금 순서: 신입별 잠금 → 템플릿 행 잠금 → 이 잠금. 이 잠금을 잡은 뒤에는 자기가 이미 잠근 행과
+-- 새로 만드는 행만 건드리므로, 이 잠금을 기다리는 쪽이 쥔 잠금을 다시 기다리는 일이 없다(교착 없음).
+create function private.template_lock_key(p_org uuid) returns bigint
+language sql immutable set search_path = ''
+as $$ select hashtextextended('task_code:' || p_org::text, 0) $$;
+
 -- ── 코드 부여 ───────────────────────────────────────────────────────
 -- 같은 조직에서 "<접두어>-<번호>"(한 사람용은 "<접두어>-P<번호>")의 가장 큰 번호 + 1, 두 자리 이상 0 채움.
--- 같은 조직의 템플릿 생성은 트랜잭션 잠금으로 직렬화한다. 잠금을 얻은 뒤의 새 스냅샷에서 최대 번호를 본다(READ COMMITTED).
+-- 조직별 템플릿 잠금을 얻은 뒤의 새 스냅샷에서 최대 번호를 본다(READ COMMITTED).
 create function private.next_task_code(p_org uuid, p_prefix text, p_one_off boolean) returns text
 language plpgsql security definer set search_path = ''
 as $$
@@ -12,7 +20,7 @@ declare
   v_head text := p_prefix || case when p_one_off then '-P' else '-' end;
   v_next int;
 begin
-  perform pg_advisory_xact_lock(hashtextextended('task_code:' || p_org::text, 0));
+  perform pg_advisory_xact_lock(private.template_lock_key(p_org));
 
   select coalesce(max(substr(t.code, char_length(v_head) + 1)::int), 0) + 1 into v_next
     from public.task_templates t
@@ -40,7 +48,7 @@ create function private.task_template_fields(
 language plpgsql stable set search_path = ''
 as $$
 declare
-  v_ws constant text := E' \t\r\n';
+  v_ws constant text := E' \t\r\n\u00a0\u3000';  -- 줄바꿈 없는 공백·전각 공백도 지운다
   v public.task_templates;
 begin
   v.title := btrim(coalesce(p_title, ''), v_ws);
@@ -238,6 +246,9 @@ begin
   end if;
   -- 바뀐 경우에만 검사한다. 이미 걸려 있던 코드는 그 뒤 보관됐어도 그대로 둘 수 있다(제목만 고칠 때 막히지 않게).
   if v_prereq is distinct from v_prereq_before then
+    -- 조직별 템플릿 잠금: 행 잠금은 고치는 행만 잡으므로, A→B와 B→A를 동시에 저장하면 서로의 미커밋 변경을 못 보고
+    -- 순환이 저장된다. 잠금 뒤의 새 스냅샷에서 검사해 먼저 커밋된 선행을 본다.
+    perform pg_advisory_xact_lock(private.template_lock_key(v_org));
     if v_old.code = any (v_prereq) then
       raise exception '자기 자신을 선행 과제로 고를 수 없습니다' using errcode = '22023';
     end if;
@@ -402,6 +413,7 @@ $$;
 
 -- ── 실행 권한 ───────────────────────────────────────────────────────
 revoke all on function
+  private.template_lock_key(uuid),
   private.task_template_fields(text, text, public.task_kind, public.completion_mode, public.task_stage, int, boolean,
                                jsonb, public.task_kind),
   private.lock_managed_template(uuid),

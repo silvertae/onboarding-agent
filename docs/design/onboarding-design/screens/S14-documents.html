@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S14 규정 문서</title>
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
+.docs-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,460px);gap:24px;align-items:start}
+.state-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 24px;align-items:start}
+.state-label{font-size:13px;font-weight:600;color:var(--secondary)}
+/* 문서 상태 배지: 과제 상태 토큰을 빌려 쓴다(처리 중=확인 대기색, 사용 중=완료색, 처리 실패=보완 요청색) */
+.doc-title{display:flex;flex-direction:column;gap:2px}
+.doc-title b{font-weight:500}
+/* 조항 목록: 조항 번호·제목 한 줄 + 본문 두 줄 미리보기 */
+.clauses{display:flex;flex-direction:column}
+.clause{display:flex;flex-direction:column;gap:4px;padding:12px 24px;border-top:1px solid var(--border)}
+.clause:first-child{border-top:0}
+.clause-hd{display:flex;align-items:baseline;gap:8px;font-size:14px}
+.clause-hd .no{font-weight:600;white-space:nowrap}
+.clause-body{font-size:13px;color:var(--secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:19px}
+.dialog{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,.12);display:flex;flex-direction:column}
+.dialog-hd{padding:20px 24px 0;display:flex;flex-direction:column;gap:6px}
+.dialog-bd{padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+.dialog-ft{padding:0 24px 24px;display:flex;justify-content:flex-end;gap:8px}
+.empty{padding:48px 24px;text-align:center;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:6px;align-items:center}
+</style>
+
+<div style="min-height: 1700px; background: var(--canvas)">
+  <header class="topbar">
+    <div class="topbar-in">
+      <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
+      <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
+      <nav class="nav" aria-label="주 메뉴"><a href="S9-ops.html">부서 업무함</a><a href="S12-forms.html">과제 서식</a><a href="S10-knowledge.html">지식 관리</a><a class="on" href="#" aria-current="page">규정 문서</a></nav>
+      <div class="user">
+        <span class="avatar">지원</span>
+        <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">서지원</b><span class="caption">인사팀</span></div>
+        <span class="role">경영지원</span>
+        <button class="icon-btn" type="button" aria-label="로그아웃"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page" style="display: flex; flex-direction: column; gap: 20px">
+    <!-- PageHeader: 제목 · 설명 · 오른쪽 동작(문서 올리기, 36 outline — 화면의 주 동작은 오른쪽 패널의 "지식 초안 만들기") -->
+    <div class="between" style="align-items: flex-end">
+      <div style="display: flex; flex-direction: column; gap: 4px"><h1>규정 문서</h1><p class="secondary">회사 공통 규정 문서를 올리면 조항으로 나눠 두고, 신입 채팅이 조항을 찾아 출처와 함께 답해요.</p></div>
+      <button class="btn btn-outline btn-sm" type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M17 8l-5-5-5 5"></path><path d="M12 3v12"></path></svg>문서 올리기</button>
+    </div>
+
+    <div class="docs-grid">
+      <!-- 왼쪽: 문서 목록 -->
+      <section class="card" style="overflow: hidden" aria-labelledby="list-t">
+        <div class="card-hd"><h2 id="list-t" style="font-size: 18px">문서 3개</h2></div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>문서</th><th>범위</th><th>상태</th><th style="text-align: right">조항</th></tr></thead>
+            <tbody>
+              <tr class="sel"><td><div class="doc-title"><b>복리후생 규정(가상)</b><span class="caption">docx · 서지원 · 오늘 10:12</span></div></td><td>회사 공통</td><td><span class="st st-done">사용 중</span></td><td style="text-align: right" class="muted">18</td></tr>
+              <tr><td><div class="doc-title"><b>취업규칙 발췌(가상)</b><span class="caption">pdf · 서지원 · 오늘 10:20</span></div></td><td>회사 공통</td><td><span class="st st-submitted">처리 중</span></td><td style="text-align: right" class="muted">—</td></tr>
+              <tr><td><div class="doc-title"><b>출장 규정 스캔본</b><span class="caption">pdf · 서지원 · 어제 17:41</span></div></td><td>회사 공통</td><td><span class="st st-rework">처리 실패</span></td><td style="text-align: right" class="muted">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 오른쪽: 선택한 문서 -->
+      <section class="sheet" aria-labelledby="doc-t">
+        <div class="card-hd" style="padding: 20px 24px; align-items: flex-start">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div class="row" style="gap: 8px"><span class="tag">회사 공통</span><span class="st st-done">사용 중</span></div>
+            <h2 id="doc-t">복리후생 규정(가상)</h2>
+            <span class="caption">복리후생 규정(가상).docx · 86KB · 서지원 · 오늘 10:12</span>
+          </div>
+          <button class="icon-btn danger" type="button" title="지우기" aria-label="복리후생 규정(가상) 지우기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg></button>
+        </div>
+
+        <!-- 화면의 주 동작: 지식 초안 만들기(44) -->
+        <div class="card-bd col" style="gap: 10px; padding: 20px 24px; border-bottom: 1px solid var(--border)">
+          <button class="btn btn-primary" type="button" style="align-self: flex-start"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"></path></svg>지식 초안 만들기</button>
+          <p class="caption">신입이 물을 만한 질문과 답을 조항 근거와 함께 5개까지 만들어요. 초안은 지식 관리에 저장되고, 검토한 뒤 게시해야 신입에게 보여요.</p>
+        </div>
+
+        <div style="padding: 16px 24px 4px"><h3 style="font-size: 15px">조항 18개</h3></div>
+        <div class="clauses" aria-label="조항 목록">
+          <div class="clause"><div class="clause-hd"><span class="no">제1조</span><span>목적</span></div><p class="clause-body">이 규정은 회사 임직원의 복리후생 제도의 운영 기준을 정한다. (가상 문서)</p></div>
+          <div class="clause"><div class="clause-hd"><span class="no">제8조</span><span>경조금</span></div><p class="clause-body">① 임직원 본인이 결혼하는 경우 경조금 50만 원(가상 금액)과 특별휴가 5일을 준다. ② 자녀가 결혼하는 경우 경조금 30만 원(가상 금액)과 특별휴가 1일을 준다.</p></div>
+          <div class="clause"><div class="clause-hd"><span class="no">제9조</span><span>조위금</span></div><p class="clause-body">임직원의 배우자 또는 부모가 사망한 경우 조위금 50만 원(가상 금액)과 특별휴가 5일을 준다.</p></div>
+          <div class="clause"><div class="clause-hd"><span class="no">제12조</span><span>복지포인트</span></div><p class="clause-body">① 회사는 매년 1월 1일 임직원에게 복지포인트 100만 원(가상 금액)을 지급한다. ② 연중 입사자는 입사한 달부터 남은 달 수에 비례해 지급한다.</p></div>
+          <div class="clause" style="padding-bottom: 20px"><span class="caption">나머지 14개 조항</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 상태별 시안 -->
+    <section style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px">
+      <div class="between"><h2 style="font-size: 18px">상태별 화면</h2><span class="caption">올리기 창과 오른쪽 패널의 다른 상태</span></div>
+      <div class="state-grid">
+
+        <div class="col" style="gap: 8px">
+          <span class="state-label">① 문서 올리기 창</span>
+          <div class="dialog" role="dialog" aria-labelledby="up-t">
+            <div class="dialog-hd"><h2 id="up-t" style="font-size: 17px">규정 문서 올리기</h2><p class="secondary" style="font-size: 14px">올리면 조항으로 나눠 두고, 신입 채팅이 조항을 근거로 답해요.</p></div>
+            <div class="dialog-bd">
+              <div class="field"><label class="label" for="dt">문서 이름</label><input class="input" id="dt" value="취업규칙 발췌(가상)"></div>
+              <div class="field"><span class="label">범위</span><span class="secondary" style="font-size: 14px">회사 공통 · 경영지원 담당자가 관리해요</span></div>
+              <div class="file">
+                <span class="file-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M16 13H8M16 17H8M10 9H8"></path></svg></span>
+                <div class="file-main"><span class="file-name"><span class="base">취업규칙 발췌(가상)</span><span class="ext">.pdf</span></span><span class="file-meta">PDF · 214KB</span></div>
+                <button class="btn btn-ghost btn-sm" type="button">다른 파일</button>
+              </div>
+              <span class="hint">docx, pdf · 파일당 10MB까지 · 글자가 있는 파일만 읽을 수 있어요(스캔본 제외)</span>
+              <span class="warn-line"><svg class="ic" style="width: 14px; height: 14px; margin-top: 1px" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>가상 문서만 올려 주세요. 실명·연락처 같은 개인정보나 실제 사내 규정은 올리지 않아요.</span>
+            </div>
+            <div class="dialog-ft"><button class="btn btn-ghost btn-sm" type="button">취소</button><button class="btn btn-primary btn-sm" type="button">올리기</button></div>
+          </div>
+        </div>
+
+        <div class="col" style="gap: 8px">
+          <span class="state-label">② 처리 중</span>
+          <div class="sheet">
+            <div class="card-hd" style="padding: 16px 20px; align-items: flex-start"><div class="col" style="gap: 6px"><div class="row" style="gap: 8px"><span class="tag">회사 공통</span><span class="st st-submitted">처리 중</span></div><h2 style="font-size: 17px">취업규칙 발췌(가상)</h2></div></div>
+            <div class="card-bd col" style="gap: 14px; padding: 20px">
+              <div class="row" role="status" style="gap: 8px; font-size: 14px; color: var(--secondary)"><svg class="ic spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.22-8.56"></path></svg>문서를 조항으로 나누고 있어요. 1분쯤 걸려요.</div>
+              <div class="col" style="gap: 10px" aria-hidden="true"><span class="skel skel-line" style="width: 40%"></span><span class="skel skel-line" style="width: 90%"></span><span class="skel skel-line" style="width: 35%"></span><span class="skel skel-line" style="width: 85%"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col" style="gap: 8px">
+          <span class="state-label">③ 처리 실패</span>
+          <div class="sheet">
+            <div class="card-hd" style="padding: 16px 20px; align-items: flex-start"><div class="col" style="gap: 6px"><div class="row" style="gap: 8px"><span class="tag">회사 공통</span><span class="st st-rework">처리 실패</span></div><h2 style="font-size: 17px">출장 규정 스캔본</h2></div></div>
+            <div class="card-bd col" style="gap: 14px; padding: 20px">
+              <div class="alert alert-err" role="note" style="padding: 12px 14px; font-size: 13px">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+                <span>글자를 읽을 수 없는 파일이에요. 스캔한 PDF는 읽지 못해요. 글자가 들어 있는 docx나 pdf로 다시 올려 주세요.</span>
+              </div>
+              <div class="row" style="gap: 8px; justify-content: flex-end"><button class="btn btn-ghost btn-sm" type="button">다시 처리</button><button class="btn btn-destructive btn-sm" type="button">지우기</button></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col" style="gap: 8px">
+          <span class="state-label">④ 지식 초안을 만드는 중 / 만든 뒤</span>
+          <div class="sheet card-bd col" style="gap: 12px; padding: 20px">
+            <button class="btn btn-primary" type="button" disabled style="align-self: flex-start; background: var(--track); color: var(--disabled-fg)"><svg class="ic spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.22-8.56"></path></svg>초안 만드는 중…</button>
+            <div class="alert alert-ok" role="status" style="padding: 12px 14px; font-size: 13px">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><path d="M20 6L9 17l-5-5"></path></svg>
+              <div class="col" style="gap: 4px"><span>지식 초안 5개를 만들었어요. 검토하고 게시해야 신입에게 보여요.</span><a href="S10-knowledge.html" style="font-weight: 600">지식 관리에서 검토하기</a></div>
+            </div>
+            <div class="alert alert-err" role="alert" style="padding: 12px 14px; font-size: 13px">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+              <span>초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col" style="gap: 8px">
+          <span class="state-label">⑤ 지우기 확인</span>
+          <div role="alertdialog" aria-labelledby="del-t" aria-describedby="del-d" class="dialog" style="padding: 24px; gap: 10px">
+            <h2 id="del-t" style="font-size: 17px">'복리후생 규정(가상)'을 지울까요?</h2>
+            <p id="del-d" class="secondary" style="font-size: 14px">조항 18개가 함께 지워지고, 채팅은 더 이상 이 문서로 답하지 않아요. 이 문서로 만든 지식은 남아요.</p>
+            <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 8px"><button class="btn btn-ghost btn-sm" type="button">취소</button><button class="btn btn-destructive btn-sm" type="button">지우기</button></div>
+          </div>
+        </div>
+
+        <div class="col" style="gap: 8px">
+          <span class="state-label">⑥ 문서가 없을 때</span>
+          <div class="card">
+            <div class="empty">
+              <span>아직 올린 규정 문서가 없어요.</span>
+              <span class="caption">복리후생 규정이나 취업규칙을 올리면 신입 채팅이 조항을 찾아 답해요.</span>
+              <button class="btn btn-outline btn-sm" type="button" style="margin-top: 8px">문서 올리기</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+</div>
+
+</body>
+</html>
