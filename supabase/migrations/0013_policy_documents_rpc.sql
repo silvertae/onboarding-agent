@@ -88,15 +88,27 @@ returns uuid
 language plpgsql security definer set search_path = ''
 as $$
 declare
+  v_status public.unanswered_status;
   v_k public.knowledge_items;
 begin
   if p_origin is null or p_origin not in ('manual', 'ai_draft') then
     raise exception '알 수 없는 출처 종류입니다' using errcode = '22023';
   end if;
 
+  -- 질문을 먼저 잠가 상태를 읽는다(동시에 두 사람이 해결해도 한 쪽만 새로 해결한 것으로 본다).
+  -- 보이는 행이 없으면 resolve_unanswered가 오류를 낸다.
+  select status into v_status from public.unanswered_questions
+   where id = p_id and org_id = (select private.my_org())
+     for update;
+
   v_k := public.resolve_unanswered(p_id, p_question, p_answer, p_category);
-  -- 이미 같은 origin이면 건드리지 않는다(연타 때 불필요한 쓰기 방지).
-  update public.knowledge_items set origin = p_origin where id = v_k.id and origin is distinct from p_origin;
+
+  -- 이미 해결돼 있었다면 기존 지식을 그대로 돌려준다. 이번 요청의 답은 저장되지 않았으므로 origin과 근거도 붙이지 않는다.
+  if v_status = 'resolved' then
+    return v_k.id;
+  end if;
+
+  update public.knowledge_items set origin = p_origin where id = v_k.id;
 
   insert into public.knowledge_sources (knowledge_id, clause_id, org_id)
   select v_k.id, c.id, c.org_id

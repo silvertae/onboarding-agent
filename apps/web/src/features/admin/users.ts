@@ -4,6 +4,7 @@ import { agentFetch } from '@/lib/agent'
 import type { Enums, Tables } from '@/lib/database.types'
 import { DbError, isAuthError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
+import { storageError } from '@/lib/taskFiles'
 
 export type Team = Pick<Tables<'teams'>, 'id' | 'name'>
 
@@ -57,11 +58,24 @@ export async function createUser(req: CreateUserRequest): Promise<string> {
   return body.id
 }
 
-// 기본 계정의 진행·지식·미답변·시험을 처음 상태로. 관리자가 만든 계정은 남는다.
+// 기본 계정의 진행·지식·미답변·시험과 과제 템플릿을 처음 상태로. 관리자가 만든 계정은 남는다.
+// 담당자가 올린 서식은 Storage 객체를 먼저 지운다(SQL로는 지울 수 없다). reset_demo가 그 행을 지우므로,
+// 객체를 못 지우면 reset_demo를 부르지 않는다. 행이 남아 있어야 다시 시도할 때 경로를 다시 찾는다.
 export async function resetDemo(): Promise<void> {
-  const { error, status } = await supabase.rpc('reset_demo')
-  if (error) {
-    const err = new DbError(status, error.message, error.code)
+  try {
+    const files = await supabase.from('task_template_files').select('storage_path').eq('is_seed', false)
+    if (files.error) throw new DbError(files.status, files.error.message, files.error.code)
+
+    const paths = (files.data ?? []).map((f) => f.storage_path)
+    if (paths.length > 0) {
+      // 버킷 이름은 계약 값(docs/contracts.md "과제 서식 저장소")
+      const { error } = await supabase.storage.from('task-forms').remove(paths)
+      if (error) throw storageError(error)
+    }
+
+    const { error, status } = await supabase.rpc('reset_demo')
+    if (error) throw new DbError(status, error.message, error.code)
+  } catch (err) {
     if (isAuthError(err)) await supabase.auth.signOut()
     throw err
   }

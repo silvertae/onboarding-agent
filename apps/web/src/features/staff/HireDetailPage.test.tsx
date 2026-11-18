@@ -5,14 +5,15 @@ import { vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { HIRES, makeTask, TEAM_ID } from './testFixtures'
 
-const { actions, state } = vi.hoisted(() => ({
+const { actions, templateActions, state } = vi.hoisted(() => ({
   actions: {
     submit: vi.fn(),
-    markNa: vi.fn(),
+    markNa: vi.fn(async (_id: string, _reason: string) => {}),
     confirm: vi.fn(async () => {}),
     requestRework: vi.fn(async () => {}),
     recordAssessment: vi.fn(async () => {}),
   },
+  templateActions: { save: vi.fn(), archive: vi.fn(), restore: vi.fn(), addForHire: vi.fn() },
   state: { tasks: [] as unknown[], filter: undefined as unknown },
 }))
 
@@ -39,6 +40,11 @@ vi.mock('./sittings', () => ({
   useAssignExam: () => ({ mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false }),
 }))
 vi.mock('@/features/exam/exams', () => ({ useExams: () => ({ data: [], isLoading: false, isError: false }) }))
+// "이 신입에게 과제 추가" 대화 상자의 동작은 AddTaskDialog.test.tsx에서 본다.
+vi.mock('@/features/templates/templates', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/templates/templates')>()),
+  useTemplateActions: () => templateActions,
+}))
 
 import { HireDetailPage } from './HireDetailPage'
 
@@ -81,6 +87,12 @@ const jsTest = team({
 })
 const review = team({ id: 'ai-x', status: 'submitted', submitted_at: '2026-11-17T01:12:00Z', template: { title: '코드 리뷰 실습', completion_mode: 'confirm' } })
 const opsTask = makeTask({ id: 'ga-07', status: 'submitted', template: { department: 'ga', title: '명함 신청' } })
+// 이 신입에게만 추가한 과제(assigned_to). 해당 없음 허용이 꺼져 있어도 담당자는 해당 없음으로 뺄 수 있다.
+const oneOff = team({
+  id: 'one-off',
+  status: 'todo',
+  template: { title: 'React 기초 보충 학습', kind: 'practice', completion_mode: 'self', allow_na: false, assigned_to: 'h1', is_seed: false },
+})
 
 function LocationProbe() {
   const location = useLocation()
@@ -101,6 +113,7 @@ function renderPage(tasks: TaskView[]) {
 
 beforeEach(() => {
   Object.values(actions).forEach((fn) => fn.mockClear())
+  Object.values(templateActions).forEach((fn) => fn.mockReset())
 })
 
 describe('HireDetailPage (S6)', () => {
@@ -226,5 +239,89 @@ describe('HireDetailPage (S6)', () => {
     await user.click(within(row).getByRole('button', { name: '처리' }))
     expect(row).toHaveClass('[&>td]:bg-accent')
     expect(row).not.toHaveClass('bg-accent')
+  })
+})
+
+describe('HireDetailPage (S6) 이 신입에게 과제 추가', () => {
+  it('"이 신입에게 과제 추가"를 누르면 이 신입 이름의 대화 상자가 열리고, 종류에 "평가"가 있다', async () => {
+    const user = userEvent.setup()
+    renderPage([btp])
+    await user.click(screen.getByRole('button', { name: '이 신입에게 과제 추가' }))
+    const dialog = screen.getByRole('dialog', { name: "'김하늘'님에게 과제 추가" })
+    expect(within(dialog).getByRole('radio', { name: '평가' })).toBeInTheDocument()
+  })
+
+  it('한 사람용 과제(template.assigned_to) 행에만 "이 신입만" 배지가 붙는다', () => {
+    renderPage([btp, oneOff])
+    expect(screen.getByRole('row', { name: /React 기초 보충 학습/ })).toHaveTextContent('이 신입만')
+    expect(screen.getByRole('row', { name: /BTP 개발 초기 세팅/ })).not.toHaveTextContent('이 신입만')
+  })
+
+  it('한 사람용 과제는 "처리" → "해당 없음" → 사유 입력 → markNa(id, 사유). 사유가 공백이면 막힌다', async () => {
+    const user = userEvent.setup()
+    renderPage([btp, oneOff])
+
+    await user.click(within(screen.getByRole('row', { name: /React 기초 보충 학습/ })).getByRole('button', { name: '처리' }))
+    const panel = screen.getByRole('complementary', { name: '과제 상세' })
+    await user.click(within(panel).getByRole('button', { name: '해당 없음' }))
+
+    const submit = within(panel).getByRole('button', { name: '해당 없음으로 처리' })
+    expect(submit).toBeDisabled()
+    const reason = within(panel).getByLabelText(/해당 없음 사유/)
+    await user.type(reason, '   ')
+    expect(submit).toBeDisabled()
+    await user.clear(reason)
+    await user.type(reason, '이미 학습한 내용이에요')
+    await user.click(submit)
+
+    expect(actions.markNa).toHaveBeenCalledTimes(1)
+    expect(actions.markNa).toHaveBeenCalledWith('one-off', '이미 학습한 내용이에요')
+    expect(within(panel).queryByRole('button', { name: '해당 없음으로 처리' })).not.toBeInTheDocument()
+  })
+
+  it('해당 없음 처리에 실패하면 패널에 오류 문구를 보이고 사유를 그대로 둔다', async () => {
+    const user = userEvent.setup()
+    actions.markNa.mockRejectedValueOnce(new Error('처리하지 못했어요. 잠시 후 다시 시도해 주세요.'))
+    renderPage([oneOff])
+
+    await user.click(within(screen.getByRole('row', { name: /React 기초 보충 학습/ })).getByRole('button', { name: '처리' }))
+    const panel = screen.getByRole('complementary', { name: '과제 상세' })
+    await user.click(within(panel).getByRole('button', { name: '해당 없음' }))
+    await user.type(within(panel).getByLabelText(/해당 없음 사유/), '이미 학습한 내용이에요')
+    await user.click(within(panel).getByRole('button', { name: '해당 없음으로 처리' }))
+
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('처리하지 못했어요. 잠시 후 다시 시도해 주세요.')
+    expect(within(panel).getByLabelText(/해당 없음 사유/)).toHaveValue('이미 학습한 내용이에요')
+  })
+
+  it('"해당 없음"을 펼쳤다가 "취소"하면 원래 동작으로 돌아간다', async () => {
+    const user = userEvent.setup()
+    renderPage([oneOff])
+    await user.click(within(screen.getByRole('row', { name: /React 기초 보충 학습/ })).getByRole('button', { name: '처리' }))
+    const panel = screen.getByRole('complementary', { name: '과제 상세' })
+    await user.click(within(panel).getByRole('button', { name: '해당 없음' }))
+    await user.click(within(panel).getByRole('button', { name: '취소' }))
+    expect(within(panel).queryByLabelText(/해당 없음 사유/)).not.toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: '해당 없음' })).toBeInTheDocument()
+    expect(actions.markNa).not.toHaveBeenCalled()
+  })
+
+  it('기본 과제는 담당자 화면에서 해당 없음으로 처리하지 않는다', async () => {
+    const user = userEvent.setup()
+    renderPage([review, { ...btp, template: { ...btp.template, allow_na: true } }])
+    expect(within(screen.getByRole('row', { name: /BTP 개발 초기 세팅/ })).queryByRole('button', { name: '처리' })).not.toBeInTheDocument()
+    await user.click(within(screen.getByRole('row', { name: /코드 리뷰 실습/ })).getByRole('button', { name: '처리' }))
+    const panel = screen.getByRole('complementary', { name: '과제 상세' })
+    expect(within(panel).queryByRole('button', { name: '해당 없음' })).not.toBeInTheDocument()
+  })
+
+  it('끝난(완료·해당 없음) 한 사람용 과제에는 "처리"가 없다', () => {
+    renderPage([
+      { ...oneOff, id: 'one-off-done', status: 'done' },
+      { ...oneOff, id: 'one-off-na', status: 'na', na_reason: '필요 없음', template: { ...oneOff.template, title: '가상 추가 과제' } },
+    ])
+    for (const row of screen.getAllByRole('row').slice(1)) {
+      expect(within(row).queryByRole('button', { name: '처리' })).not.toBeInTheDocument()
+    }
   })
 })
