@@ -186,6 +186,24 @@ describe('BankPage', () => {
     expect(ops).toContainEqual(['eq', 'id', 'b1'])
   })
 
+  it('고친 문항이 지금 필터에서 빠지면 행을 닫고 "저장했어요"를 표 위에 보인다', async () => {
+    renderPage()
+    const select = screen.getByRole('combobox', { name: '주제 필터' })
+    await within(select).findByRole('option', { name: 'JavaScript 기초' })
+    await userEvent.selectOptions(select, 'JavaScript 기초')
+    await expand(/let과 const/)
+    const topic = screen.getByRole('combobox', { name: '주제' })
+    await userEvent.clear(topic)
+    await userEvent.type(topic, 'JavaScript 비동기')
+    // 저장하면 DB에서 주제가 바뀐다(목록 조회가 topic_key로 거른다)
+    db.items = db.items.map((i) => (i.id === 'b1' ? { ...i, topic: 'JavaScript 비동기', topic_key: 'javascript 비동기' } : i))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: /let과 const/ })).not.toBeInTheDocument())
+    expect(screen.getByRole('status')).toHaveTextContent('저장했어요')
+    expect(screen.queryByRole('textbox', { name: '문제' })).not.toBeInTheDocument()
+    expect(writes('update')[0]).toContainEqual(['eq', 'id', 'b1'])
+  })
+
   it('저장이 실패하면 행 안에 실패 문구를 보인다', async () => {
     db.writeError = { message: 'boom', code: 'XX000' }
     renderPage()

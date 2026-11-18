@@ -156,9 +156,15 @@ export function BankPage() {
       queryClient.invalidateQueries({ queryKey: [bankKeys.topics()[0]] }),
     ])
 
-  // 지금 필터에 보이는 문항인지(새 문항은 게시 상태로 들어간다)
-  const visibleWith = (d: Draft) =>
-    status === 'active' && (!topic || topicKey(topic) === topicKey(d.topic)) && (difficulty === 'all' || difficulty === d.difficulty)
+  // 지금 필터에 보이는 문항인지. 새 문항은 게시 상태로 들어가고, 고친 문항은 지금 보기의 상태 그대로다
+  const visibleWith = (d: Draft, itemStatus: BankStatus) =>
+    status === itemStatus && (!topic || topicKey(topic) === topicKey(d.topic)) && (difficulty === 'all' || difficulty === d.difficulty)
+
+  // 저장한 행이 필터에서 빠지면 행 안 결과도 함께 사라지므로 표 위에 알린다
+  function savedOutside() {
+    setOpen(null)
+    setNotice(SAVED)
+  }
 
   async function save() {
     if (!open) return
@@ -168,18 +174,14 @@ export function BankPage() {
       if (id === NEW) {
         const newId = await write.mutateAsync({ kind: 'add', draft: clean })
         await refresh()
-        if (visibleWith(clean)) {
-          setOpen({ id: newId, draft: clean, result: { kind: 'saved' } })
-        } else {
-          // 필터 밖이라 목록에 행이 없으면 표 위에 알린다
-          setOpen(null)
-          setNotice(SAVED)
-        }
+        if (visibleWith(clean, 'active')) setOpen({ id: newId, draft: clean, result: { kind: 'saved' } })
+        else savedOutside()
       } else {
         const { topic: t, difficulty: d, prompt, model_answer, rubric, points } = clean
         await write.mutateAsync({ kind: 'update', id, patch: { prompt, model_answer, rubric, points, topic: t, difficulty: d } })
         await refresh()
-        rowResult(id, { kind: 'saved' })
+        if (visibleWith(clean, status)) rowResult(id, { kind: 'saved' })
+        else savedOutside()
       }
     } catch (error) {
       rowResult(id, { kind: 'error', text: isDuplicate(error) ? DUPLICATE : SAVE_FAILED })
