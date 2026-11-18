@@ -91,6 +91,14 @@
 - 5: 초안 생성 약 20초, "AI가 만든 답안은 확정 전 검토가 필요합니다" 표시 / 문항 하나 "새 문항 만들기" 후 나머지 유지 / 시험지에 답안·채점 기준 없음, 답안지에 있음 / AI-10 "통과" 저장 → 신입 화면 새로고침 없이 반영
 - 발견: 모델이 문항·답안에 마크다운 코드 블록 표시(```)를 넣어 화면·인쇄물에 그대로 보이는 경우가 있었음 → PR #22에서 지시문 규칙과 결과 정리로 수정
 
+### 문제은행 스테이징 확인 (2026-11-18, `b56b76d`)
+
+조율 세션이 데모 계정 토큰으로 API를 호출해 문제은행 계획의 Review Focus 1~3을 확인했습니다. 화면 6단계는 아직 브라우저로 돌리지 않았습니다.
+
+- 1(접근): 신입·인사 토큰으로 `question_bank_items`·`exam_sittings` 0행, `pick_bank_items`·`bank_prompts` 빈 결과, `register_exam_to_bank`·`assign_exam`은 P0002
+- 2(재등록): 시드 문항을 앞뒤 줄바꿈·탭만 다르게 넣은 임시 확정 시험으로 등록 두 번 → 0, 0. 은행 8행 그대로, 문항 출처는 시드 문항. 확인 후 임시 시험 삭제
+- 3(부족): 교육 담당자로 `' javascript 기초'` 10개 요청 → 8개(시드 전부), 없는 주제 → 0개, 0개 요청 → 22023
+
 ## 실패 조건 점검 (Task 19 Step 3)
 
 | 항목 | 방법 | 결과 (스테이징, 2026-11-17) |
@@ -99,7 +107,7 @@
 | 신입 토큰으로 `POST /exams/generate`, `POST /admin/users` | API 호출 | 403 ✅ (교육 담당자 → `/admin/users`·`/chat`, 인사 → `/exams/generate`도 403, 토큰 없음 401) |
 | 신입이 시험 문제·답안 조회 | 시험 1개가 있는 상태에서 신입 토큰으로 `exams`·`exam_questions` 조회 | 0행 ✅ |
 | 신입이 다른 사람 과제 조회 | 신입 토큰으로 `task_instances` 조회 | 본인 과제만 ✅ |
-| 신입이 문제은행·응시 기록에 접근 | 신입으로 `/team/bank` 주소 입력, 신입 토큰으로 `question_bank_items`·`exam_sittings` 조회와 `register_exam_to_bank`·`pick_bank_items`·`bank_prompts` 호출 | 문제은행 추가 뒤 스테이징 리허설에서 기록 |
+| 신입이 문제은행·응시 기록에 접근 | 신입으로 `/team/bank` 주소 입력, 신입 토큰으로 `question_bank_items`·`exam_sittings` 조회와 `register_exam_to_bank`·`pick_bank_items`·`bank_prompts` 호출 | 2026-11-18 스테이징(`b56b76d`) API 확인: 신입·인사 토큰으로 두 테이블 0행, `pick_bank_items`·`bank_prompts` 빈 결과, `register_exam_to_bank`·`assign_exam`은 P0002(찾을 수 없음) ✅. `/team/bank` 주소 이동은 라우트 테스트로만 확인 |
 | `anon` 키만으로 데이터 조회, 신입의 `reset_demo` 호출 | API 호출 | 401 / 403 ✅ |
 | 웹 번들에 비밀값 | `vite build --mode staging` 결과 검색 | 공개 anon 키 외 0건 ✅ |
 | 저장소 전체 실명·주민번호·계좌·카드번호 | 패턴 검색 + 공개 전환 전 전체 이력 검사(gitleaks) | 0건 ✅. 회사명은 CI 위치와 시험 지시문 1곳 → PR #22로 지시문에서 제거 |
