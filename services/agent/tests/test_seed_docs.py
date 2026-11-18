@@ -48,7 +48,11 @@ def test_welfare_clauses(welfare_text):
     assert "50만 원(가상)" in c8.body
     assert "구분 | 금액 | 특별휴가" in c8.body
     assert "본인 결혼 | 50만 원(가상) | 5일" in c8.body
-    assert clauses["제9조"].heading == "조위금"
+    assert "결혼일 전후 30일" in c8.body
+    assert "자녀 결혼 | 30만 원(가상) | 1일" in c8.body
+    c9 = clauses["제9조"]
+    assert c9.heading == "조위금"
+    assert "50만 원" in c9.body
     c12 = clauses["제12조"]
     assert c12.heading == "복지포인트"
     assert "100만 원" in c12.body
@@ -62,6 +66,7 @@ def test_work_rules_clauses(work_text):
     c21 = clauses["제21조"]
     assert c21.heading == "연차휴가"
     assert "15일" in c21.body
+    assert "최대 11일" in c21.body
     assert any(c.heading == "근무시간" for c in clauses.values())
     assert any("재택" in c.heading for c in clauses.values())
 
