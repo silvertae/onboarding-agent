@@ -369,6 +369,23 @@ gh secret list --repo "$REPO" --env staging; gh secret list --repo "$REPO" --env
 grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging apps/web/.env.production .firebaserc   # 출력 없어야 함
 ```
 
+## 규정 문서 시드 색인(환경별 1회)
+
+규정 문서 검색 시연용 가상 문서 2개("복리후생 규정(가상)", "취업규칙 발췌(가상)")를 올리고 조항으로 색인한다. 스테이징과 운영에서 각각 한 번 실행한다. 같은 제목이 이미 있으면 건너뛰므로 여러 번 실행해도 안전하고, 처리 중 실패하면 방금 만든 행과 객체를 지워 다시 실행하면 처음부터 시도한다. 임베딩 호출 비용이 조금 든다.
+
+`<org_id>`는 그 환경 Supabase의 `orgs` 행 id다. 비밀값은 화면에 출력하지 않고 Secret Manager에서 바로 넘긴다(아래는 스테이징. 운영은 프로젝트와 `supabase-service-role-key-prod`로 바꾼다). `SUPABASE_URL`·`SUPABASE_ANON_KEY`·`OPENAI_EMBEDDING_MODEL`은 공개 값이라 환경 변수 값을 그대로 쓴다(스테이징 임베딩 모델 `text-embedding-3-small`).
+
+```bash
+cd services/agent
+SUPABASE_URL="<환경의 Supabase URL>" SUPABASE_ANON_KEY="<환경의 anon 키>" \
+OPENAI_EMBEDDING_MODEL="text-embedding-3-small" \
+OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
+SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret supabase-service-role-key-staging --project blueward-onboarding-stg)" \
+  uv run python scripts/index_seed_docs.py --org <org_id>
+```
+
+각 문서마다 "색인 완료(조항 N개)" 또는 "이미 있어 건너뜀"이 한 줄씩 나오고 종료 코드는 0이다. 환경변수가 빠지면 변수 이름만 알리고 2로 끝난다.
+
 ## 배포 흐름
 
 1. 작업 브랜치 → PR. `ci`가 테스트하고, 스테이징 설정으로 빌드한 웹을 미리보기 채널 `pr-<번호>`(스테이징 프로젝트)에 올려 PR에 주소를 남긴다. 미리보기 웹은 스테이징 Supabase·스테이징 에이전트를 쓴다.

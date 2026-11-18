@@ -12,7 +12,7 @@ from storage3.exceptions import StorageException
 
 from app.auth import CurrentUser, require_role
 from app.db import user_client
-from app.documents import UNREADABLE, DocumentRejected, extract_text, split_clauses
+from app.documents import UNREADABLE, DocumentRejected, build_clause_payload, extract_text, split_clauses
 from app.embeddings import EmbeddingError, embed
 from app.quota import enforce_quota
 
@@ -79,15 +79,10 @@ async def index_document(document_id: str, user: CurrentUser = Depends(staff_onl
             await run_in_threadpool(_replace, user.token, document_id, [], str(e))
             return IndexResult(status="failed", clause_count=0, error=str(e))
 
-        texts = [f"{c.label or ''} {c.heading or ''}".strip() + "\n" + c.body for c in clauses]
         try:
-            vectors = await embed(texts)
+            payload = await build_clause_payload(clauses, embed)
         except EmbeddingError:
             raise HTTPException(status_code=502, detail=EMBED_FAILED) from None
-        payload = [
-            {"ord": c.ord, "label": c.label, "heading": c.heading, "body": c.body, "embedding": v}
-            for c, v in zip(clauses, vectors, strict=True)
-        ]
         count = await run_in_threadpool(_replace, user.token, document_id, payload)
         return IndexResult(status="ready", clause_count=count, error=None)
     except BACKEND_ERRORS as exc:

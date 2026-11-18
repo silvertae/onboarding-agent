@@ -3,6 +3,7 @@
 import io
 import re
 import zipfile
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -173,3 +174,15 @@ def split_clauses(text: str) -> list[Clause]:
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         add(re.sub(r"\s+", "", m.group(1)), (m.group(2) or "").strip(), text[m.end() : end].strip())
     return clauses
+
+
+async def build_clause_payload(
+    clauses: list[Clause], embed_fn: Callable[[list[str]], Awaitable[list[list[float]]]]
+) -> list[dict]:
+    """조항마다 임베딩해 replace_document_clauses의 p_clauses 형태로 만든다. 임베딩 오류는 그대로 올라간다."""
+    texts = [f"{c.label or ''} {c.heading or ''}".strip() + "\n" + c.body for c in clauses]
+    vectors = await embed_fn(texts)
+    return [
+        {"ord": c.ord, "label": c.label, "heading": c.heading, "body": c.body, "embedding": v}
+        for c, v in zip(clauses, vectors, strict=True)
+    ]
