@@ -81,7 +81,7 @@ POST /admin/users     {email, password(8자 이상), full_name, job_title,
 ## 과제 템플릿 관리 (Leo 승인, 2026-11-18)
 
 설계: `docs/superpowers/specs/2026-11-18-onboarding-plan-design.md`. 마이그레이션 `0009`(컬럼·조회 정책·잠금)·`0010`(RPC)·`0011`(서식·`reset_demo`).
-웹은 템플릿 테이블을 직접 쓰지 않고 아래 RPC만 부른다(테이블 쓰기 권한·정책 없음). 모두 `security definer`, `authenticated`만 실행한다.
+웹은 템플릿 테이블을 직접 쓰지 않고 아래 RPC만 부른다(테이블 쓰기 권한·정책 없음). 모두 `security definer`, `authenticated`·`service_role`만 실행한다(`anon`·`public` 회수).
 
 ```
 컬럼      task_templates: archived_at timestamptz(보관), assigned_to uuid → profiles(한 사람용), created_by uuid, is_seed bool
