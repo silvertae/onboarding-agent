@@ -22,7 +22,7 @@ Cloud Run 공통(`scripts/deploy-agent.sh`): 리전 `asia-northeast3`, 메모리
 
 | 파일 | 하는 일 |
 |---|---|
-| `.github/workflows/ci.yml` | PR: 웹 테스트·빌드 / 배포 스크립트 검사 / 로컬 Supabase로 pgTAP·에이전트 pytest / 스테이징 설정 웹 빌드(인증 없음) → 미리보기 채널(`pr-<번호>`, 7일)에 배포하고 PR에 주소 댓글 |
+| `.github/workflows/ci.yml` | PR: 웹 테스트·빌드 / 배포 스크립트 검사 / 로컬 Supabase로 pgTAP·에이전트 pytest / 스테이징 설정 웹 빌드(인증 없음) → 미리보기 채널(`pr-<번호>`, 7일)에 배포하고 PR에 주소 댓글. 문서만 바뀐 PR(`docs/` 아래, `.github/` 밖의 `*.md`)은 "변경 범위" 작업(`scripts/ci-changes.sh`)이 판정해 다섯 검사를 건너뛴다. 건너뛴 필수 체크는 통과로 친다 |
 | `.github/workflows/deploy-staging.yml` | `main` 푸시: 설정 확인 → DB 마이그레이션 → 계정 부트스트랩 → 에이전트 → 웹 → `smoke.sh` |
 | `.github/workflows/deploy-prod.yml` | `v*` 태그: 태그 커밋이 `main`에 있는지 확인한 뒤 위와 같은 순서를 운영 대상으로 |
 | `.github/workflows/keepalive.yml` | 하루 세 번(한국 09:17·17:17·01:17) 스테이징·운영 Supabase에 신입 로그인·과제 조회를 보내 무료 플랜 일시 정지를 막는다. 실패하면 알림. Actions에서 수동 실행도 가능 |
