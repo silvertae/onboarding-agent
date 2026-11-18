@@ -7,6 +7,7 @@ import { FilterChips } from '@/components/FilterChips'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
 import { PageHeader } from '@/components/PageHeader'
+import { ROW_SELECTED } from '@/components/tableRow'
 import { Alert } from '@/components/ui/alert'
 import { OWNER_LABEL, ROLE_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/utils'
@@ -148,7 +149,7 @@ export function UsersPage() {
                   {visible.map((u) => {
                     const isNew = createdIds.includes(u.id)
                     return (
-                      <tr key={u.id} className={cn('border-b border-border last:border-b-0', isNew && 'bg-accent')}>
+                      <tr key={u.id} className={cn('border-b border-border last:border-b-0', isNew && ROW_SELECTED)}>
                         <td className="px-4 py-3 font-semibold">
                           {u.full_name}
                           {isNew && (

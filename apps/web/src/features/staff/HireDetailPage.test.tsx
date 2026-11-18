@@ -212,4 +212,13 @@ describe('HireDetailPage (S6)', () => {
     )
     expect(screen.getByText('신입을 찾을 수 없어요')).toBeInTheDocument()
   })
+
+  it('처리 중인 행은 배경을 칸(td)에 칠한다(tr 배경의 세로줄 방지)', async () => {
+    const user = userEvent.setup()
+    renderPage([review, btp])
+    const row = screen.getByRole('row', { name: /코드 리뷰 실습/ })
+    await user.click(within(row).getByRole('button', { name: '처리' }))
+    expect(row).toHaveClass('[&>td]:bg-accent')
+    expect(row).not.toHaveClass('bg-accent')
+  })
 })

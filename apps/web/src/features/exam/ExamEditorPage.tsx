@@ -294,19 +294,25 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
 
   return (
     <main className={PAGE}>
-      <div className="flex flex-wrap items-center gap-3">
-        <BackLink />
-        <Input
-          aria-label="시험 제목"
-          disabled={busy}
-          value={title}
-          placeholder="시험 제목(비우면 주제로 저장)"
-          maxLength={200}
-          onChange={(e) => setTitle(e.target.value)}
-          className="h-10 max-w-md flex-1 border-transparent bg-transparent text-title font-semibold shadow-none hover:border-input md:text-title"
-        />
-        <Badge variant={status === 'final' ? 'done' : 'todo'}>{EXAM_STATUS_LABEL[status]}</Badge>
-        <div className="ml-auto flex flex-wrap gap-2">
+      {/* 왼쪽: 뒤로 가기 · 제목 · 상태 배지를 붙여 묶는다. 오른쪽: 인쇄 2 · 저장 · 확정 (시안 S7 머리) */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <BackLink />
+          <div className="flex min-w-0 items-center gap-2">
+            {/* 글자 길이만큼만 넓어진다(field-sizing, 최소 96·최대 576). 비어 있으면 placeholder 길이 */}
+            <Input
+              aria-label="시험 제목"
+              disabled={busy}
+              value={title}
+              placeholder="시험 제목(비우면 주제로 저장)"
+              maxLength={200}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-10 w-auto max-w-xl min-w-24 field-sizing-content border-transparent bg-transparent text-title font-semibold shadow-none hover:border-input md:text-title"
+            />
+            <Badge variant={status === 'final' ? 'done' : 'todo'}>{EXAM_STATUS_LABEL[status]}</Badge>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" disabled={empty || busy} onClick={() => void print('paper')}>
             <Printer />
             시험지 인쇄
