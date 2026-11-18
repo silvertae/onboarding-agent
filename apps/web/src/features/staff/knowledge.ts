@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useAuth, type Profile } from '@/app/AuthProvider'
+import { agentFetch } from '@/lib/agent'
 import type { Tables } from '@/lib/database.types'
 import { DbError, isAuthError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
@@ -12,6 +13,10 @@ export type KnowledgeDraft = { id?: string; question: string; answer: string; ca
 
 const KNOWLEDGE_KEY = ['knowledge'] as const
 const UNANSWERED_KEY = ['unanswered'] as const
+const SOURCES_KEY = ['knowledge-sources'] as const
+
+export type DraftClause = { id: string; document_title: string; label: string; heading: string }
+export type KnowledgeSource = { clauseIds: string[]; origin: 'manual' | 'ai_draft' }
 
 // 관리 범위는 역할로 정해진다: 교육 담당자 = 우리 팀 지식, 경영지원 = 회사 공통 지식. 화면에서 고를 수 없다.
 export function manageScope(profile: Profile | null) {
@@ -38,6 +43,49 @@ export function useKnowledge(): UseQueryResult<KnowledgeItem[]> {
       const { data, error, status } = await query.order('updated_at', { ascending: false })
       if (error) fail(error, status)
       return data
+    },
+  })
+}
+
+// 규정 조항에서 답 초안을 받는다. 근거가 없으면 null.
+export async function draftAnswer(question: string): Promise<{ answer: string; category: string; clauses: DraftClause[] } | null> {
+  const res = await agentFetch('/knowledge/draft-answer', { question })
+  const body = (await res.json()) as {
+    found: boolean
+    draft?: { answer: string; category: string; clauses: DraftClause[] }
+  }
+  if (!body.found || !body.draft) return null
+  const { answer, category, clauses } = body.draft
+  return { answer, category, clauses }
+}
+
+type SourceRow = {
+  document_clauses: { id: string; label: string | null; heading: string | null; policy_documents: { title: string } | null } | null
+}
+
+// 지식의 근거 조항. 읽을 수 없는 조항은 RLS가 걸러 목록에서 빠진다.
+export function useKnowledgeSources(knowledgeId: string | null): UseQueryResult<DraftClause[]> {
+  return useQuery({
+    queryKey: [...SOURCES_KEY, knowledgeId],
+    enabled: Boolean(knowledgeId),
+    queryFn: async () => {
+      const { data, error, status } = await supabase
+        .from('knowledge_sources')
+        .select('clause_id, document_clauses(id, label, heading, policy_documents(title))')
+        .eq('knowledge_id', knowledgeId!)
+      if (error) fail(error, status)
+      return (data as unknown as SourceRow[]).flatMap((row) =>
+        row.document_clauses
+          ? [
+              {
+                id: row.document_clauses.id,
+                document_title: row.document_clauses.policy_documents?.title ?? '',
+                label: row.document_clauses.label ?? '',
+                heading: row.document_clauses.heading ?? '',
+              },
+            ]
+          : [],
+      )
     },
   })
 }
@@ -108,6 +156,7 @@ export function useKnowledgeActions() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: KNOWLEDGE_KEY }),
       queryClient.invalidateQueries({ queryKey: UNANSWERED_KEY }),
+      queryClient.invalidateQueries({ queryKey: SOURCES_KEY }),
     ])
   }
 
@@ -127,15 +176,11 @@ export function useKnowledgeActions() {
     },
     setStatus: (id: string, status: KnowledgeStatus) =>
       run(supabase.from('knowledge_items').update({ status }).eq('id', id)),
-    // 미답변 → 게시 지식. 범위는 서버가 호출자 역할로 정한다.
-    resolve: (unansweredId: string, v: { question: string; answer: string; category: string }) =>
-      run(
-        supabase.rpc('resolve_unanswered', {
-          p_id: unansweredId,
-          p_question: v.question.trim(),
-          p_answer: v.answer.trim(),
-          p_category: v.category.trim(),
-        }),
-      ),
+    // 미답변 → 게시 지식. 범위는 서버가 호출자 역할로 정한다. source가 있으면 근거 조항과 출처를 함께 저장한다(RPC는 지식 id만 돌려준다).
+    resolve: (unansweredId: string, v: { question: string; answer: string; category: string }, source?: KnowledgeSource) => {
+      const base = { p_id: unansweredId, p_question: v.question.trim(), p_answer: v.answer.trim(), p_category: v.category.trim() }
+      if (!source) return run(supabase.rpc('resolve_unanswered', base))
+      return run(supabase.rpc('resolve_unanswered_with_sources', { ...base, p_clause_ids: source.clauseIds, p_origin: source.origin }))
+    },
   }
 }
