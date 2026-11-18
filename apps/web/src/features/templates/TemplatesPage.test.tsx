@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
@@ -66,6 +67,14 @@ vi.mock('./templates', async (importOriginal) => {
     useTemplateActions: () => actions,
   }
 })
+// 서식 영역(TemplateFilesPanel): 목록 훅만 목으로 바꾼다. 화면 동작은 TemplateFilesPanel.test가 본다.
+vi.mock('@/lib/taskFiles', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/taskFiles')>()),
+  useTemplateFiles: () => ({ data: [], isLoading: false, isPending: false, isError: false, isFetching: false, refetch: vi.fn() }),
+  uploadTaskFile: vi.fn(),
+  deleteTaskFile: vi.fn(),
+  downloadTaskFile: vi.fn(),
+}))
 
 import { STAGE_START_DAYS } from './stage'
 import { TemplatesPage } from './TemplatesPage'
@@ -129,19 +138,21 @@ function renderPage({
   state.usage = usage
   state.status = status
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path="/tasks"
-          element={
-            <>
-              <TemplatesPage />
-              <LocationProbe />
-            </>
-          }
-        />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/tasks"
+            element={
+              <>
+                <TemplatesPage />
+                <LocationProbe />
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -158,6 +169,7 @@ function deferred<T>() {
 const list = () => screen.getByRole('region', { name: 'AI팀 온보딩 과제' })
 const panel = (name: string) => screen.getByRole('region', { name })
 const saveButton = () => screen.getByRole('button', { name: '저장' })
+const filesArea = (edit: HTMLElement) => within(edit).getByRole('region', { name: '서식' })
 
 beforeEach(() => {
   Object.values(actions).forEach((fn) => fn.mockReset())
@@ -605,5 +617,51 @@ describe('TemplatesPage 보관·다시 사용', () => {
     await user.click(within(edit).getByRole('button', { name: '다시 사용' }))
     expect(actions.restore).toHaveBeenCalledWith('id-AI-07')
     expect(await screen.findByText('다시 사용해요. 이후 온보딩을 시작하는 신입부터 들어가요.')).toBeInTheDocument()
+  })
+})
+
+describe('TemplatesPage 서식 영역', () => {
+  it('사용 중(잠금) 과제를 골라도 서식 업로드 영역은 쓸 수 있다', () => {
+    renderPage({ path: '/tasks?template=AI-09' })
+    const edit = panel('BTP 개발 초기 세팅')
+    expect(within(edit).getByText(/신입 2명이 진행 중이라/)).toBeInTheDocument()
+    const files = filesArea(edit)
+    expect(within(files).getByText('올린 서식은 이 과제를 받은 신입 모두에게 보여요.')).toBeInTheDocument()
+    expect(within(files).getByRole('button', { name: '파일 선택' })).toBeEnabled()
+  })
+
+  it('"과제 추가" 직후에는 저장 전 안내만 있고 업로드 영역이 없다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('button', { name: '과제 추가' }))
+    const files = filesArea(panel('과제 추가'))
+    expect(within(files).getByText('과제를 저장하면 서식을 올릴 수 있어요.')).toBeInTheDocument()
+    expect(within(files).queryByRole('button', { name: '파일 선택' })).not.toBeInTheDocument()
+  })
+
+  it('새 과제를 저장하면 그 과제 패널에 업로드 영역이 나타난다', async () => {
+    const user = userEvent.setup()
+    const created = ai('AI-13', '사내 위키 정리', 'day1', { kind: 'ops' })
+    actions.save.mockImplementation(async () => {
+      state.active = [...state.active, created]
+      return created
+    })
+    renderPage()
+    await user.click(screen.getByRole('button', { name: '과제 추가' }))
+    await user.type(screen.getByLabelText('제목'), '사내 위키 정리')
+    await user.click(saveButton())
+
+    const files = filesArea(await screen.findByRole('region', { name: '사내 위키 정리' }))
+    expect(within(files).queryByText('과제를 저장하면 서식을 올릴 수 있어요.')).not.toBeInTheDocument()
+    expect(within(files).getByRole('button', { name: '파일 선택' })).toBeEnabled()
+  })
+
+  it('보관 보기에서는 서식 업로드 영역 대신 보관 안내', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(screen.getByRole('radio', { name: '보관' }))
+    const files = filesArea(panel('프린터 사용'))
+    expect(within(files).getByText('보관한 과제에는 서식을 올릴 수 없어요.')).toBeInTheDocument()
+    expect(within(files).queryByRole('button', { name: '파일 선택' })).not.toBeInTheDocument()
   })
 })

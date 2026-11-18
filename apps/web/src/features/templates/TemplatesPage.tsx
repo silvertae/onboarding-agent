@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TemplateFilesPanel } from '@/features/forms/TemplateFilesPanel'
 import { useTeamName } from '@/features/newhire/useTeamName'
 import { EmptyState, ErrorText } from '@/features/staff/ui'
 import { useGuardedAction } from '@/features/staff/useGuardedAction'
@@ -278,6 +279,7 @@ export function TemplatesPage() {
             onSaved={onSaved}
             onArchived={() => onMoved(ARCHIVED)}
             onRestored={() => onMoved(RESTORED)}
+            filesSlot={<TemplateFilesPanel template={selected} archived={view === 'archived'} />}
           />
         )}
       </div>
@@ -320,7 +322,7 @@ type PanelProps = {
   onSaved: (template: TaskTemplate, created: boolean) => void
   onArchived: () => void
   onRestored: () => void
-  // 편집 칸 아래 서식 영역 자리(과제 서식 기능이 채운다)
+  // 편집 칸·동작 줄 아래 서식 영역(TemplateFilesPanel). 저장과 따로 바로 올라간다
   filesSlot?: ReactNode
 }
 
