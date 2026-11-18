@@ -112,9 +112,11 @@
   - 머리 오른쪽에는 남은 일 요약("할 일 N · 보완 요청 N · 확인 대기 N")을 둔다. 접혀 있어도 남은 일이 보이게 하려는 것이다.
   - 계산은 `features/newhire/stages.ts`에 있다.
 
-## 모션 (P1-6에서 적용)
+## 모션
 
-- UI 전환은 150ms, `cubic-bezier(0.23,1,0.32,1)`를 쓴다.
-- 누를 때 `scale(0.97)`이다.
-- `transform`과 `opacity`만 애니메이션한다.
-- `prefers-reduced-motion`을 존중한다.
+- **시간·곡선:** UI 전환은 `duration-150`과 `ease-out-ui`(`cubic-bezier(0.23,1,0.32,1)`, `index.css` `@theme`)를 쓴다. 시안은 같은 값을 `.15s cubic-bezier(.23,1,.32,1)`로 쓴다.
+- **전환할 속성은 이름으로 적는다:** `transition-all`은 쓰지 않는다. 버튼은 `transition-[background-color,border-color,color,box-shadow,scale]`, 배지는 `transition-[background-color,border-color,color,box-shadow]`, 회전·이동은 `transition-transform`이다. Tailwind v4의 `scale-*`·`rotate-*`·`translate-*`는 `transform`이 아니라 개별 속성(`scale` 등)을 바꾸므로, 직접 속성을 적을 때는 그 이름(`scale`)을 넣는다.
+- **누름:** 버튼은 누르는 동안 `active:scale-[0.97]`로 줄어든다. 메뉴를 여는 버튼(`aria-haspopup`)은 줄이지 않는다.
+- **레이아웃 속성은 애니메이션하지 않는다:** width·height·top·left 대신 transform과 opacity만 움직인다. 진행 막대(`components/ProgressBar.tsx`)는 꽉 찬 채움을 `translateX(-남은%)`로 밀어 바탕 밖으로 숨긴다. `scaleX`는 끝의 둥근 모서리까지 눌리므로 쓰지 않는다.
+- **동작 줄이기:** 움직임이 있는 전환에는 `motion-reduce:transition-none`을 붙인다. 버튼은 `motion-reduce:active:scale-100`으로 누름 축소도 끈다. 로딩 표시의 `animate-pulse`(투명도만 바뀜)는 그대로 둔다.
+- **진행 막대:** 이름과 값은 `ProgressBar`의 `label`·`value`·`max`가 `role="progressbar"`에 그대로 붙는다. 신입 홈은 0~100(%), 팀 신입 현황은 끝난 과제 수/전체, 체크리스트는 체크 수/항목 수다. 높이는 기본 8px, 카드 안 체크리스트는 `size="sm"`(6px)이다.

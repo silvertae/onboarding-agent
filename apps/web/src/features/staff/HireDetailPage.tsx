@@ -2,6 +2,7 @@ import { ArrowLeft, FilePlus2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
+import { ProgressBar } from '@/components/ProgressBar'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,7 +38,6 @@ function ChecklistCard({ task }: { task: TaskView }) {
   const checkedList = isRecord(task.result) && Array.isArray(task.result.checked) ? task.result.checked.map(String) : []
   const checked = new Set(task.status === 'done' && checkedList.length === 0 ? items : checkedList)
   const count = items.filter((i) => checked.has(i)).length
-  const percent = items.length ? Math.round((count / items.length) * 100) : 0
 
   return (
     <Panel aria-label="BTP 세팅 체크리스트">
@@ -48,9 +48,7 @@ function ChecklistCard({ task }: { task: TaskView }) {
         </b>
       </div>
       <div className="px-6 py-5">
-        <div className="h-1.5 overflow-hidden rounded-full bg-track">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
-        </div>
+        <ProgressBar label="체크리스트 진행률" value={count} max={items.length} size="sm" />
         <ul className="mt-4 flex flex-col gap-2.5 text-sm">
           {items.map((item) => (
             <li key={item} className="flex items-center justify-between">

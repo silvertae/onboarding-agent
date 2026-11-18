@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+import { Badge } from './badge'
 import { Button } from './button'
 import { Checkbox } from './checkbox'
 import { Input } from './input'
@@ -62,5 +63,30 @@ describe('폼 컨트롤 크기', () => {
   it('비활성 주 버튼은 흐린 파랑이 아니라 회색이다(시안 .btn[disabled])', () => {
     render(<Button disabled>완료</Button>)
     expect(screen.getByRole('button', { name: '완료' })).toHaveClass('disabled:bg-track', 'disabled:text-disabled-foreground')
+  })
+})
+
+// system.md "모션": 이름 붙인 속성만 150ms 커스텀 ease-out으로 바꾸고, 누르면 0.97로 줄어든다.
+describe('모션', () => {
+  it('Button은 transition-all 대신 이름 붙인 속성만 전환하고 누르면 scale 0.97', () => {
+    render(<Button>저장</Button>)
+    const button = screen.getByRole('button', { name: '저장' })
+    expect(button.className).not.toMatch(/\btransition-all\b/)
+    expect(button.className).not.toContain('translate-y-px')
+    expect(button).toHaveClass(
+      'transition-[background-color,border-color,color,box-shadow,scale]',
+      'duration-150',
+      'ease-out-ui',
+      'active:not-aria-[haspopup]:scale-[0.97]',
+      'motion-reduce:transition-none',
+      'motion-reduce:active:not-aria-[haspopup]:scale-100',
+    )
+  })
+
+  it('Badge도 transition-all을 쓰지 않는다', () => {
+    render(<Badge variant="todo">할 일</Badge>)
+    const badge = screen.getByText('할 일')
+    expect(badge.className).not.toMatch(/\btransition-all\b/)
+    expect(badge).toHaveClass('duration-150', 'ease-out-ui', 'motion-reduce:transition-none')
   })
 })
