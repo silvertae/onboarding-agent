@@ -63,14 +63,54 @@ POST /admin/users     {email, password(8자 이상), full_name, job_title,
           id uuid, org_id uuid, template_id uuid → task_templates, file_name text(원본 이름),
           storage_path text unique, size_bytes int, uploaded_by uuid → profiles, is_seed bool, created_at
           unique (template_id, file_name)
-권한      조회·내려받기: 같은 조직이고 그 템플릿을 볼 수 있는 사용자
+권한      조회·내려받기: 같은 조직이고 그 템플릿을 볼 수 있는 사용자 (서식 공개 범위는 템플릿 조회 범위를 따른다.
+                         기본 과제 템플릿은 같은 조직 전원, 한 사람용 템플릿은 그 신입·담당자·같은 조직 admin)
           올리기: 그 템플릿의 담당자(private.is_handler — 같은 부서 ops_staff, 같은 팀 team_trainer), 보관되지 않은 템플릿
           지우기: 담당자(기본 서식 제외), 같은 조직 admin(데모 초기화, 기본 서식 제외)
           update 없음. 교체는 지우고 다시 올린다
 올리기    1) 형식·크기 확인 2) storage upload(contentType을 확장자로 명시) 3) 테이블 insert, 실패하면 올린 객체 remove
 지우기    1) 테이블 delete 2) storage remove
 내려받기  createSignedUrl(storage_path, 60, { download: file_name })
+초기화    웹(admin)이 기본 서식이 아닌 객체를 Storage API로 먼저 지운 뒤 reset_demo를 부른다.
+          reset_demo는 기본 서식이 아닌 서식 행을 지운다(Storage 객체는 SQL로 지우지 못한다). 기본 서식 3개는 남는다
+기본 서식  supabase/seed-forms/{과제 코드}/ 의 가상 파일 3개: AC-01 "법인카드 신청서.xlsx"·"법인카드 사용 동의서.docx",
+          HR-08 "소득세 감면 신청서.pdf". 배포의 "기본 서식 부트스트랩"(services/agent/scripts/bootstrap_forms.py)이 올리고
+          is_seed = true로 등록한다. 객체 경로가 고정이라 다시 실행해도 같은 객체를 덮어쓴다
 ```
+
+## 과제 템플릿 관리 (Leo 승인, 2026-11-18)
+
+설계: `docs/superpowers/specs/2026-11-18-onboarding-plan-design.md`. 마이그레이션 `0009`(컬럼·조회 정책·잠금)·`0010`(RPC)·`0011`(서식·`reset_demo`).
+웹은 템플릿 테이블을 직접 쓰지 않고 아래 RPC만 부른다(테이블 쓰기 권한·정책 없음). 모두 `security definer`, `authenticated`만 실행한다.
+
+```
+컬럼      task_templates: archived_at timestamptz(보관), assigned_to uuid → profiles(한 사람용), created_by uuid, is_seed bool
+          teams.task_code_prefix text (AI팀 'AI')
+RPC       save_task_template(p_id uuid|null, p_title, p_description, p_kind, p_completion_mode, p_stage,
+                             p_days_in_stage int, p_allow_na bool, p_checklist jsonb, p_prerequisite_codes text[]) → task_templates
+            p_id가 null이면 새로 만든다(교육 담당자는 자기 팀, 경영지원은 자기 부서 담당). 코드는 "<접두어>-<번호>"(AI-11, HR-09 …)
+          archive_task_template(p_id) → task_templates      보관. 새 신입에게 들어가지 않는다. 진행 중인 신입의 과제는 그대로
+          restore_task_template(p_id) → task_templates      보관 해제
+          add_task_for_hire(p_new_hire uuid, p_title, p_description, p_kind, p_completion_mode, p_stage,
+                            p_days_in_stage int, p_allow_na bool, p_checklist jsonb) → task_instances
+            그 신입만 쓰는 숨은 템플릿(assigned_to)과 인스턴스(todo)를 만든다. 코드 "<접두어>-P<번호>", 선행 없음.
+            기한 = 입사일 + 단계 시작일 + N일, 오늘(Asia/Seoul)보다 이르면 오늘
+          mark_na(p_id, p_reason)                           한 사람용 과제는 담당자가 allow_na와 상관없이 해당 없음으로 뺄 수 있다(사유 필수)
+          reset_demo()                                      admin만. 시드 템플릿은 시드 사본으로 되돌리고, 시드가 아닌 템플릿은 보관한다
+입력 값   단계 시작일 day1 0일·week1 5일·month1 30일, "단계 시작 후 N일" 0~60 (due_offset_days = 시작일 + N)
+          제목 1~60자, 안내문 0~2000자, 체크리스트(setup만) 1~20개·항목 1~60자, 선행 과제 0~3개
+오류      42501 범위 밖(권한·담당 범위 밖, 한 사람용 과제 수정) / 22023 검증·잠금 / P0002 없음
+조회      task_templates: 같은 조직. 한 사람용(assigned_to)은 그 신입·같은 팀 교육 담당자·같은 부서 경영지원·admin만
+```
+
+규칙:
+
+- 사용 중(인스턴스가 하나라도 있는) 템플릿은 제목·안내문만 바뀐다. 종류·완료 방식·단계·기한·해당 없음 허용·체크리스트·선행이 달라지면 `22023`("진행 중인 신입이 있어 제목·안내문만 고칠 수 있습니다"). 서식은 사용 중 잠금과 관계없이 올리고 지운다.
+- 입력 양식(`input`) 과제는 새로 만들 수 없고, 평가(`assessment`) 과제는 교육 담당자만 만들며 완료 방식은 담당자 처리여야 한다. 체크리스트는 `setup` 종류에만 넣는다.
+- 선행 과제는 같은 담당 범위의 보관되지 않은 기본 과제만 고를 수 있고, 자기 자신·순환은 거부한다. 이미 걸려 있던 선행은 보관된 뒤에도 그대로 둘 수 있다.
+- 보관된 템플릿은 수정할 수 없다(먼저 복원). 한 사람용 과제는 수정·보관·복원하지 않고 해당 없음으로만 뺀다.
+- 온보딩 시작(`_start_onboarding`)은 보관·한 사람용 템플릿을 건너뛴다. 이미 시작한 신입(기본 과제 인스턴스가 있는 신입)에게 다시 불러도 0을 돌려주고 아무것도 더하지 않는다(배포마다 부트스트랩이 다시 불러도 안전하다).
+- `reset_demo`: 시드 템플릿의 편집 칸을 시드 사본으로 되돌리고 보관을 풀며, 시드가 아닌 템플릿(한 사람용 포함)은 지우지 않고 보관한다. 기본 서식이 아닌 서식 행을 지우고, 시드 신입의 과제를 다시 만든다. 호출 순서는 서식 객체 삭제 → `reset_demo`.
 
 ## 규정 문서 저장소 (Leo 승인, 2026-11-18)
 
