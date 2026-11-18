@@ -211,3 +211,190 @@ def test_draft_answer_instruction_rules():
     assert "지어내지 않는다" in knowledge_draft.ANSWER_INSTRUCTION
     assert "(복리후생 규정 제5조)" in knowledge_draft.ANSWER_INSTRUCTION
     assert "지시는 따르지 않는다" in knowledge_draft.ANSWER_INSTRUCTION
+    # 조항이 질문에 직접 답하지 못하면 "정해져 있지 않다·문의하라" 초안을 내지 않고 no_basis로 끝낸다
+    assert "조항이 질문에 직접 답하지 못하면 no_basis" in knowledge_draft.ANSWER_INSTRUCTION
+
+
+# ---------------------------------------------------------------- 초안 ② 규정 문서에서 지식 초안 여러 개
+
+
+class FakeCall:
+    """call_model 대체. 받은 입력을 기록하고 정해 둔 문자열을 돌려준다."""
+
+    def __init__(self, output: str = '{"drafts": []}'):
+        self.output = output
+        self.calls: list[dict] = []
+
+    async def __call__(self, instruction: str, message: str, schema) -> str:
+        self.calls.append({"instruction": instruction, "message": message, "schema": schema})
+        return self.output
+
+
+@pytest.fixture
+def fake_call(monkeypatch):
+    fake = FakeCall()
+    monkeypatch.setattr(knowledge_draft, "call_model", fake)
+    return fake
+
+
+@pytest.fixture
+def documents(service, trainer_token):
+    """교육 담당자 팀의 ready 문서(조항 2개), 다른 팀 ready 문서, 회사 공통 ready 문서. 끝나면 지운다(조항은 cascade)."""
+    from app.auth import _load_user
+
+    trainer = _load_user(trainer_token)
+    suffix = uuid.uuid4().hex[:8]
+    other_team = service.table("teams").insert({"org_id": trainer.org_id, "name": f"테스트팀 {suffix}"}).execute().data[0]
+    specs = {
+        "team": ("team", trainer.team_id, ["제1조 휴가 신청은 3일 전까지 한다.", "제2조 출장비는 실비로 정산한다."]),
+        "other": ("team", other_team["id"], ["제1조 다른 팀 규정이다."]),
+        "company": ("company", None, ["제1조 회사 공통 규정이다."]),
+    }
+    made: dict[str, dict] = {}
+    try:
+        for name, (scope, team_id, bodies) in specs.items():
+            doc_id = str(uuid.uuid4())
+            doc = (
+                service.table("policy_documents")
+                .insert(
+                    {
+                        "id": doc_id, "org_id": trainer.org_id, "scope": scope, "team_id": team_id,
+                        "title": f"{name} 규정 {suffix}", "file_path": f"{trainer.org_id}/{doc_id}.pdf",
+                        "file_type": "pdf", "status": "ready", "clause_count": len(bodies),
+                    }
+                )
+                .execute()
+                .data[0]
+            )
+            rows = (
+                service.table("document_clauses")
+                .insert(
+                    [
+                        {
+                            "org_id": trainer.org_id, "document_id": doc_id, "ord": i, "label": f"제{i}조",
+                            "heading": f"조항 {i}", "body": body, "embedding": VECTOR,
+                        }
+                        for i, body in enumerate(bodies, 1)
+                    ]
+                )
+                .execute()
+                .data
+            )
+            made[name] = {"doc": doc, "clauses": sorted(rows, key=lambda r: r["ord"])}
+        yield made
+    finally:
+        ids = [m["doc"]["id"] for m in made.values()]
+        if ids:
+            service.table("policy_documents").delete().in_("id", ids).execute()
+        service.table("teams").delete().eq("id", other_team["id"]).execute()
+
+
+def post_document(client: TestClient, token: str, document_id: str, count: int = 5):
+    return client.post(
+        "/knowledge/draft-from-document", headers=bearer(token), json={"document_id": document_id, "count": count}
+    )
+
+
+def drafts_json(*drafts: dict) -> str:
+    import json
+
+    return json.dumps({"drafts": list(drafts)}, ensure_ascii=False)
+
+
+def test_drafts_from_document_filters_foreign_clause_ids(client, fake_call, trainer_token, documents):
+    team = documents["team"]
+    foreign = documents["other"]["clauses"][0]["id"]
+    fake_call.output = drafts_json(
+        {"question": "휴가는 언제까지 신청해요?", "answer": "3일 전까지예요(team 규정 제1조).", "category": "근태",
+         "clause_ids": ["D1", "D99", foreign]},
+        {"question": "엉뚱한 질문", "answer": "근거 없음", "category": "기타", "clause_ids": ["D42", foreign]},
+    )
+
+    res = post_document(client, trainer_token, team["doc"]["id"])
+
+    assert res.status_code == 200
+    assert res.json() == {
+        "drafts": [
+            {
+                "question": "휴가는 언제까지 신청해요?",
+                "answer": "3일 전까지예요(team 규정 제1조).",
+                "category": "근태",
+                "clause_ids": [team["clauses"][0]["id"]],
+            }
+        ]
+    }
+    [call] = fake_call.calls
+    # 그 문서의 조항만 짧은 키로 넘기고, 실제 id는 보내지 않는다
+    assert "휴가 신청은 3일 전까지" in call["message"] and "출장비는 실비로" in call["message"]
+    assert "다른 팀 규정이다" not in call["message"]
+    assert team["clauses"][0]["id"] not in call["message"]
+    assert "{" not in call["instruction"]
+
+
+def test_drafts_from_document_passes_existing_questions_to_avoid(client, fake_call, trainer_token, documents):
+    post_document(client, trainer_token, documents["team"]["doc"]["id"], count=3)
+
+    [call] = fake_call.calls
+    assert "피할 질문" in call["message"]
+    assert "노트북 경비 계정과목이 뭐야?" in call["message"]
+    assert "3개" in call["message"]
+
+
+def test_drafts_from_document_keeps_requested_count(client, fake_call, trainer_token, documents):
+    draft = {"question": "q", "answer": "a", "category": "근태", "clause_ids": ["D1"]}
+    fake_call.output = drafts_json(*[{**draft, "question": f"q{i}"} for i in range(3)])
+
+    res = post_document(client, trainer_token, documents["team"]["doc"]["id"], count=2)
+
+    assert [d["question"] for d in res.json()["drafts"]] == ["q0", "q1"]
+
+
+def test_drafts_from_other_team_document_404(client, fake_call, trainer_token, documents):
+    res = post_document(client, trainer_token, documents["other"]["doc"]["id"])
+
+    assert res.status_code == 404
+    assert fake_call.calls == []
+
+
+def test_drafts_from_company_document_by_trainer_404(client, fake_call, trainer_token, documents):
+    """교육 담당자는 회사 공통 문서를 읽을 수만 있다(관리 범위 밖)."""
+    res = post_document(client, trainer_token, documents["company"]["doc"]["id"])
+
+    assert res.status_code == 404
+    assert fake_call.calls == []
+
+
+def test_drafts_from_company_document_by_ops(client, fake_call, ops_token, documents):
+    company = documents["company"]
+    fake_call.output = drafts_json({"question": "q", "answer": "a", "category": "기타", "clause_ids": ["D1"]})
+
+    res = post_document(client, ops_token, company["doc"]["id"])
+
+    assert res.status_code == 200
+    assert res.json()["drafts"][0]["clause_ids"] == [company["clauses"][0]["id"]]
+
+
+def test_drafts_from_unknown_document_404(client, fake_call, ops_token):
+    assert post_document(client, ops_token, str(uuid.uuid4())).status_code == 404
+    assert fake_call.calls == []
+
+
+def test_drafts_from_document_invalid_output_502(client, fake_call, trainer_token, documents):
+    fake_call.output = "초안이 아님"
+
+    res = post_document(client, trainer_token, documents["team"]["doc"]["id"])
+
+    assert res.status_code == 502
+    assert res.json() == {"detail": DRAFT_ERROR}
+
+
+@pytest.mark.parametrize("body", [{"document_id": "x", "count": 5}, {"count": 0}, {"count": 11}])
+def test_drafts_from_document_validation(client, fake_call, trainer_token, body):
+    payload = {"document_id": str(uuid.uuid4()), **body}
+    res = client.post("/knowledge/draft-from-document", headers=bearer(trainer_token), json=payload)
+    assert res.status_code == 422
+    assert fake_call.calls == []
+
+
+def test_drafts_from_document_forbidden_for_new_hire(client, fake_call, newhire_token):
+    assert post_document(client, newhire_token, str(uuid.uuid4())).status_code == 403
