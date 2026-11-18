@@ -1,5 +1,8 @@
 # PR 검사: 디자인 규칙·웹 테스트·빌드 → 로컬 Supabase에서 pgTAP·에이전트 pytest → 스테이징 설정 웹을 미리보기 채널에 배포.
 # 외부 PR 코드가 비밀값에 닿지 않도록 pull_request(pull_request_target 아님)만 쓴다.
+# 문서만 바뀐 PR(docs/ 아래, .github/ 밖의 *.md)은 무거운 검사 5개를 건너뛴다(scripts/ci-changes.sh).
+# 조건으로 건너뛴 작업은 필수 체크에서 통과로 친다. 워크플로 전체에 paths-ignore를 걸면 필수 체크가
+# 영원히 대기로 남아 머지가 막히므로 쓰지 않는다. 판정 작업이 실패하면 안전하게 모두 검사한다.
 name: ci
 
 on:
@@ -14,8 +17,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: 변경 범위
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci-changes.sh
+          sparse-checkout-cone-mode: false
+      - name: 바뀐 파일로 판정
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # 이름이 바뀐 파일은 옛 경로도 본다(코드 파일을 docs/로 옮긴 경우도 검사한다)
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate \
+            --jq '.[] | .filename, (.previous_filename // empty)' > files.txt
+          bash scripts/ci-changes.sh < files.txt | tee -a "$GITHUB_OUTPUT"
+
   web:
     name: 웹 테스트·빌드
+    needs: [changes]
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -34,6 +64,8 @@ jobs:
 
   scripts:
     name: 배포 스크립트 검사
+    needs: [changes]
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -49,11 +81,15 @@ jobs:
         run: bash scripts/tests/check_design_test.sh
       - name: push-shots.sh 업로드·실패 처리 (임시 로컬 원격)
         run: bash scripts/tests/push_shots_test.sh
+      - name: ci-changes.sh 문서 전용 판정
+        run: bash scripts/tests/ci_changes_test.sh
       - name: shellcheck
         run: shellcheck scripts/*.sh scripts/tests/*.sh scripts/design/*.sh
 
   backend:
     name: pgTAP·에이전트 테스트
+    needs: [changes]
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -81,8 +117,12 @@ jobs:
   preview-build:
     name: 미리보기 웹 빌드
     needs: [web, scripts, backend]
+    # 세 검사가 실제로 돌아 통과했을 때만(문서만 바뀌어 건너뛰었으면 미리보기도 건너뛴다).
     # 같은 저장소의 PR만(포크 PR에는 미리보기를 만들지 않는다)
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      ${{ !cancelled()
+      && needs.web.result == 'success' && needs.scripts.result == 'success' && needs.backend.result == 'success'
+      && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
