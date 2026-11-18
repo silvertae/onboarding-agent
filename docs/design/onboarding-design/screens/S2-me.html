@@ -34,27 +34,28 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       <div class="split-main">
         <section class="card card-pad" style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between">
           <div style="display: flex; flex-direction: column; gap: 6px">
-            <span class="caption">2026년 11월 17일 화요일 · 입사 4일째</span>
+            <span class="caption">2026년 11월 18일 수요일 · 입사 2일째</span>
             <h1>하늘 님, 첫 주를 보내고 있어요</h1>
-            <p class="secondary">오늘 할 일 3건, 보완 요청 1건이 있어요.</p>
+            <p class="secondary">지금 할 일 16건, 보완 요청 1건이 있어요.</p>
           </div>
           <div style="flex: 0 1 320px; min-width: 240px; display: flex; flex-direction: column; gap: 8px">
-            <div class="between"><b style="font-size: 13px">전체 진행률</b><span style="font-family: &quot;SF Pro Display&quot;, -apple-system, sans-serif; font-size: 22px; font-weight: 600">43%</span></div>
-            <div class="bar"><span style="width: 43%"></span></div>
-            <span class="caption">완료 5 + 해당 없음 1 / 전체 14</span>
+            <div class="between"><b style="font-size: 13px">전체 진행률</b><span style="font-family: var(--font-display); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums">10%</span></div>
+            <div class="bar"><span style="width: 10%"></span></div>
+            <span class="caption">완료 3 + 해당 없음 0 / 전체 31</span>
           </div>
         </section>
 
-        <section class="card" aria-labelledby="now">
+        <!-- 지금 할 일: 보완 요청 → 기한 이른 순. 5건만 보이고 나머지는 펼친다(todo·rework 조건은 그대로) -->
+        <section class="card" aria-labelledby="now" style="overflow: hidden">
           <div class="card-hd">
-            <div class="row"><h2 id="now" style="font-size: 18px">지금 할 일</h2><span class="count">4</span></div>
+            <div class="row"><h2 id="now" style="font-size: 18px">지금 할 일</h2><span class="count">16</span></div>
             <span class="caption row" style="gap: 6px"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--st-done-fg)"></span>담당자 처리 결과가 바로 반영돼요</span>
           </div>
-          <a class="task" href="S3-task-detail.html" style="background: var(--alert-err-bg); border-left: 0">
+          <a class="task" href="S3-task-detail.html" style="background: var(--alert-err-bg)">
             <svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--st-rework-fg)"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
             <div class="task-main">
-              <span class="task-title">명함 영문 이름 입력</span>
-              <span class="task-meta"><span class="own">총무팀</span><span>기한 11월 18일 (수)</span><span style="color: var(--st-rework-fg)">사유: 영문 성·이름 순서를 여권과 같게 맞춰 주세요</span></span>
+              <span class="task-title">명함 신청</span>
+              <span class="task-meta"><span class="own">총무팀</span><span>기한 11월 22일 (일)</span><span style="color: var(--st-rework-fg)">사유: 영문 성·이름 순서를 여권과 같게 맞춰 주세요</span></span>
             </div>
             <span class="st st-rework">보완 요청</span>
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--tertiary)"><path d="m9 18 6-6-6-6"></path></svg>
@@ -62,8 +63,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           <a class="task" href="#">
             <span style="width: 20px"></span>
             <div class="task-main">
-              <span class="task-title">BTP 개발 환경 세팅</span>
-              <span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 19일 (목)</span><span>체크리스트 2 / 4</span></span>
+              <span class="task-title">근태·결재 시스템 가입</span>
+              <span class="task-meta"><span class="own">인사팀</span><span>기한 11월 17일 (화) · <b class="over">지남</b></span></span>
             </div>
             <span class="st st-todo">할 일</span>
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--tertiary)"><path d="m9 18 6-6-6-6"></path></svg>
@@ -71,8 +72,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           <a class="task" href="#">
             <span style="width: 20px"></span>
             <div class="task-main">
-              <span class="task-title">법인카드·경비 처리 규정 읽기</span>
-              <span class="task-meta"><span class="own">회계팀</span><span>기한 11월 20일 (금)</span></span>
+              <span class="task-title">복리후생·위임결재 규정 열람</span>
+              <span class="task-meta"><span class="own">인사팀</span><span>기한 11월 17일 (화) · <b class="over">지남</b></span></span>
             </div>
             <span class="st st-todo">할 일</span>
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--tertiary)"><path d="m9 18 6-6-6-6"></path></svg>
@@ -80,44 +81,57 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           <a class="task" href="#">
             <span style="width: 20px"></span>
             <div class="task-main">
-              <span class="task-title">간단 코딩테스트</span>
-              <span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 20일 (금) 14:00 · 7층 소회의실</span></span>
+              <span class="task-title">사무실 돌며 인사하기</span>
+              <span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 17일 (화) · <b class="over">지남</b></span></span>
             </div>
             <span class="st st-todo">할 일</span>
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--tertiary)"><path d="m9 18 6-6-6-6"></path></svg>
           </a>
+          <a class="task" href="#">
+            <span style="width: 20px"></span>
+            <div class="task-main">
+              <span class="task-title">팀 업무·팀원 소개</span>
+              <span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 17일 (화) · <b class="over">지남</b></span></span>
+            </div>
+            <span class="st st-todo">할 일</span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--tertiary)"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+          <button class="more" type="button" aria-expanded="false">나머지 11건 보기<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
         </section>
 
-        <section class="card" aria-labelledby="all">
+        <!-- 전체 과제: 단계 머리를 눌러 접고 편다. 처음에는 날짜상 진행 중인 단계만 펼친다 -->
+        <section class="card" aria-labelledby="all" style="overflow: hidden">
           <div class="card-hd">
             <h2 id="all" style="font-size: 18px">전체 과제</h2>
             <div class="row" role="group" aria-label="담당 필터" style="gap: 8px">
-              <button class="chip on" type="button">전체</button>
-              <button class="chip" type="button">경영지원</button>
-              <button class="chip" type="button">AI팀</button>
+              <button class="chip on" type="button" aria-pressed="true">전체</button>
+              <button class="chip" type="button" aria-pressed="false">경영지원</button>
+              <button class="chip" type="button" aria-pressed="false">AI팀</button>
             </div>
           </div>
 
-          <div class="stage"><h3>입사일</h3><span class="caption">11월 14일 · 5개 중 4개 완료</span></div>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">근로계약서 제출</span><span class="task-meta"><span class="own">인사팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">사원증 사진 제출</span><span class="task-meta"><span class="own">총무팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">지문 등록</span><span class="task-meta"><span class="own">총무팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">노트북 수령 및 초기 설정</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 14일</span></span></div><span class="st st-done">완료</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">복지포인트 등록</span><span class="task-meta"><span class="own">인사팀</span><span>11월 18일</span></span></div><span class="st st-todo">담당자 처리 예정</span></a>
-
-          <div class="stage"><h3>첫 주</h3><span class="caption">11월 17일 ~ 21일 · 6개 중 2개 완료</span></div>
-          <a class="task" href="S3-task-detail.html"><div class="task-main"><span class="task-title">명함 영문 이름 입력</span><span class="task-meta"><span class="own">총무팀</span><span>기한 11월 18일</span></span></div><span class="st st-rework">보완 요청</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">기술스택·경력 조사</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 17일 10:12 제출</span></span></div><span class="st st-submitted">확인 대기</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">BTP 개발 환경 세팅</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 19일</span></span></div><span class="st st-todo">할 일</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">법인카드·경비 처리 규정 읽기</span><span class="task-meta"><span class="own">회계팀</span><span>기한 11월 20일</span></span></div><span class="st st-todo">할 일</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">팀 소개·코드 컨벤션 읽기</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 17일</span></span></div><span class="st st-done">완료</span></a>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">본사 출입 등록</span><span class="task-meta"><span class="own">총무팀</span><span>사유: 판교 사무소 근무</span></span></div><span class="st st-na">해당 없음</span></a>
-
-          <div class="stage"><h3>첫 달</h3><span class="caption">~ 12월 12일 · 4개 중 0개 완료</span></div>
-          <a class="task" href="#"><div class="task-main"><span class="task-title">간단 코딩테스트</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 20일 14:00</span></span></div><span class="st st-todo">할 일</span></a>
-          <a class="task locked" href="#"><div class="task-main"><span class="task-title">SAPUI5 실습 과제</span><span class="task-meta"><span class="own own-ai">AI팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>BTP 개발 환경 세팅 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
-          <a class="task locked" href="#"><div class="task-main"><span class="task-title">JS 기본기 테스트</span><span class="task-meta"><span class="own own-ai">AI팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>SAPUI5 실습 과제 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
-          <a class="task locked" href="#"><div class="task-main"><span class="task-title">수습 중간 면담</span><span class="task-meta"><span class="own">인사팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>JS 기본기 테스트 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+          <button class="stage stage-btn" type="button" aria-expanded="false"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg><h3>입사일</h3><span class="caption">11월 17일 · 8개 중 3개 완료</span><span class="sum">할 일 4 · 확인 대기 1</span></button>
+          <button class="stage stage-btn" type="button" aria-expanded="true"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg><h3>첫 주</h3><span class="caption">11월 22일 · 19개 중 0개 완료</span><span class="sum">할 일 10 · 보완 요청 1</span></button>
+          <a class="task locked" href="#"><div class="task-main"><span class="task-title">인사정보 업데이트</span><span class="task-meta"><span class="own">인사팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>근태·결재 시스템 가입 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+          <a class="task locked" href="#"><div class="task-main"><span class="task-title">근태 앱 설치와 기본 사용</span><span class="task-meta"><span class="own">인사팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>근태·결재 시스템 가입 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+          <a class="task locked" href="#"><div class="task-main"><span class="task-title">근로·연봉계약서 체결</span><span class="task-meta"><span class="own">인사팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>근태·결재 시스템 가입 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">피부양자 등록</span><span class="task-meta"><span class="own">인사팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">소득세 감면 신청</span><span class="task-meta"><span class="own">인사팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">경비 설정·마지막 퇴근 교육</span><span class="task-meta"><span class="own">총무팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">복지포인트 등록</span><span class="task-meta"><span class="own">인사팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">담당자 처리 예정</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">생일 포인트 등록</span><span class="task-meta"><span class="own">인사팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">담당자 처리 예정</span></a>
+          <a class="task locked" href="#"><div class="task-main"><span class="task-title">복지카드 수령·앱 확인</span><span class="task-meta"><span class="own">인사팀</span><span class="row" style="gap: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>복지포인트 등록 완료 후 열림</span></span></div><span class="st st-blocked">선행 과제 대기</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">명함 신청</span><span class="task-meta"><span class="own">총무팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-rework">보완 요청</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">법인카드 신청서 작성</span><span class="task-meta"><span class="own">회계팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">카드사 온라인 동의</span><span class="task-meta"><span class="own">회계팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">노트북 구입 기준 확인</span><span class="task-meta"><span class="own">회계팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">간단 코딩테스트</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>11월 20일 (금) 14:00 · 7층 소회의실</span></span></div><span class="st st-todo">담당자 처리 예정</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">메일 서명 설정·메일 작성법</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">프린터 사용</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">GitHub·GitLab 사용법</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">BTP 개발 초기 세팅</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">할 일</span></a>
+          <a class="task" href="#"><div class="task-main"><span class="task-title">JS 자습 후 기본기 테스트</span><span class="task-meta"><span class="own own-ai">AI팀</span><span>기한 11월 22일 (일)</span></span></div><span class="st st-todo">담당자 처리 예정</span></a>
+          <button class="stage stage-btn" type="button" aria-expanded="false" style="border-bottom: 0"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg><h3>첫 달</h3><span class="caption">12월 17일 · 4개 중 0개 완료</span><span class="sum">할 일 1</span></button>
         </section>
       </div>
 
@@ -132,8 +146,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
             <span class="caption" style="align-self: center">오늘</span>
             <div class="msg-u">오늘 뭐 해야 해?</div>
             <div class="msg-a">
-              <span class="bubble">오늘 우선할 일은 3가지예요.<br><br>1. <b>명함 영문 이름</b> — 총무팀이 보완을 요청했어요. 여권과 같은 순서로 다시 제출해 주세요.<br>2. <b>BTP 개발 환경 세팅</b> — cf cli, mbt 설치가 남았어요.<br>3. <b>경비 처리 규정</b> — 금요일까지 읽으면 돼요.</span>
-              <div class="src"><span>관련 과제</span><a href="S3-task-detail.html">명함 영문 이름 입력</a><a href="#">BTP 개발 환경 세팅</a></div>
+              <span class="bubble">오늘 우선할 일은 3가지예요.<br><br>1. <b>명함 신청</b> — 총무팀이 보완을 요청했어요. 영문 이름을 여권과 같은 순서로 다시 제출해 주세요.<br>2. <b>근태·결재 시스템 가입</b> — 어제가 기한이었어요. 가입해야 인사정보 업데이트가 열려요.<br>3. <b>복리후생·위임결재 규정 열람</b> — 어제가 기한이었어요. 읽고 "읽었어요"를 눌러 주세요.</span>
+              <div class="src"><span>관련 과제</span><a href="S3-task-detail.html">명함 신청</a><a href="#">근태·결재 시스템 가입</a></div>
             </div>
             <div class="msg-u">노트북 경비 계정과목이 뭐야?</div>
             <div class="msg-a">

@@ -172,6 +172,20 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .task.locked .task-title{color:var(--muted)}
 .stage{display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--surface-subtle);border-bottom:1px solid var(--border)}
 .stage h3{font-size:14px}
+/* S2 지금 할 일: 상위 5건 + 펼치기, 기한 지남, 단계 접기 */
+.over{color:var(--st-rework-fg);font-weight:600}
+.more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:44px;border:0;border-top:1px solid var(--border);background:var(--surface);font:inherit;font-size:13px;font-weight:500;color:var(--secondary);cursor:pointer}
+.more:hover{background:var(--surface-subtle);color:var(--foreground)}
+.more:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--primary)}
+.more .ic{width:14px;height:14px}
+.stage-btn{width:100%;border:0;border-bottom:1px solid var(--border);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.stage-btn:hover{background:var(--canvas)}
+.stage-btn:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--primary)}
+.stage-btn .chev{width:14px;height:14px;color:var(--muted);transition:transform .15s cubic-bezier(.23,1,.32,1)}
+.stage-btn[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.stage-btn .sum{margin-left:auto;font-size:12px;color:var(--secondary)}
+.stage-btn+.stage-btn{border-top:0}
+@media (prefers-reduced-motion:reduce){.stage-btn .chev{transition:none}}
 
 /* Chat panel */
 .chat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);display:flex;flex-direction:column;overflow:hidden}
