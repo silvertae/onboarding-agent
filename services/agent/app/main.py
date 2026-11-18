@@ -5,6 +5,7 @@ from app.admin_routes import router as admin_router
 from app.chat_routes import router as chat_router
 from app.config import Settings, get_settings
 from app.exam_routes import router as exam_router
+from app.knowledge_routes import router as knowledge_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -29,6 +30,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin_router)
     app.include_router(chat_router)
     app.include_router(exam_router)
+    app.include_router(knowledge_router)
 
     return app
 

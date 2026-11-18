@@ -75,6 +75,12 @@ TASKS = [
         "owner": "총무팀", "blocked_by": [], "handled_by": "신입", "my_turn": False,
     },
 ]
+DOCUMENTS = [
+    {
+        "id": "d-uuid-1", "document_title": "복리후생 규정", "label": "제5조", "heading": "경조금",
+        "body": "본인 결혼 시 경조금 50만 원을 지급한다.",
+    },
+]
 
 
 def block_items(block: str) -> list[dict]:
@@ -88,6 +94,18 @@ def test_block_uses_short_keys_not_ids():
     assert [i["key"] for i in items] == ["K1", "K2", "T1"]
     assert items[0]["question"] == "노트북 경비 계정과목이 뭐야?"
     assert items[2]["code"] == "GA-07" and items[2]["my_turn"] is False
+    assert "uuid" not in block
+
+
+def test_block_gives_clauses_d_keys_without_ids():
+    block = Refs.from_rows(KNOWLEDGE, TASKS, DOCUMENTS).block()
+
+    items = block_items(block)
+    assert [i["key"] for i in items] == ["K1", "K2", "T1", "D1"]
+    assert items[3] == {
+        "key": "D1", "document_title": "복리후생 규정", "label": "제5조", "heading": "경조금",
+        "body": "본인 결혼 시 경조금 50만 원을 지급한다.",
+    }
     assert "uuid" not in block
 
 
@@ -108,9 +126,16 @@ def test_sources_only_for_keys_given_this_request():
         "type": "sources",
         "knowledge": [{"id": "k-uuid-2", "question": "사내 동호회에는 뭐가 있어?"}],
         "tasks": [{"id": "t-uuid-1", "code": "GA-07", "title": "명함 신청"}],
+        "documents": [],
     }
 
 
+def test_document_sources_only_for_keys_given_this_request():
+    event = Refs.from_rows([], [], DOCUMENTS).sources_event(["D1", "D9", "d-uuid-1"])
+
+    assert event == {"type": "sources", "knowledge": [], "tasks": [], "documents": DOCUMENTS}
+
+
 def test_no_sources_event_without_known_keys():
-    assert Refs.from_rows(KNOWLEDGE, TASKS).sources_event(["K9"]) is None
+    assert Refs.from_rows(KNOWLEDGE, TASKS, DOCUMENTS).sources_event(["K9", "D2"]) is None
     assert Refs.from_rows([], []).sources_event([]) is None

@@ -119,23 +119,30 @@ export async function deleteTaskFile(file: TaskFile): Promise<void> {
   if (rmError) throw storageError(rmError)
 }
 
+// download 옵션은 쓰지 않는다. storage-js 2.119가 이름을 두 번 인코딩해(URLSearchParams 뒤 encodeURI)
+// 한글 이름이 %EB…로 저장된다. 이름은 downloadTaskFile이 붙인다.
 export async function signedDownloadUrl(file: TaskFile): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(file.storage_path, SIGNED_URL_SECONDS, { download: file.file_name })
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(file.storage_path, SIGNED_URL_SECONDS)
   if (error || !data) throw storageError(error)
   return data.signedUrl
 }
 
+// 서명 URL은 다른 출처라 <a download>의 이름이 무시된다. 내용을 받아(10MB 이하) 같은 출처의 객체 URL로 내려받게 한다.
+// 객체 URL은 누른 뒤 한참 있다 놓는다. 누르자마자 놓으면 Safari가 내려받기를 끊는다.
+const REVOKE_AFTER_MS = 40_000
+
 export async function downloadTaskFile(file: TaskFile): Promise<void> {
   const url = await signedDownloadUrl(file)
+  const res = await fetch(url)
+  if (!res.ok) throw new DbError(res.status, `서식을 내려받지 못했습니다 (HTTP ${res.status})`)
+  const href = URL.createObjectURL(await res.blob())
   const a = document.createElement('a')
-  a.href = url
+  a.href = href
   a.download = file.file_name
-  a.rel = 'noopener'
   document.body.appendChild(a)
   a.click()
   a.remove()
+  setTimeout(() => URL.revokeObjectURL(href), REVOKE_AFTER_MS)
 }
 
 // storage-api는 토큰 검증 실패(만료·서명 오류)를 HTTP 400으로 돌려준다. 새 버전은 code 'InvalidJWT',
