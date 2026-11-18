@@ -88,13 +88,15 @@ POST /admin/users     {email, password(8자 이상), full_name, job_title,
           knowledge_sources (knowledge_id, clause_id)   담당자만 읽고 쓴다
 권한      관리(올리기·지우기·색인·초안 저장, processing·failed 보기): 지식과 같은 범위
             ops_staff = 회사 공통, team_trainer = 자기 팀
-          조항 읽기: 같은 조직, ready 문서, 회사 공통 + 내 팀 (신입·담당자 같음). 신입은 원본 파일을 받지 않는다
+          문서 정보·조항 읽기: 같은 조직, ready 문서, 회사 공통 + 내 팀 (신입·담당자 같음)
+          원본 파일(storage): 관리 범위만. 신입은 원본 파일을 받지 않는다
+          policy_documents update: 없음. 상태 갱신은 replace_document_clauses만
 RPC       match_document_clauses(p_embedding, p_count=6)          invoker. 조항 + document_title + similarity
-          replace_document_clauses(p_document_id, p_clauses jsonb, p_error=null)   invoker. 조항 교체 + status
+          replace_document_clauses(p_document_id, p_clauses jsonb, p_error=null)   definer, 함수 안에서 조직·관리 범위 검사. 조항 교체 + status
           resolve_unanswered_with_sources(p_id, p_question, p_answer, p_category, p_clause_ids uuid[], p_origin)
           save_knowledge_drafts(p_items jsonb)                    invoker. draft·ai_draft로 최대 10개
           consume_quota kind 추가: document, draft
 올리기    1) 형식·크기 확인 2) 행 insert(processing) 3) storage upload 4) POST /documents/{id}/index
-지우기    1) 테이블 delete(조항 cascade) 2) storage remove
+지우기    1) storage remove(정책이 문서 행으로 범위를 확인하므로 행이 남아 있을 때) 2) 테이블 delete(조항 cascade)
 초기화    reset_demo는 규정 문서를 건드리지 않는다
 ```

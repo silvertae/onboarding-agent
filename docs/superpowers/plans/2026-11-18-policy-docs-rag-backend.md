@@ -69,7 +69,8 @@
 - [ ] **Step 1: 실패하는 pgTAP 작성.** 픽스처는 `06_question_bank.sql` 방식(가상 조직, 팀T·팀T2, 신입A(팀T), trainer(팀T), trainer2(팀T2), ga(ops))을 따르고 끝나면 롤백한다. 문서는 넷을 둔다: 회사 ready, 회사 failed, 팀T ready, 팀T2 ready. 단언:
   - `has_table('public','policy_documents')`, `has_table('public','document_clauses')`, `has_table('public','knowledge_sources')`, `has_column('public','knowledge_items','origin')`
   - 신입A로 `select count(*) from document_clauses` = (회사 ready + 팀T ready)의 조항 수. failed 문서와 팀T2 문서의 조항은 보이지 않는다.
-  - 신입A로 `policy_documents`, `knowledge_sources`는 0행이다(신입은 문서 행과 근거 연결을 보지 않는다).
+  - 신입A로 `policy_documents`는 회사 ready + 팀T ready 2행만 보인다(조항 정책이 부모 문서를 조회하므로 읽기 범위의 ready 문서 메타데이터는 보여야 한다). failed·팀T2 문서는 보이지 않는다. `knowledge_sources`는 0행이다.
+  - 신입A로 `storage.objects`의 `policy-docs` 객체는 0행이다(문서 행은 보여도 원본 파일은 받을 수 없다).
   - trainer로 회사 ready 조항을 볼 수 있다(읽기 범위). 회사 failed 문서 행은 볼 수 없다(관리 범위 밖).
   - ga로 회사 failed 문서 행을 볼 수 있다.
   - trainer로 회사 문서 insert는 `throws_ok`(42501), 팀T 문서 insert는 성공, 팀T2 문서 insert는 실패한다.
@@ -83,9 +84,9 @@
   - 위 테이블과 HNSW 인덱스 `using hnsw (embedding extensions.vector_cosine_ops)`, `(org_id)` 인덱스
   - RLS
     - 조항 select: 신입과 담당자 모두 `org_id = my_org()`이고, 부모 문서가 `ready`이며, 부모 범위가 company이거나 `team_id = my_team()`일 때 허용한다.
-    - 문서 select: `can_manage_scope`이거나, 문서가 ready이고 역할이 new_hire가 아닌 담당자로서 읽기 범위 안일 때 허용한다.
+    - 문서 select: `can_manage_scope`이거나, 문서가 ready이고 읽기 범위(회사 공통 또는 `team_id = my_team()`) 안일 때 허용한다. 신입도 포함한다. 조항 정책의 부모 문서 조회와 `match_document_clauses`의 문서명 JOIN이 RLS에 막히지 않게 하려는 것이다. 원본 파일은 storage 정책(관리 범위만)으로 막는다.
     - 문서 insert와 delete, 조항 insert와 delete: `can_manage_scope`일 때만 허용한다.
-  - grant: 문서는 select·insert·delete, 조항은 select·insert·delete, knowledge_sources는 select·insert·delete를 `authenticated`에 준다. update는 RPC에서만 한다.
+  - grant: 문서는 select·insert·delete, 조항은 select·insert·delete, knowledge_sources는 select·insert·delete를 `authenticated`에 준다. `policy_documents`에는 update 권한을 주지 않는다. 상태 갱신은 `replace_document_clauses`(security definer)만 한다.
   - 버킷: `insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) ... on conflict do nothing`
   - storage 정책: 경로의 두 번째 부분인 document_id로 `policy_documents`를 찾아 `can_manage_scope`로 판정한다.
 
@@ -106,12 +107,13 @@
     - security invoker
     - 코사인 거리 오름차순, `p_count`는 1~20으로 자른다
   - `public.replace_document_clauses(p_document_id uuid, p_clauses jsonb, p_error text default null) returns int`
-    - security invoker
+    - **security definer**, `set search_path = ''`. 호출자에게 `policy_documents` update 권한이 없으므로 definer로 상태를 갱신한다.
+    - 함수 안에서 직접 검사한다: 문서가 `my_org()` 조직에 있고(없으면 P0002), `private.can_manage_scope(문서.scope, 문서.team_id)`가 참이어야 한다(아니면 42501). 문서 행을 `for update`로 잠근다.
     - `p_clauses`는 `[{ord, label, heading, body, embedding:[...1536]}]` 형식
     - 기존 조항을 지우고 새로 넣는다
     - `p_error`가 있으면 status `failed`와 error를 기록하고, 없으면 `ready`와 clause_count를 기록한다
     - 반환값은 넣은 조항 수
-    - 관리 범위가 아니면 42501을 낸다(문서를 RLS로 못 찾으면 P0002)
+    - 실행 권한은 `authenticated`, `service_role`(시드 스크립트)만. service_role로 부르면 범위 검사를 건너뛴다(`auth.uid()`가 없을 때).
   - `public.resolve_unanswered_with_sources(p_id uuid, p_question text, p_answer text, p_category text, p_clause_ids uuid[], p_origin text) returns uuid`
     - security definer. 검사는 기존 `resolve_unanswered`와 같다.
     - 지식을 published로 넣으면서 origin을 저장한다. 조항 id는 호출자가 읽을 수 있는 것만 연결한다. 그 뒤 미답변을 resolved로 바꾼다.
@@ -125,7 +127,8 @@
   - 09에 넣을 단언
     - 같은 문서에 `replace_document_clauses`를 두 번 부르면 두 번째 뒤 조항 수가 두 번째 입력 수와 같다(Review Focus 1).
     - `p_error`를 넘기면 status는 `failed`, clause_count는 0이다.
-    - trainer가 회사 문서에 부르면 `throws_ok`가 난다.
+    - trainer가 회사 문서에 부르면 `throws_ok`(42501), 다른 조직 문서 id면 P0002가 난다.
+    - trainer가 `update policy_documents set status='ready'`를 직접 하면 권한 오류다(갱신은 RPC로만).
     - 신입A로 `match_document_clauses`를 부르면 팀T2 조항은 나오지 않는다. 같은 벡터의 조항이 similarity 1로 첫째에 온다.
     - trainer가 `resolve_unanswered_with_sources`를 부르면 published 지식, origin, 연결 수, 미답변 resolved가 맞다. 읽을 수 없는 조항 id는 연결되지 않는다.
     - ga가 `save_knowledge_drafts`(2개)를 부르면 company draft `ai_draft` 2행과 연결이 생긴다. 신입은 이 행을 볼 수 없다.

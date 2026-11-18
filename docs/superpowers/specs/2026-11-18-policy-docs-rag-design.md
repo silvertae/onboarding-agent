@@ -64,7 +64,7 @@
 
 **RLS**
 - 읽기
-  - 신입과 담당자 모두 회사 공통 문서와 내 팀 문서 중 `ready`인 문서의 조항을 읽는다.
+  - 신입과 담당자 모두 회사 공통 문서와 내 팀 문서 중 `ready`인 문서의 정보(제목 등)와 조항을 읽는다. 조항 정책과 검색이 부모 문서를 조회하므로 문서 정보도 읽을 수 있어야 한다. 원본 파일은 storage 정책으로 관리 범위만 받는다.
   - 그래서 교육 담당자도 회사 복리후생 규정으로 답 초안을 만들 수 있다.
 - 관리
   - 올리기, 삭제, `processing`·`failed` 보기, 초안 저장의 범위는 지식과 같다.
@@ -77,7 +77,7 @@
   - 반환: id, document_title, label, heading, body, similarity
 - `replace_document_clauses(p_document_id, p_clauses jsonb)`
   - 조항을 한 번에 교체하고 status와 clause_count를 갱신한다.
-  - security invoker이며 관리 범위만 가능하다.
+  - security definer다. 호출자에게 문서 update 권한을 주지 않으므로, 함수 안에서 조직과 관리 범위를 직접 검사한다(Codex 리뷰 반영).
 - `resolve_unanswered_with_sources(p_id, p_question, p_answer, p_category, p_clause_ids uuid[], p_origin)`
   - 게시, 근거 연결, 미답변 해결을 한 트랜잭션에서 한다.
   - 기존 `resolve_unanswered`는 그대로 둔다.
@@ -137,7 +137,7 @@
 - 경로 `/documents`, 대상 team_trainer·ops_staff
 - 목록에는 제목, 범위, 상태 배지(처리 중/완료/실패), 조항 수를 보인다.
 - 올리기 창에는 제목과 파일 칸을 두고 "가상 문서만 올려 주세요" 안내를 붙인다. 올리면 행 insert(processing) → storage 업로드 → index 호출 순서로 진행한다. storage 정책이 경로의 문서 행으로 범위를 확인하므로 행을 먼저 만든다. 업로드가 실패하면 행을 지운다.
-- 상세 화면에는 조항 목록, "지식 초안 만들기", 삭제를 둔다.
+- 상세 화면에는 조항 목록, "지식 초안 만들기", 삭제를 둔다. 삭제는 storage 파일을 먼저 지우고 행을 지운다(정책이 행으로 범위를 확인한다).
 
 **S10 지식**
 - 미답변 답 등록 창에 "규정에서 답 초안 찾기"를 둔다. 누르면 입력란이 채워지고 근거 조항 칩이 붙는다. 게시는 `resolve_unanswered_with_sources`로 한다.
