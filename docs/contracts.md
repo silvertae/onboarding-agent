@@ -54,9 +54,9 @@ POST /admin/users     {email, password(8자 이상), full_name, job_title,
           id uuid, org_id uuid, template_id uuid → task_templates, file_name text(원본 이름),
           storage_path text unique, size_bytes int, uploaded_by uuid → profiles, is_seed bool, created_at
           unique (template_id, file_name)
-권한      조회·내려받기: 같은 조직
-          올리기: 그 템플릿의 담당자(private.is_handler — 같은 부서 ops_staff, 같은 팀 team_trainer)
-          지우기: 담당자(기본 서식 제외), 같은 조직 admin(데모 초기화)
+권한      조회·내려받기: 같은 조직이고 그 템플릿을 볼 수 있는 사용자
+          올리기: 그 템플릿의 담당자(private.is_handler — 같은 부서 ops_staff, 같은 팀 team_trainer), 보관되지 않은 템플릿
+          지우기: 담당자(기본 서식 제외), 같은 조직 admin(데모 초기화, 기본 서식 제외)
           update 없음. 교체는 지우고 다시 올린다
 올리기    1) 형식·크기 확인 2) storage upload(contentType을 확장자로 명시) 3) 테이블 insert, 실패하면 올린 객체 remove
 지우기    1) 테이블 delete 2) storage remove
