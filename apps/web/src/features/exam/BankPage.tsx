@@ -35,7 +35,11 @@ type Draft = DraftQuestion & { topic: string; difficulty: Difficulty }
 type RowResult = { kind: 'saved' } | { kind: 'error'; text: string }
 type Open = { id: string; draft: Draft; result: RowResult | null }
 
-type Write = { kind: 'add'; draft: Draft } | { kind: 'update'; id: string; patch: Parameters<typeof updateBankItem>[1] }
+// done: 목록을 다시 읽은 뒤 결과를 놓는다(저장된 문항 id를 받는다)
+type Write = (
+  | { kind: 'add'; draft: Draft }
+  | { kind: 'update'; id: string; patch: Parameters<typeof updateBankItem>[1] }
+) & { done: (id: string) => void }
 
 const DIFFICULTY_FILTERS: { value: Difficulty | 'all'; label: string }[] = [
   { value: 'all', label: '전체' },
@@ -113,8 +117,15 @@ export function BankPage() {
     if (addingNew) document.getElementById('bank-new-prompt')?.focus()
   }, [addingNew])
 
+  // 저장 → 목록 다시 읽기 → 결과 놓기를 한 동작으로 묶는다. 다 끝날 때까지 isPending이라 그 사이 입력·문항 추가를 막고,
+  // 다시 읽기가 끝난 뒤 결과가 그 사이 바뀐 입력을 덮어쓰지 않는다.
   const write = useMutation({
-    mutationFn: (w: Write) => (w.kind === 'add' ? addBankItem(w.draft) : updateBankItem(w.id, w.patch).then(() => w.id)),
+    mutationFn: async (w: Write) => {
+      const id = w.kind === 'add' ? await addBankItem(w.draft) : await updateBankItem(w.id, w.patch).then(() => w.id)
+      await refresh()
+      w.done(id)
+      return id
+    },
   })
   const busy = write.isPending
 
@@ -172,16 +183,19 @@ export function BankPage() {
     const clean = { ...draft, topic: draft.topic.trim() }
     try {
       if (id === NEW) {
-        const newId = await write.mutateAsync({ kind: 'add', draft: clean })
-        await refresh()
-        if (visibleWith(clean, 'active')) setOpen({ id: newId, draft: clean, result: { kind: 'saved' } })
-        else savedOutside()
+        await write.mutateAsync({
+          kind: 'add',
+          draft: clean,
+          done: (newId) => (visibleWith(clean, 'active') ? setOpen({ id: newId, draft: clean, result: { kind: 'saved' } }) : savedOutside()),
+        })
       } else {
         const { topic: t, difficulty: d, prompt, model_answer, rubric, points } = clean
-        await write.mutateAsync({ kind: 'update', id, patch: { prompt, model_answer, rubric, points, topic: t, difficulty: d } })
-        await refresh()
-        if (visibleWith(clean, status)) rowResult(id, { kind: 'saved' })
-        else savedOutside()
+        await write.mutateAsync({
+          kind: 'update',
+          id,
+          patch: { prompt, model_answer, rubric, points, topic: t, difficulty: d },
+          done: () => (visibleWith(clean, status) ? rowResult(id, { kind: 'saved' }) : savedOutside()),
+        })
       }
     } catch (error) {
       rowResult(id, { kind: 'error', text: isDuplicate(error) ? DUPLICATE : SAVE_FAILED })
@@ -191,10 +205,15 @@ export function BankPage() {
   // 숨기기·다시 게시: 행이 지금 보기에서 빠지므로 결과는 표 위에 둔다
   async function setItemStatus(id: string, next: BankStatus) {
     try {
-      await write.mutateAsync({ kind: 'update', id, patch: { status: next } })
-      setOpen(null)
-      setNotice(next === 'hidden' ? HIDDEN : REPUBLISHED)
-      await refresh()
+      await write.mutateAsync({
+        kind: 'update',
+        id,
+        patch: { status: next },
+        done: () => {
+          setOpen(null)
+          setNotice(next === 'hidden' ? HIDDEN : REPUBLISHED)
+        },
+      })
     } catch {
       rowResult(id, { kind: 'error', text: SAVE_FAILED })
     }

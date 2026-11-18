@@ -10,6 +10,8 @@ const { db } = vi.hoisted(() => ({
     topics: [] as { topic: string; topic_key: string }[],
     listError: null as null | { message: string; code?: string },
     writeError: null as null | { message: string; code?: string },
+    // 있으면 목록 조회(select *)가 이 약속이 풀릴 때까지 기다린다
+    holdList: null as Promise<void> | null,
     // 표마다 한 번의 await에 쓴 빌더 메서드 목록
     queries: [] as { table: string; ops: Op[] }[],
   },
@@ -41,7 +43,9 @@ vi.mock('@/lib/supabase', () => {
     }
     b.then = (resolve: (r: Result) => unknown, reject: (e: unknown) => unknown) => {
       db.queries.push({ table, ops })
-      return Promise.resolve(respond(table, ops)).then(resolve, reject)
+      const isList = ops.some((o) => o[0] === 'select' && o[1] === '*') && !ops.some((o) => o[0] === 'update' || o[0] === 'insert')
+      const wait = isList && db.holdList ? db.holdList : Promise.resolve()
+      return wait.then(() => respond(table, ops)).then(resolve, reject)
     }
     return b
   }
@@ -83,6 +87,7 @@ beforeEach(() => {
   ]
   db.listError = null
   db.writeError = null
+  db.holdList = null
   db.queries = []
 })
 
@@ -202,6 +207,27 @@ describe('BankPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('저장했어요')
     expect(screen.queryByRole('textbox', { name: '문제' })).not.toBeInTheDocument()
     expect(writes('update')[0]).toContainEqual(['eq', 'id', 'b1'])
+  })
+
+  it('저장 뒤 목록을 다시 읽는 동안에는 편집 칸과 문항 추가를 막고, 다 읽은 뒤에 결과를 보인다', async () => {
+    renderPage()
+    await expand(/let과 const/)
+    await userEvent.type(screen.getByRole('textbox', { name: '채점 기준' }), ' 추가')
+    let release = () => {}
+    db.holdList = new Promise<void>((r) => (release = r))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(writes('update')).toHaveLength(1))
+    // 저장 요청은 끝났지만 목록 조회는 아직이다
+    await waitFor(() => expect(listQueries().length).toBeGreaterThan(1))
+    expect(screen.getByRole('textbox', { name: '채점 기준' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: '문제' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '문항 추가' })).toBeDisabled()
+    expect(screen.queryByText('저장했어요')).not.toBeInTheDocument()
+
+    release()
+    expect(await screen.findByText('저장했어요')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: '채점 기준' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '문항 추가' })).toBeEnabled()
   })
 
   it('저장이 실패하면 행 안에 실패 문구를 보인다', async () => {
