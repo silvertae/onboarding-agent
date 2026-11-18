@@ -1,9 +1,16 @@
 import { useCallback, useRef, useState } from 'react'
 import { AgentError, agentFetch } from '@/lib/agent'
 
+export type ClauseSource = { id: string; document_title: string; label: string; heading: string; body: string }
+
+export function clauseTitle(clause: Pick<ClauseSource, 'label' | 'heading'>) {
+  return `${clause.label} ${clause.heading}`.trim()
+}
+
 export type Sources = {
   knowledge: { id: string; question: string }[]
   tasks: { id: string; code: string; title: string }[]
+  documents: ClauseSource[]
 }
 
 // retryable: 오류 답변에 "다시 시도"를 보여 줄지(한도 초과·권한 없음은 다시 해도 같으므로 false)
@@ -18,7 +25,7 @@ export type ChatMessage = {
 
 type StreamEvent =
   | { type: 'token'; text: string }
-  | ({ type: 'sources' } & Sources)
+  | ({ type: 'sources' } & Omit<Sources, 'documents'> & { documents?: ClauseSource[] })
   | { type: 'unanswered' }
   | { type: 'error'; message: string }
   | { type: 'done' }
@@ -114,7 +121,7 @@ export function useChatStream(): { messages: ChatMessage[]; sending: boolean; se
           if (event.type === 'token') {
             patchAnswer((a) => ({ ...a, text: a.text + event.text }))
           } else if (event.type === 'sources') {
-            patchAnswer((a) => ({ ...a, sources: { knowledge: event.knowledge, tasks: event.tasks } }))
+            patchAnswer((a) => ({ ...a, sources: { knowledge: event.knowledge, tasks: event.tasks, documents: event.documents ?? [] } }))
           } else if (event.type === 'unanswered') {
             patchAnswer((a) => ({ ...a, unanswered: true }))
           } else if (event.type === 'error') {

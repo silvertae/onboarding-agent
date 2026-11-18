@@ -1,18 +1,13 @@
--- 0010 과제 템플릿 쓰기 RPC: 저장(새로 만들기·수정), 보관, 복원, 한 사람용 과제 추가, 코드 부여.
+-- 0010 과제 템플릿 쓰기 RPC: 저장(새로 만들기·수정), 보관, 복원, 한 사람용 과제 추가·해당 없음(mark_na 교체), 코드 부여.
 -- 템플릿 쓰기는 이 함수로만 한다(테이블 쓰기 권한·정책 없음). 담당 범위와 사용 중 잠금을 DB에서 확인한다.
 -- 오류 코드: 42501 범위 밖, 22023 검증·잠금, P0002 없음.
 
--- ── 조직별 템플릿 잠금 ──────────────────────────────────────────────
--- 같은 조직의 템플릿 생성(코드 번호)과 선행 변경(순환 검사)을 트랜잭션 잠금으로 직렬화한다.
--- 잠금 순서: 신입별 잠금 → 템플릿 행 잠금 → 이 잠금. 이 잠금을 잡은 뒤에는 자기가 이미 잠근 행과
--- 새로 만드는 행만 건드리므로, 이 잠금을 기다리는 쪽이 쥔 잠금을 다시 기다리는 일이 없다(교착 없음).
-create function private.template_lock_key(p_org uuid) returns bigint
-language sql immutable set search_path = ''
-as $$ select hashtextextended('task_code:' || p_org::text, 0) $$;
+-- 조직별 템플릿 잠금(private.template_lock_key)과 전체 잠금 순서는 0009에 있다.
 
 -- ── 코드 부여 ───────────────────────────────────────────────────────
 -- 같은 조직에서 "<접두어>-<번호>"(한 사람용은 "<접두어>-P<번호>")의 가장 큰 번호 + 1, 두 자리 이상 0 채움.
--- 조직별 템플릿 잠금을 얻은 뒤의 새 스냅샷에서 최대 번호를 본다(READ COMMITTED).
+-- 조직별 템플릿 잠금(배타)을 얻은 뒤의 새 스냅샷에서 최대 번호를 본다(READ COMMITTED).
+-- 저장에서는 이미 쥔 잠금이라 바로 통과하고, 한 사람용 추가(신입별 잠금 → 이 잠금)에서는 여기서 처음 잡는다.
 create function private.next_task_code(p_org uuid, p_prefix text, p_one_off boolean) returns text
 language plpgsql security definer set search_path = ''
 as $$
@@ -187,6 +182,7 @@ $$;
 -- ── 저장(새로 만들기·수정) ──────────────────────────────────────────
 -- p_id가 null이면 호출자의 팀(교육 담당자) 또는 부서(경영지원) 템플릿을 새로 만든다.
 -- 사용 중(인스턴스가 있는) 템플릿은 제목·안내문만 바뀐다. 다른 칸이 기존 값과 다르면 거부한다.
+-- 조직별 템플릿 잠금(배타)을 가장 먼저 잡아 온보딩 시작(공유)과 직렬화한다(0009 잠금 순서).
 create function public.save_task_template(
   p_id uuid,
   p_title text,
@@ -211,10 +207,15 @@ declare
   v_prereq text[];
   v_prereq_before text[] := '{}';
 begin
+  if v_role is null or v_role not in ('team_trainer', 'ops_staff') then
+    raise exception '과제 템플릿을 관리할 권한이 없습니다' using errcode = '42501';
+  end if;
+  -- 템플릿 행 잠금·읽기보다 먼저 잡는다. 진행 중인 시작이 있으면 커밋을 기다리므로 아래 사용 중 검사가 그 인스턴스를
+  -- 보고, 이 저장이 끝나기 전에 시작한 신입은 커밋 뒤의 템플릿을 읽는다. 조직은 호출자 프로필에서 정한다
+  -- (다른 조직 템플릿 id면 lock_managed_template가 P0002로 거부한다). 선행 변경의 순환 검사도 이 잠금 아래에서 한다.
+  perform pg_advisory_xact_lock(private.template_lock_key(v_org));
+
   if p_id is null then
-    if v_role is null or v_role not in ('team_trainer', 'ops_staff') then
-      raise exception '과제 템플릿을 관리할 권한이 없습니다' using errcode = '42501';
-    end if;
     if v_role = 'team_trainer' then
       v_team := (select private.my_team());
     else
@@ -246,9 +247,8 @@ begin
   end if;
   -- 바뀐 경우에만 검사한다. 이미 걸려 있던 코드는 그 뒤 보관됐어도 그대로 둘 수 있다(제목만 고칠 때 막히지 않게).
   if v_prereq is distinct from v_prereq_before then
-    -- 조직별 템플릿 잠금: 행 잠금은 고치는 행만 잡으므로, A→B와 B→A를 동시에 저장하면 서로의 미커밋 변경을 못 보고
-    -- 순환이 저장된다. 잠금 뒤의 새 스냅샷에서 검사해 먼저 커밋된 선행을 본다.
-    perform pg_advisory_xact_lock(private.template_lock_key(v_org));
+    -- 맨 앞에서 잡은 조직별 템플릿 잠금 덕분에 A→B와 B→A를 동시에 저장해도 뒤 저장이 먼저 커밋된 선행을 본다
+    -- (행 잠금은 고치는 행만 잡으므로 이 잠금 없이는 서로의 미커밋 변경을 못 보고 순환이 저장된다).
     if v_old.code = any (v_prereq) then
       raise exception '자기 자신을 선행 과제로 고를 수 없습니다' using errcode = '22023';
     end if;
@@ -322,7 +322,7 @@ end
 $$;
 
 -- ── 보관·복원 ───────────────────────────────────────────────────────
--- 보관한 템플릿은 새 신입에게 들어가지 않는다. 진행 중인 신입의 과제는 그대로 둔다.
+-- 보관한 템플릿은 새 신입에게 들어가지 않는다. 진행 중인 신입의 과제는 그대로 둔다. 한 사람용은 보관·복원하지 않는다.
 create function public.archive_task_template(p_id uuid) returns public.task_templates
 language plpgsql security definer set search_path = ''
 as $$
@@ -348,6 +348,9 @@ declare
   v_t public.task_templates;
 begin
   v_t := private.lock_managed_template(p_id);
+  if v_t.assigned_to is not null then
+    raise exception '한 사람용 과제는 복원하지 않습니다' using errcode = '22023';
+  end if;
   update public.task_templates set archived_at = null
    where id = v_t.id
   returning * into v_t;
@@ -411,17 +414,68 @@ begin
 end
 $$;
 
+-- ── 해당 없음: 한 사람용 과제 빼기 ──────────────────────────────────
+-- 한 사람용 과제는 고치거나 보관할 수 없으므로 빼는 길은 해당 없음(사유 필수)뿐이다.
+-- 그래서 그 템플릿의 담당자는 해당 없음 허용(allow_na)과 상관없이 해당 없음으로 바꿀 수 있다.
+-- 본문은 0003과 같고 allow_na 검사에 이 예외만 더했다(신입 본인·기본 과제·사유·상태 규칙은 그대로).
+create or replace function public.mark_na(p_id uuid, p_reason text) returns public.task_instances
+language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_i public.task_instances;
+  v_t public.task_templates;
+  v_reason text := btrim(coalesce(p_reason, ''), E' \t\r\n');
+  v_handler boolean;
+begin
+  perform private.lock_hire_of_task(p_id);  -- 행 잠금보다 먼저 신입별 잠금(잠금 순서 통일)
+  select * into v_i from public.task_instances where id = p_id for update;
+  if not found then
+    raise exception '과제를 찾을 수 없습니다' using errcode = 'P0002';
+  end if;
+  select * into v_t from public.task_templates where id = v_i.template_id;
+  v_handler := private.is_handler(v_t);
+  if v_i.new_hire_id is distinct from (select auth.uid()) and not v_handler then
+    raise exception '해당 없음으로 바꿀 권한이 없습니다' using errcode = '42501';
+  end if;
+  -- 신입 본인은 담당자 처리 과제를 바꿀 수 없고, 할 차례(todo·rework)인 과제만 바꿀 수 있다
+  if not v_handler and v_t.completion_mode = 'staff_only' then
+    raise exception '담당자가 처리하는 과제입니다' using errcode = '42501';
+  end if;
+  if not v_handler and v_i.status not in ('todo', 'rework', 'na') then
+    raise exception '지금은 해당 없음으로 바꿀 수 없는 과제입니다' using errcode = '22023';
+  end if;
+  -- 한 사람용 과제는 담당자가 해당 없음 허용과 상관없이 뺄 수 있다
+  if not v_t.allow_na and not (v_handler and v_t.assigned_to is not null) then
+    raise exception '해당 없음을 선택할 수 없는 과제입니다' using errcode = '22023';
+  end if;
+  if v_reason = '' then
+    raise exception '사유를 입력해 주세요' using errcode = '22023';
+  end if;
+  if v_i.status = 'na' then
+    return v_i;
+  end if;
+  if v_i.status = 'done' then
+    raise exception '이미 완료된 과제입니다' using errcode = '22023';
+  end if;
+
+  update public.task_instances set status = 'na', na_reason = v_reason
+   where id = p_id
+  returning * into v_i;
+  return v_i;
+end
+$$;
+
 -- ── 실행 권한 ───────────────────────────────────────────────────────
 revoke all on function
-  private.template_lock_key(uuid),
   private.task_template_fields(text, text, public.task_kind, public.completion_mode, public.task_stage, int, boolean,
                                jsonb, public.task_kind),
   private.lock_managed_template(uuid),
   private.create_task_template(uuid, uuid, public.ops_department, public.task_templates, text[], uuid)
 from public, anon, authenticated;
 
-revoke execute on function private.next_task_code(uuid, text, boolean) from public, anon;
-grant execute on function private.next_task_code(uuid, text, boolean) to authenticated, service_role;
+-- 코드 부여는 정의자 함수(save_task_template·add_task_for_hire) 안에서만 부른다
+revoke execute on function private.next_task_code(uuid, text, boolean) from public, anon, authenticated;
+grant execute on function private.next_task_code(uuid, text, boolean) to service_role;
 
 revoke execute on function
   public.save_task_template(uuid, text, text, public.task_kind, public.completion_mode, public.task_stage, int, boolean,

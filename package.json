@@ -8,7 +8,7 @@
     "test:agent": "bash scripts/with-local-env.sh sh -c 'cd services/agent && uv run pytest'",
     "db:test": "supabase test db",
     "db:reset": "supabase db reset && npm run bootstrap",
-    "bootstrap": "bash scripts/with-local-env.sh sh -c 'cd services/agent && uv run python scripts/bootstrap_accounts.py'",
+    "bootstrap": "bash scripts/with-local-env.sh sh -c 'cd services/agent && uv run python scripts/bootstrap_accounts.py && uv run python scripts/bootstrap_forms.py'",
     "types": "supabase gen types typescript --local > apps/web/src/lib/database.types.ts && npx --yes oxfmt apps/web/src/lib/database.types.ts"
   }
 }

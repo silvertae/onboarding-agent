@@ -105,9 +105,12 @@ create policy "과제 서식: 볼 수 있는 템플릿" on storage.objects for s
     )
   );
 
+-- 경로 모양도 테이블 storage_path 검사와 같게: 폴더 두 단계, 파일 이름은 uuid.{pdf|docx|xlsx}
 create policy "과제 서식: 담당자 올리기" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'task-forms'
+    and array_length(storage.foldername(objects.name), 1) = 2
+    and storage.filename(objects.name) ~ '^[0-9a-f-]{36}\.(pdf|docx|xlsx)$'
     and (storage.foldername(objects.name))[1] = (select private.my_org())::text
     and exists (
       select 1 from public.task_templates t
@@ -143,7 +146,7 @@ create policy "과제 서식: 담당자·관리자 지우기" on storage.objects
 -- update 정책 없음: 덮어쓰기(upsert)는 거부된다.
 
 -- ── 데모 초기화 교체 ────────────────────────────────────────────────
--- 0007 본문에 더해, 신입 루프 전에 순서대로:
+-- 0007 본문에 더해, 맨 앞에서 시드 신입 잠금과 조직별 템플릿 잠금(배타)을 잡고, 신입 루프 전에 순서대로:
 --   1) 담당자가 올린 서식 행을 지운다(기본 서식은 남긴다). Storage 객체는 SQL로 지우지 않는다:
 --      storage-api가 직접 삭제를 막으므로 웹이 Storage API로 먼저 지운 뒤 이 함수를 부른다.
 --   2) 시드 템플릿의 편집 칸을 시드 사본 값으로 되돌리고 보관을 푼다.
@@ -154,10 +157,22 @@ as $$
 declare
   v_org uuid := (select private.my_org());
   v_hire uuid;
+  v_hires uuid[] := '{}';
 begin
   if (select private.my_role()) is distinct from 'admin' then
     raise exception '관리자만 데모 데이터를 초기화할 수 있습니다' using errcode = '42501';
   end if;
+
+  -- 잠금 순서(0009): 신입별 잠금(id 순) → 조직별 템플릿 잠금 → 템플릿 행 잠금.
+  -- 템플릿 행을 고치기 전에 시드 신입 잠금을 모두 잡고, 템플릿을 시드 값으로 되돌리므로 조직별 템플릿 잠금은 배타로 잡는다.
+  -- 행부터 잠그면 저장(조직별 잠금 → 행)과 서로를 기다린다: 이 함수가 아래 _start_onboarding에서 조직별 잠금을 기다리게 된다.
+  -- 시드 신입 id는 여기서 한 번만 모아 둔다: 아래 두 번째 루프가 같은 배열을 쓰므로 그 사이에 새로 커밋된 신입의 잠금을 뒤늦게 잡지 않는다.
+  v_hires := coalesce((select array_agg(id order by id) from public.profiles
+                        where org_id = v_org and role = 'new_hire' and is_seed), '{}');
+  foreach v_hire in array v_hires loop
+    perform pg_advisory_xact_lock(private.hire_lock_key(v_hire));
+  end loop;
+  perform pg_advisory_xact_lock(private.template_lock_key(v_org));
 
   delete from public.exams where org_id = v_org;
   delete from public.unanswered_questions where org_id = v_org;
@@ -191,12 +206,8 @@ begin
    where org_id = v_org
      and not is_seed;
 
-  for v_hire in
-    select id from public.profiles
-     where org_id = v_org and role = 'new_hire' and is_seed
-     order by id
-  loop
-    perform pg_advisory_xact_lock(private.hire_lock_key(v_hire));
+  foreach v_hire in array v_hires loop
+    perform pg_advisory_xact_lock(private.hire_lock_key(v_hire));  -- 위에서 이미 잡았다(다시 잡아도 바로 통과)
     delete from public.task_instances where new_hire_id = v_hire;
     update public.profiles set hire_date = (now() at time zone 'Asia/Seoul')::date where id = v_hire;
     perform public._start_onboarding(v_hire);
