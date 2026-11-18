@@ -228,9 +228,10 @@ export function HomePage() {
           {hiddenCount > 0 && (
             <Button
               variant="ghost"
+              size="lg"
               aria-expanded={nowExpanded}
               onClick={() => setNowExpanded((v) => !v)}
-              className="h-11 w-full rounded-none border-t border-border text-label text-[var(--text-secondary)] hover:bg-surface-subtle"
+              className="w-full rounded-none border-t border-border text-label text-[var(--text-secondary)] hover:bg-surface-subtle"
             >
               {nowExpanded ? '접기' : `나머지 ${hiddenCount}건 보기`}
               <ChevronDown className={cn('size-3.5 transition-transform duration-150 ease-out-ui motion-reduce:transition-none', nowExpanded && 'rotate-180')} aria-hidden />

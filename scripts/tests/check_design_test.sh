@@ -40,6 +40,8 @@ run_case "직접 만든 라디오" 1 features/a/Page.tsx '<button role="radio">x
 run_case "네이티브 select" 1 features/a/Page.tsx '<select id="s"></select>' "NativeSelect"
 run_case "네이티브 체크박스" 1 features/a/Page.tsx '<input type="checkbox" />' "Checkbox"
 run_case "버튼 높이 덮어쓰기" 1 features/a/Page.tsx '<Button className="h-11 px-5">x</Button>' "size"
+run_case "여러 줄 Button 높이 덮어쓰기" 1 features/a/Page.tsx $'<Button\n  type="button"\n  onClick={() => go()}\n  className="h-11 w-full"\n>\n  x\n</Button>' "features/a/Page.tsx:1"
+run_case "cn() 안의 Button 높이" 1 features/a/Page.tsx $'<Button\n  className={cn(\'h-10 px-4\', on && \'bg-card\')}\n>x</Button>' "size"
 run_case "출력에 파일:줄" 1 features/a/Page.tsx '<p className="text-[13px]">x</p>' "features/a/Page.tsx:1"
 
 # 통과: 규칙에 맞는 코드와 허용한 예외
@@ -50,6 +52,8 @@ run_case "SegmentedRadio의 radiogroup" 0 components/SegmentedRadio.tsx '<div ro
 run_case "NativeSelect 안의 select" 0 components/ui/native-select.tsx '<select data-slot="native-select-control" />'
 run_case "테스트 파일은 검사하지 않음" 0 features/a/Page.test.tsx 'expect(x).toHaveClass("text-[13px]")'
 run_case "design-allow 주석" 0 features/a/Page.tsx '<p className="text-[13px]">x</p> {/* design-allow: 외부 위젯 크기 */}'
+run_case "여러 줄 Button, 높이 없음" 0 features/a/Page.tsx $'<Button\n  size="lg"\n  onClick={() => go()}\n  className="w-full text-label"\n>x</Button>'
+run_case "여러 줄 Button의 design-allow" 0 features/a/Page.tsx $'<Button\n  className="h-11" // design-allow: 표 머리 높이와 맞춤\n>x</Button>'
 run_case "Button 아닌 요소의 h-11" 0 features/a/Page.tsx '<div className="h-11" />'
 
 if [ "$failures" -gt 0 ]; then

@@ -47,6 +47,8 @@ jobs:
         run: bash scripts/tests/keepalive_test.sh
       - name: check-design.sh 규칙 (가짜 소스)
         run: bash scripts/tests/check_design_test.sh
+      - name: push-shots.sh 업로드·실패 처리 (임시 로컬 원격)
+        run: bash scripts/tests/push_shots_test.sh
       - name: shellcheck
         run: shellcheck scripts/*.sh scripts/tests/*.sh scripts/design/*.sh
 

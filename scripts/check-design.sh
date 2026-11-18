@@ -54,8 +54,28 @@ rule '<select[ >]' \
   '네이티브 <select> 대신 components/ui/native-select의 NativeSelect를 쓴다' '^components/ui/native-select\.tsx$'
 rule 'type="checkbox"' \
   '네이티브 체크박스 대신 components/ui/checkbox의 Checkbox를 쓴다'
-rule '<Button[^>]*className="[^"]*\bh-(6|7|8|9|10|11|12)\b' \
-  'Button 높이를 className으로 덮어쓰지 않는다. size(lg 44 / 기본 36 / sm 32)를 고른다'
+# Button 높이 덮어쓰기: 여는 태그가 여러 줄에 걸쳐도 잡도록 파일 전체를 읽어 <Button …> 하나씩 본다.
+# 속성 안의 화살표(=>)는 태그 끝으로 보지 않는다. className="…"과 className={cn('…')} 둘 다 본다.
+button_height() {
+  local message='Button 높이를 className으로 덮어쓰지 않는다. size(lg 44 / 기본 36 / sm 32)를 고른다'
+  local f rel n
+  for f in "${files[@]}"; do
+    rel="${f#"$src"/}"
+    while IFS= read -r n; do
+      [ -z "$n" ] && continue
+      echo "$rel:$n: $message"
+      violations=$((violations + 1))
+    done < <(perl -0777 -ne '
+      while (/<Button\b((?:=>|[^>])*)>/g) {
+        my ($tag, $start) = ($1, $-[0]);
+        next if $tag =~ /design-allow/;
+        next unless $tag =~ /className=("[^"]*"|\{(?:[^{}]|\{[^{}]*\})*\})/;
+        next unless $1 =~ /(?<![\w-])h-(?:6|7|8|9|10|11|12)(?![\w-])/;
+        print 1 + (substr($_, 0, $start) =~ tr/\n//), "\n";
+      }' "$f")
+  done
+}
+button_height
 
 if [ "$violations" -gt 0 ]; then
   echo
