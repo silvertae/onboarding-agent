@@ -17,7 +17,7 @@ POST /chat            {message: string(1..1000), history: [{role:"user"|"assista
   → text/event-stream. 이벤트 data(JSON) 종류:
     {"type":"token","text":string}
     {"type":"sources","knowledge":[{"id":uuid,"question":string}],"tasks":[{"id":uuid,"code":string,"title":string}]}
-    {"type":"unanswered"}            # 미답변으로 기록됨
+    {"type":"unanswered"}            # 근거 없음. 기록하지 않는다(웹이 "담당자에게 등록 요청" 버튼을 보이고, 신입이 보내면 웹이 unanswered_questions에 넣는다)
     {"type":"error","message":string}
     {"type":"done"}
 POST /exams/generate  {topic, difficulty:"beginner"|"intermediate", question_count:1..10, style?:string, new_hire_id?:uuid, avoid_prompts?:string[] (≤30, 각 ≤500자)}

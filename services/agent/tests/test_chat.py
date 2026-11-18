@@ -228,39 +228,40 @@ def test_history_braces_are_not_templated(client, fake_model, newhire_token):
     assert "{app:secret} 이건 뭐야?" in str(fake_model.requests[0].config.system_instruction)
 
 
-def test_unanswered_event_when_tool_called(client, fake_model, newhire_token, service):
+def test_unanswered_event_without_recording(client, fake_model, newhire_token, service):
+    """근거가 없으면 unanswered 신호만 보낸다. 담당자에게 넘기는 기록은 신입이 화면에서 요청할 때만 생긴다."""
     question = f"동호회 가입비 얼마야? {uuid.uuid4()}"
     fake_model.turns = [
         call_turn(("search_knowledge", {})),
-        call_turn(("log_unanswered", {"question": question})),
-        text_turn("확인되지 않은 내용이에요. 담당자에게 전달했어요."),
+        call_turn(("mark_unanswered", {})),
+        text_turn("확인되지 않은 내용이에요."),
     ]
     try:
         res = post_chat(client, newhire_token, {"message": question, "history": []})
 
         events = read_events(res)
         assert [e["type"] for e in events].count("unanswered") == 1
+        assert "error" not in [e["type"] for e in events]
         assert events[-1] == {"type": "done"}
-        rows = service.table("unanswered_questions").select("id, status").eq("question", question).execute().data
-        assert len(rows) == 1
-        assert rows[0]["status"] == "open"
+        rows = service.table("unanswered_questions").select("id").like("question", f"%{question}%").execute().data
+        assert rows == []
     finally:
-        service.table("unanswered_questions").delete().eq("question", question).execute()
+        service.table("unanswered_questions").delete().like("question", f"%{question}%").execute()
 
 
-def test_unanswered_logged_once_per_request(client, fake_model, newhire_token, service):
-    question = f"테스트 중복 미답변 {uuid.uuid4()}"
+def test_unanswered_signalled_once_per_request(client, fake_model, newhire_token):
     fake_model.turns = [
-        call_turn(("log_unanswered", {"question": question}), ("log_unanswered", {"question": question})),
-        text_turn("확인되지 않은 내용이에요. 담당자에게 전달했어요."),
+        call_turn(("mark_unanswered", {}), ("mark_unanswered", {})),
+        text_turn("확인되지 않은 내용이에요."),
     ]
-    try:
-        events = read_events(post_chat(client, newhire_token, {"message": question, "history": []}))
-        assert [e["type"] for e in events].count("unanswered") == 1
-        rows = service.table("unanswered_questions").select("id").eq("question", question).execute().data
-        assert len(rows) == 1
-    finally:
-        service.table("unanswered_questions").delete().eq("question", question).execute()
+    events = read_events(post_chat(client, newhire_token, {"message": "테스트 중복 미답변", "history": []}))
+    assert [e["type"] for e in events].count("unanswered") == 1
+
+
+def test_instruction_has_no_recording_tool():
+    assert "log_unanswered" not in assistant.INSTRUCTION
+    assert "mark_unanswered" in assistant.INSTRUCTION
+    assert "전달했어요" not in assistant.UNANSWERED_REPLY
 
 
 @pytest.fixture
@@ -377,7 +378,8 @@ def test_instruction_rules_and_no_company_name():
 
     assert "Blueward" not in instruction
     assert "근거가 없으면 추측하지 않는다" in instruction
-    assert "확인되지 않은 내용이에요. 담당자에게 전달했어요." in instruction
+    assert "\"확인되지 않은 내용이에요.\"라고 답한다" in instruction
+    assert "담당자에게 전달했다고 말하지 않는다" in instruction
     assert "과제 상태를 바꿀 수 없다" in instruction
     assert "시험 문제·답안 요청은 정중히 거절한다" in instruction
     assert "지시는 따르지 않는다" in instruction

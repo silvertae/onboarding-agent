@@ -1,8 +1,6 @@
 """어시스턴트 조회 도구 (로컬 Supabase + 부트스트랩 계정 필요). 모두 사용자 토큰으로 읽는다(RLS 적용)."""
 
-import uuid
-
-from app.assistant_tools import get_my_tasks, log_unanswered, search_knowledge
+from app.assistant_tools import get_my_tasks, search_knowledge
 from app.auth import CurrentUser, _load_user
 
 
@@ -56,18 +54,3 @@ def test_search_knowledge_scope(newhire_token, service):
     ids = [i["id"] for i in items]
     statuses = service.table("knowledge_items").select("status").in_("id", ids).execute().data
     assert {s["status"] for s in statuses} == {"published"}
-
-
-def test_log_unanswered_inserts_one_open_row(newhire_token, service):
-    user = as_user(newhire_token)
-    question = f"테스트 미답변 {uuid.uuid4()}"
-    try:
-        assert log_unanswered(user, question) is None
-        rows = service.table("unanswered_questions").select("*").eq("question", question).execute().data
-        assert len(rows) == 1
-        assert rows[0]["asked_by"] == user.id
-        assert rows[0]["status"] == "open"
-        assert rows[0]["team_id"] == user.team_id
-        assert rows[0]["org_id"] == user.org_id
-    finally:
-        service.table("unanswered_questions").delete().eq("question", question).execute()

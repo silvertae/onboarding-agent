@@ -6,14 +6,20 @@ import { pendingResponse, streamResponse } from './testStream'
 
 const agent = vi.hoisted(() => ({ agentFetch: vi.fn() }))
 const auth = vi.hoisted(() => ({ role: 'new_hire' as string }))
+const db = vi.hoisted(() => ({ from: vi.fn(), insert: vi.fn() }))
 
 vi.mock('@/lib/agent', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/agent')>()),
   agentFetch: agent.agentFetch,
 }))
-vi.mock('@/lib/supabase', () => ({ supabase: {} }))
+vi.mock('@/lib/supabase', () => ({ supabase: { from: db.from, auth: { signOut: vi.fn() } } }))
 vi.mock('@/app/AuthProvider', () => ({
-  useAuth: () => ({ profile: { role: auth.role }, session: {}, loading: false, signOut: vi.fn() }),
+  useAuth: () => ({
+    profile: { id: 'hire-1', role: auth.role, org_id: 'org-1', team_id: 'team-1' },
+    session: {},
+    loading: false,
+    signOut: vi.fn(),
+  }),
 }))
 
 import { AgentError } from '@/lib/agent'
@@ -42,7 +48,13 @@ async function ask(text: string) {
 beforeEach(() => {
   agent.agentFetch.mockReset()
   auth.role = 'new_hire'
+  db.insert.mockReset().mockResolvedValue({ error: null, status: 201 })
+  db.from.mockReset().mockReturnValue({ insert: db.insert })
 })
+
+function unansweredReply() {
+  return streamResponse([{ type: 'unanswered' }, { type: 'token', text: '확인되지 않은 내용이에요.' }, { type: 'done' }])
+}
 
 describe('ChatPanel', () => {
   it('신입이 아니면 페이지만 보이고 채팅은 없다', () => {
@@ -90,15 +102,91 @@ describe('ChatPanel', () => {
     expect(chat().getByRole('link', { name: /명함 신청/ })).toHaveAttribute('href', '/me/tasks/task-ga07')
   })
 
-  it('unanswered → "담당자에게 전달했어요" 표시', async () => {
-    agent.agentFetch.mockResolvedValueOnce(
-      streamResponse([{ type: 'unanswered' }, { type: 'token', text: '확인되지 않은 내용이에요.' }, { type: 'done' }]),
-    )
+  it('unanswered → 등록 요청 버튼만 보이고, 누르기 전에는 아무것도 기록하지 않는다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(unansweredReply())
     renderPanel()
 
     await ask('동호회 가입비 얼마야?')
 
-    expect(await chat().findByText(/담당자에게 전달했어요/)).toBeInTheDocument()
+    expect(await chat().findByRole('button', { name: '담당자에게 등록 요청' })).toBeInTheDocument()
+    expect(chat().queryByText(/전달했어요/)).not.toBeInTheDocument()
+    expect(db.from).not.toHaveBeenCalled()
+  })
+
+  it('근거가 있는 답변에는 등록 요청 버튼이 없다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(
+      streamResponse([
+        { type: 'token', text: '소모품비로 처리해요.' },
+        { type: 'sources', knowledge: [{ id: 'k1', question: '노트북 경비 계정과목이 뭐야?' }], tasks: [] },
+        { type: 'done' },
+      ]),
+    )
+    renderPanel()
+
+    await ask('노트북 경비 계정과목이 뭐야?')
+
+    await chat().findByText('소모품비로 처리해요.')
+    expect(chat().queryByRole('button', { name: '담당자에게 등록 요청' })).not.toBeInTheDocument()
+  })
+
+  it('등록 요청: 질문이 채워진 창에서 고쳐 보내면 본인 권한으로 기록하고 버튼 대신 완료 문구가 남는다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(unansweredReply())
+    renderPanel()
+    const user = userEvent.setup()
+
+    await ask('동호회 가입비 얼마야?')
+    await user.click(await chat().findByRole('button', { name: '담당자에게 등록 요청' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '담당자에게 답 등록을 요청할까요?' })
+    const field = within(dialog).getByLabelText('요청할 질문')
+    expect(field).toHaveValue('동호회 가입비 얼마야?')
+    await user.clear(field)
+    await user.type(field, '  러닝 동호회 가입비 얼마야?  ')
+    await user.click(within(dialog).getByRole('button', { name: '요청 보내기' }))
+
+    expect(db.from).toHaveBeenCalledWith('unanswered_questions')
+    expect(db.insert).toHaveBeenCalledExactlyOnceWith({
+      org_id: 'org-1',
+      asked_by: 'hire-1',
+      team_id: 'team-1',
+      question: '러닝 동호회 가입비 얼마야?',
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const done = chat().getByText(/담당자에게 요청했어요/)
+    expect(done).toHaveAttribute('role', 'status')
+    expect(done).toHaveFocus()
+    expect(chat().queryByRole('button', { name: '담당자에게 등록 요청' })).not.toBeInTheDocument()
+  })
+
+  it('등록 요청: 질문을 비우면 보낼 수 없다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(unansweredReply())
+    renderPanel()
+    const user = userEvent.setup()
+
+    await ask('동호회 가입비 얼마야?')
+    await user.click(await chat().findByRole('button', { name: '담당자에게 등록 요청' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.clear(within(dialog).getByLabelText('요청할 질문'))
+
+    expect(within(dialog).getByRole('button', { name: '요청 보내기' })).toBeDisabled()
+  })
+
+  it('등록 요청 실패 → 창 안에 안내하고 다시 보낼 수 있다', async () => {
+    db.insert.mockResolvedValueOnce({ error: { message: 'boom', code: '42501' }, status: 403 })
+    agent.agentFetch.mockResolvedValueOnce(unansweredReply())
+    renderPanel()
+    const user = userEvent.setup()
+
+    await ask('동호회 가입비 얼마야?')
+    await user.click(await chat().findByRole('button', { name: '담당자에게 등록 요청' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '요청 보내기' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('요청을 보내지 못했어요. 다시 시도해 주세요.')
+    await user.click(within(dialog).getByRole('button', { name: '요청 보내기' }))
+
+    expect(db.insert).toHaveBeenCalledTimes(2)
+    expect(await chat().findByText(/담당자에게 요청했어요/)).toBeInTheDocument()
   })
 
   it('AgentError(0) → 연결 실패 안내와 다시 시도, 다시 시도하면 같은 질문을 다시 보낸다', async () => {

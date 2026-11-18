@@ -1,15 +1,29 @@
-import { ArrowUp, BookOpen, ChevronRight, CircleAlert, Clock, ListChecks, MessageSquare, RotateCw, X } from 'lucide-react'
+import { ArrowUp, BookOpen, Check, ChevronRight, CircleAlert, Clock, ListChecks, MessageSquare, RotateCw, Send, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { ErrorText } from '@/features/staff/ui'
 import { cn } from '@/lib/utils'
 import symbolUrl from './blueward-symbol.png'
+import { requestKnowledge } from './knowledgeRequest'
 import { MAX_MESSAGE_LENGTH, useChatStream, type ChatMessage } from './useChatStream'
 
 const SUGGESTIONS = ['오늘 뭐 해야 해?', '회의실 예약 어떻게 해?', '노트북 경비 계정과목이 뭐야?']
-const HANDED_OVER = '담당자에게 전달했어요'
+const REQUEST_FAILED = '요청을 보내지 못했어요. 다시 시도해 주세요.'
 const QUOTA_HINT = '내일 오전 0시에 다시 쓸 수 있어요. 급한 내용은 담당자에게 문의해 주세요.'
 
 type ChatAskEvent = CustomEvent<{ text?: string }>
@@ -132,6 +146,7 @@ function ChatAside() {
               <AssistantMessage
                 key={i}
                 message={message}
+                question={messages[i - 1]?.role === 'user' ? messages[i - 1].text : ''}
                 pending={sending && i === messages.length - 1}
                 onRetry={lastUserText ? () => submit(lastUserText) : undefined}
                 onNavigate={() => setOpen(false)}
@@ -210,11 +225,13 @@ function ChatAside() {
 
 function AssistantMessage({
   message,
+  question,
   pending,
   onRetry,
   onNavigate,
 }: {
   message: ChatMessage
+  question: string
   pending: boolean
   onRetry?: () => void
   onNavigate: () => void
@@ -269,11 +286,7 @@ function AssistantMessage({
         {message.text}
         {pending && <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-primary align-[-2px]" aria-hidden />}
       </p>
-      {message.unanswered && (
-        <span className="text-xs text-muted-foreground">
-          {message.text.includes(HANDED_OVER) ? '' : `${HANDED_OVER}. `}답이 등록되면 같은 질문에 답할 수 있어요.
-        </span>
-      )}
+      {message.unanswered && !pending && <KnowledgeRequest question={question} />}
       {knowledge.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>근거</span>
@@ -302,5 +315,99 @@ function AssistantMessage({
         </div>
       )}
     </div>
+  )
+}
+
+// 근거 없는 답변 아래의 "담당자에게 등록 요청". 누르기 전에는 아무것도 기록하지 않는다.
+// 한 답변에서 한 번만 보낼 수 있고, 보낸 뒤에는 버튼 대신 완료 문구(role=status)가 남고 포커스도 그리로 옮긴다.
+function KnowledgeRequest({ question }: { question: string }) {
+  const { profile } = useAuth()
+  const fieldId = useId()
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const running = useRef(false)
+  const doneRef = useRef<HTMLParagraphElement>(null)
+
+  const trimmed = text.trim()
+  const canSend = !busy && trimmed.length > 0 && profile !== null
+
+  function changeOpen(next: boolean) {
+    if (busy) return // 보내는 중에는 닫지 않는다
+    if (next) {
+      setText(question.slice(0, MAX_MESSAGE_LENGTH))
+      setError(null)
+    }
+    setOpen(next)
+  }
+
+  async function send() {
+    if (!canSend || !profile || running.current) return
+    running.current = true
+    setBusy(true)
+    setError(null)
+    try {
+      await requestKnowledge(profile, trimmed)
+      setOpen(false)
+      setSent(true)
+    } catch {
+      setError(REQUEST_FAILED)
+    } finally {
+      running.current = false
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={changeOpen}>
+      {sent ? (
+        <p ref={doneRef} tabIndex={-1} role="status" className="flex items-start gap-1.5 text-xs text-muted-foreground outline-none">
+          <Check className="mt-px size-3.5 shrink-0 text-st-done-fg" aria-hidden />
+          담당자에게 요청했어요. 답이 등록되면 같은 질문에 답할 수 있어요.
+        </p>
+      ) : (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="lg" className="self-start">
+            <Send aria-hidden />
+            담당자에게 등록 요청
+          </Button>
+        </DialogTrigger>
+      )}
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          // 보낸 뒤에는 열었던 버튼이 사라지므로 완료 문구로 포커스를 옮긴다
+          if (!sent) return
+          event.preventDefault()
+          doneRef.current?.focus()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>담당자에게 답 등록을 요청할까요?</DialogTitle>
+          <DialogDescription>담당자가 답을 등록하면 같은 질문에 답할 수 있어요.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={fieldId}>요청할 질문</Label>
+          <Textarea
+            id={fieldId}
+            value={text}
+            maxLength={MAX_MESSAGE_LENGTH}
+            onChange={(e) => setText(e.target.value)}
+          />
+          {error && <ErrorText>{error}</ErrorText>}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" size="lg" disabled={busy}>
+              취소
+            </Button>
+          </DialogClose>
+          <Button size="lg" disabled={!canSend} aria-busy={busy || undefined} onClick={send}>
+            {busy ? '보내는 중…' : '요청 보내기'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
