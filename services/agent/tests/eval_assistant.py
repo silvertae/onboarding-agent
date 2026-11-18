@@ -6,8 +6,19 @@
       OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
       OPENAI_MODEL=gpt-6-luna uv run python tests/eval_assistant.py'
 
-신입 계정(newhire@demo.test)으로 /chat에 5문항을 보내고 기대 동작을 확인한다.
+신입 계정(newhire@demo.test)으로 /chat에 8문항을 보내고 기대 동작을 확인한다(마지막 3문항은 규정 조항 답변).
 평가가 남긴 미답변 기록은 끝에 지운다. 답변은 앞부분만 출력한다.
+
+규정 조항 문항은 가상 시드 문서가 데모 조직에 색인돼 있어야 한다. 실행 순서:
+  1. 먼저 시드 문서를 진짜 임베딩으로 색인한다(--all: 복리후생 규정 + 취업규칙 발췌).
+
+         bash scripts/with-local-env.sh sh -c 'cd services/agent && \
+           OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
+           OPENAI_EMBEDDING_MODEL=text-embedding-3-small uv run python scripts/index_seed_docs.py --all'
+
+  2. 위의 평가 명령을 실행한다(OPENAI_EMBEDDING_MODEL도 같이 넘긴다).
+  3. 끝나면 시연에 방해되지 않게 S14에서 두 문서를 지워도 된다(시연 7-2가 복리후생 규정을 직접 올린다).
+"복리후생 규정(가상)"이 ready로 보이지 않으면 문항을 보내기 전에 안내를 출력하고 종료 코드 2로 끝난다.
 """
 
 import json
@@ -30,6 +41,9 @@ from app.config import Settings  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 PREVIEW = 160
+WELFARE_TITLE = "복리후생 규정(가상)"
+ARTICLE_RE = re.compile(r"^제\s*\d+\s*조")
+AMOUNT_RE = re.compile(r"\d[\d,]*\s*(?:만\s*)?원")
 
 
 def sign_in(email: str, password: str) -> str:
@@ -76,7 +90,7 @@ def ask(client: httpx.Client, message: str) -> dict:
                 first_token = time.monotonic() - started
             events.append(event)
     text = "".join(e["text"] for e in events if e["type"] == "token")
-    sources = next((e for e in events if e["type"] == "sources"), {"knowledge": [], "tasks": []})
+    sources = next((e for e in events if e["type"] == "sources"), {"knowledge": [], "tasks": [], "documents": []})
     return {
         "text": text,
         "types": [e["type"] for e in events],
@@ -84,6 +98,7 @@ def ask(client: httpx.Client, message: str) -> dict:
         "error": any(e["type"] == "error" for e in events),
         "knowledge": [k["question"] for k in sources["knowledge"]],
         "tasks": [t["code"] for t in sources["tasks"]],
+        "documents": [(d["document_title"], d["label"]) for d in sources.get("documents", [])],
         "first_token_s": round(first_token, 1) if first_token is not None else None,
         "total_s": round(time.monotonic() - started, 1),
     }
@@ -96,6 +111,19 @@ def main() -> int:
             return 2
 
     service = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    ready_welfare = (
+        service.table("policy_documents")
+        .select("id")
+        .eq("title", WELFARE_TITLE)
+        .eq("status", "ready")
+        .eq("scope", "company")
+        .execute()
+        .data
+    )
+    if not ready_welfare:
+        print(f'규정 문서 "{WELFARE_TITLE}"가 ready 상태로 없습니다. 먼저 scripts/index_seed_docs.py --all로 색인하세요.')
+        return 2
+
     hire = service.table("profiles").select("id").eq("email", "newhire@demo.test").single().execute().data
 
     def task_statuses() -> dict[str, str]:
@@ -157,6 +185,20 @@ def main() -> int:
         r = ask(client, "피보나치 함수 짜줘")
         ok = not r["error"] and not r["unanswered"] and "def " not in r["text"] and "```" not in r["text"]
         results.append(("피보나치 함수 짜줘", ok, r))
+
+        r = ask(client, "결혼하면 경조금 얼마야?")
+        welfare_articles = [label for title, label in r["documents"] if title == WELFARE_TITLE and ARTICLE_RE.match(label or "")]
+        ok = not r["error"] and "제8조" in welfare_articles and re.search(r"50만\s*원", r["text"]) is not None
+        results.append(("결혼하면 경조금 얼마야?", ok, r))
+
+        r = ask(client, "복지포인트 얼마야?")
+        ok = not r["error"] and not r["unanswered"] and bool(r["knowledge"] or r["documents"])
+        results.append(("복지포인트 얼마야?", ok, r))
+
+        r = ask(client, "출장비 규정 알려줘")
+        # 시드 규정에 없는 내용이다. 근거 없음 신호를 보내고 금액을 지어내지 않아야 한다.
+        ok = not r["error"] and r["unanswered"] and not AMOUNT_RE.search(r["text"])
+        results.append(("출장비 규정 알려줘", ok, r))
     finally:
         client.close()
         server.should_exit = True
@@ -164,7 +206,7 @@ def main() -> int:
     print(f"model={os.environ['OPENAI_MODEL']}")
     for question, ok, r in results:
         print(f"\n[{'PASS' if ok else 'FAIL'}] {question}")
-        print(f"  events={_compact(r['types'])} unanswered={r['unanswered']} knowledge={r['knowledge']} tasks={r['tasks']}")
+        print(f"  events={_compact(r['types'])} unanswered={r['unanswered']} knowledge={r['knowledge']} tasks={r['tasks']} documents={r['documents']}")
         print(f"  first_token={r['first_token_s']}s total={r['total_s']}s")
         if r.get("recorded"):
             print(f"  에이전트가 미답변을 기록함: {len(r['recorded'])}건")
