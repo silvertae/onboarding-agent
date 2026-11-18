@@ -21,7 +21,7 @@ Claude Code에 이 폴더를 컨텍스트로 주고 구현을 요청할 때 쓰�
 | S2-me, S2-me-mobile | `/me` | 신입 |
 | S3-task-detail | `/me/tasks/:id` | 신입 |
 | S3-task-detail-forms, S3-task-detail-forms-mobile | `/me/tasks/:id`의 "작성할 서식" 섹션 | 신입 |
-| S4-chat-mobile, S4-chat-states | S2·S3 오른쪽 패널, 모바일은 전체 화면 | 신입 |
+| S4-chat-mobile, S4-chat-mobile-empty, S4-chat-states | S2·S3 오른쪽 패널, 모바일은 전체 화면(대화 전 상태는 S4-chat-mobile-empty, S4-chat-states ①) | 신입 |
 | S5-team | `/team` | 교육 담당자 |
 | S6-hire-detail | `/team/hires/:id` | 교육 담당자 |
 | S7-exam-editor | `/team/exams/:id` | 교육 담당자 |

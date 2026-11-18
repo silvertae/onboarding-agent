@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S4 에이전트 채팅 모바일 (대화 전)</title>
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
+</style>
+
+<div style="width: 390px; height: 844px; background: var(--surface-chat); display: flex; flex-direction: column; overflow: hidden">
+  <header style="background: #ffffff; border-bottom: 1px solid var(--border); padding: 10px 8px 10px 4px; display: flex; align-items: center; gap: 8px">
+    <a href="S2-me-mobile.html" class="icon-btn" aria-label="닫기" style="width: 44px; height: 44px"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></a>
+    <span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span>
+    <div style="display: flex; flex-direction: column; flex: 1; line-height: 1.25"><b style="font-size: 15px">온보딩 에이전트</b><span class="caption">회사·AI팀 지식으로 답해요</span></div>
+  </header>
+
+  <div style="flex: 1; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+    <div class="chat-empty">
+      <span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span>
+      <p class="chat-empty-title">온보딩에 대해 물어보세요</p>
+      <p class="chat-empty-sub">등록된 사내 지식과 내 과제로 답해요</p>
+      <div class="suggest-list" role="group" aria-label="추천 질문">
+        <button class="suggest" type="button"><span>오늘 뭐 해야 해?</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+        <button class="suggest" type="button"><span>회의실 예약 어떻게 해?</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+        <button class="suggest" type="button"><span>노트북 경비 계정과목이 뭐야?</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <footer style="background: #ffffff; border-top: 1px solid var(--border); padding: 12px 12px 20px; display: flex; flex-direction: column; gap: 10px">
+    <div class="composer">
+      <label for="qm" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label>
+      <textarea id="qm" rows="1" placeholder="궁금한 걸 물어보세요"></textarea>
+      <button class="send" type="button" aria-label="보내기" disabled style="background: var(--track); color: var(--disabled-fg)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+    </div>
+  </footer>
+</div>
+
+</body>
+</html>
