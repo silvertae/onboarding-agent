@@ -14,7 +14,7 @@ body{margin:0}
 a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
 </style>
 
-<div style="width: 1644px; height: 760px; box-sizing: border-box; padding: 24px; background: var(--canvas); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px">
+<div style="width: 2292px; height: 760px; box-sizing: border-box; padding: 24px; background: var(--canvas); display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 24px">
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
     <b style="font-size: 13px; color: var(--secondary)">① 대화 전 · 아래 칩 줄 없음</b>
@@ -39,7 +39,35 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: var(--secondary)">② 답변 중 (스트리밍)</b>
+    <b style="font-size: 13px; color: var(--secondary)">② 답변 기다리는 중 · 보낸 직후</b>
+    <div class="chat" style="flex: 1; min-height: 0">
+      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-bd" style="flex: 1">
+        <div class="msg-u">오늘 뭐 해야 해?</div>
+        <div class="msg-a"><span class="bubble" role="status" style="display: flex; align-items: center; gap: 10px; color: var(--muted)"><span class="typing" aria-hidden="true"><i></i><i style="opacity: .7"></i><i style="opacity: .45"></i></span><span>사내 지식과 내 과제를 확인하고 있어요</span></span></div>
+      </div>
+      <div class="chat-ft">
+        <div class="composer"><label for="w0" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label><textarea id="w0" rows="1" placeholder="답변이 끝나면 보낼 수 있어요" disabled></textarea><button class="send" type="button" aria-label="보내기" disabled style="background: var(--track); color: var(--disabled-fg)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
+    <b style="font-size: 13px; color: var(--secondary)">③ 8초가 지나도 첫 글자가 없을 때</b>
+    <div class="chat" style="flex: 1; min-height: 0">
+      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-bd" style="flex: 1">
+        <div class="msg-u">오늘 뭐 해야 해?</div>
+        <div class="msg-a"><span class="bubble" role="status" style="display: flex; align-items: center; gap: 10px; color: var(--muted)"><span class="typing" aria-hidden="true"><i></i><i style="opacity: .7"></i><i style="opacity: .45"></i></span><span>답변이 조금 늦어지고 있어요. 잠시만 기다려 주세요.</span></span></div>
+      </div>
+      <div class="chat-ft">
+        <div class="composer"><label for="w1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label><textarea id="w1" rows="1" placeholder="답변이 끝나면 보낼 수 있어요" disabled></textarea><button class="send" type="button" aria-label="보내기" disabled style="background: var(--track); color: var(--disabled-fg)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
+    <b style="font-size: 13px; color: var(--secondary)">④ 답변 중 (스트리밍)</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
@@ -53,7 +81,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: var(--secondary)">③ 모르는 질문 · 등록 요청 버튼</b>
+    <b style="font-size: 13px; color: var(--secondary)">⑤ 모르는 질문 · 등록 요청 버튼</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
@@ -70,7 +98,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: var(--secondary)">④ 서비스 연결 실패</b>
+    <b style="font-size: 13px; color: var(--secondary)">⑥ 서비스 연결 실패</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
@@ -87,7 +115,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: var(--secondary)">⑤ 하루 사용 한도 초과 · 글자 수 초과</b>
+    <b style="font-size: 13px; color: var(--secondary)">⑦ 하루 사용 한도 초과 · 글자 수 초과</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
