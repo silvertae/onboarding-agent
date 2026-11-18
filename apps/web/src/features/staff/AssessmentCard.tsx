@@ -1,13 +1,20 @@
 import { useId, useState } from 'react'
+import { Link } from 'react-router'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus } from '@/components/LoadingStatus'
 import { SegmentedRadio } from '@/components/SegmentedRadio'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { useExams } from '@/features/exam/exams'
 import type { Enums } from '@/lib/database.types'
 import { useTaskActions, type TaskView } from '@/lib/tasks'
 import { isoToLocalInput, localInputToIso } from './format'
+import { useAssignExam, useSittings } from './sittings'
 import { ASSESSMENT_LABEL } from './teamTasks'
 import { ErrorText, Panel } from './ui'
 import { useGuardedAction } from './useGuardedAction'
@@ -161,6 +168,117 @@ export function AssessmentCard({ task }: { task: TaskView }) {
           </Button>
         </div>
       </div>
+
+      {/* 선행 과제 대기·해당 없음이면 서버(assign_exam)가 거절하므로 줄을 그리지 않는다. */}
+      {!locked && <ExamSittings taskId={task.id} />}
     </Panel>
+  )
+}
+
+// 응시 시험: 이 평가에 쓴 확정 시험. 연결하면 그 시험의 은행 문항이 이 신입의 다음 시험에서 빠진다.
+// 저장 버튼과 따로 바로 연결되므로 폼 아래 별도 줄로 둔다.
+function ExamSittings({ taskId }: { taskId: string }) {
+  const id = useId()
+  const sittings = useSittings(taskId)
+  const exams = useExams()
+  const assign = useAssignExam(taskId)
+  const [picked, setPicked] = useState('')
+  const [linked, setLinked] = useState(false)
+
+  const linkedIds = new Set((sittings.data ?? []).map((s) => s.exam_id))
+  const finals = (exams.data ?? []).filter((e) => e.status === 'final')
+  // 같은 시험을 다시 연결해도 서버는 처음 기록을 돌려줄 뿐이라 선택지에서 뺀다.
+  const options = finals.filter((e) => !linkedIds.has(e.id))
+  const value = options.some((e) => e.id === picked) ? picked : (options[0]?.id ?? '')
+
+  function connect() {
+    if (!value || assign.isPending) return
+    setLinked(false)
+    assign.mutate(value, { onSuccess: () => setLinked(true) })
+  }
+
+  const failed = sittings.isError || exams.isError
+  const retrying = sittings.isFetching || exams.isFetching
+
+  return (
+    <div role="group" aria-labelledby={`${id}-label`} className="flex flex-col gap-2 border-t border-border px-6 py-5">
+      <span id={`${id}-label`} className="text-sm font-semibold">
+        응시 시험
+      </span>
+
+      {sittings.isLoading || exams.isLoading ? (
+        <LoadingStatus className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-10 w-full" />
+        </LoadingStatus>
+      ) : failed ? (
+        <LoadError
+          retrying={retrying}
+          onRetry={() => {
+            if (sittings.isError) void sittings.refetch()
+            if (exams.isError) void exams.refetch()
+          }}
+        >
+          응시 시험을 불러오지 못했어요. 다시 시도해 주세요.
+        </LoadError>
+      ) : (
+        <>
+          {sittings.data && sittings.data.length > 0 ? (
+            <ul className="flex flex-col gap-1">
+              {sittings.data.map((s) => (
+                <li key={s.id}>
+                  <Link to={`/team/exams/${s.exam.id}/print?variant=paper`} className="text-sm text-primary">
+                    {s.exam.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">아직 연결한 시험이 없어요.</p>
+          )}
+
+          {finals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              확정된 시험이 없어요.{' '}
+              <Link to="/team/exams" className="text-primary">
+                시험 출제
+              </Link>
+              에서 먼저 확정해 주세요.
+            </p>
+          ) : (
+            options.length > 0 && (
+              <div className="flex items-center gap-2">
+                <NativeSelect
+                  aria-label="연결할 시험"
+                  value={value}
+                  disabled={assign.isPending}
+                  onChange={(e) => {
+                    setPicked(e.target.value)
+                    setLinked(false)
+                    assign.reset()
+                  }}
+                >
+                  {options.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
+                  ))}
+                </NativeSelect>
+                <Button type="button" variant="outline" disabled={assign.isPending} onClick={connect}>
+                  연결
+                </Button>
+              </div>
+            )
+          )}
+
+          {assign.isError && <ErrorText>시험을 연결하지 못했어요. 다시 시도해 주세요.</ErrorText>}
+          {linked && (
+            <p role="status" className="text-sm text-st-done-fg">
+              연결했어요
+            </p>
+          )}
+        </>
+      )}
+    </div>
   )
 }
