@@ -310,9 +310,11 @@ select results_eq(
 select is(
   public.save_knowledge_drafts($$[
     {"question":"느슨 질문1","answer":"답","category":"","clause_ids":null},
-    {"question":"느슨 질문2","answer":"답","category":"","clause_ids":["not-a-uuid","a9000000-0000-0000-0000-000000000c01"]}
+    {"question":"느슨 질문2","answer":"답","category":"","clause_ids":["not-a-uuid","a9000000-0000-0000-0000-000000000c01"]},
+    {"question":"느슨 질문3","answer":"답","category":"","clause_ids":"abc"},
+    {"question":"느슨 질문4","answer":"답","category":"","clause_ids":{}}
   ]$$::jsonb),
-  2, 'ga: clause_ids가 null이거나 uuid가 아닌 값이 섞여도 초안은 모두 저장된다');
+  4, 'ga: clause_ids가 null·문자열·객체이거나 uuid가 아닌 값이 섞여도 초안은 모두 저장된다');
 select is((select count(*) from public.knowledge_sources ks join public.knowledge_items k on k.id = ks.knowledge_id
             where k.question like '느슨 질문%'), 1::bigint,
   'ga: 연결은 uuid 모양의 읽을 수 있는 조항 1건뿐');
@@ -373,17 +375,16 @@ select results_eq(
   $$values ('resolved'::text, true)$$,
   'trainer: 미답변이 resolved로 바뀌고 지식과 연결된다');
 create temp table t09_before as
-  select id, xmin::text as x, updated_at from public.knowledge_items where question = '야근 수당';
+  select id, ctid::text as c from public.knowledge_items where question = '야근 수당';
 select is(
   (select public.resolve_unanswered_with_sources('a9000000-0000-0000-0000-0000000000f2', '야근 수당', '야근 수당 답', '근무',
       array['a9000000-0000-0000-0000-000000000c01', 'a9000000-0000-0000-0000-000000000c03']::uuid[], 'ai_draft')),
   (select id from t09_before),
   'trainer: 같은 호출을 다시 불러도 같은 지식 id를 돌려준다(연타)');
 select results_eq(
-  $$select k.xmin::text = b.x, k.updated_at = b.updated_at
-      from public.knowledge_items k join t09_before b on b.id = k.id$$,
-  $$values (true, true)$$,
-  'trainer: 다시 불러도 지식 행을 다시 쓰지 않는다(xmin·updated_at 그대로)');
+  $$select k.ctid::text = b.c from public.knowledge_items k join t09_before b on b.id = k.id$$,
+  $$values (true)$$,
+  'trainer: 다시 불러도 지식 행을 다시 쓰지 않는다(ctid 그대로: 같은 트랜잭션의 UPDATE도 ctid를 바꾼다)');
 select results_eq(
   $$select (select count(*) from public.knowledge_items where question = '야근 수당'),
            (select count(*) from public.knowledge_sources ks join public.knowledge_items k on k.id = ks.knowledge_id where k.question = '야근 수당')$$,

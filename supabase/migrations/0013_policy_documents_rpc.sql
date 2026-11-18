@@ -158,10 +158,10 @@ begin
     insert into public.knowledge_sources (knowledge_id, clause_id, org_id)
     select v_id, c.id, c.org_id
       from public.document_clauses c
-     where jsonb_typeof(v_item -> 'clause_ids') = 'array'
-       and c.id in (
+     where c.id in (
          select e.value::uuid
-           from jsonb_array_elements_text(v_item -> 'clause_ids') e
+           from jsonb_array_elements_text(
+                  case when jsonb_typeof(v_item -> 'clause_ids') = 'array' then v_item -> 'clause_ids' else '[]'::jsonb end) e
           where e.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 
     v_count := v_count + 1;
