@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Plus, Printer, Sparkles } from 'lucide-react'
+import { ChevronLeft, Plus, Printer, Sparkles, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,7 +34,7 @@ const SAVE_FAILED = '저장하지 못했어요. 잠시 후 다시 시도해 주�
 const INVALID_QUESTIONS = '비어 있는 칸이 있어요. 모든 문항에 문제·모범 답안·채점 기준과 1~100점 배점을 넣어 주세요.'
 
 const fieldClass =
-  'h-10 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50'
+  'h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50'
 
 type Item = DraftQuestion & { key: string; startEditing?: boolean }
 type Snapshot = { title: string; topic: string; difficulty: Difficulty; status: ExamStatus; questions: DraftQuestion[] }
@@ -271,7 +272,10 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
       {saving && <p role="status" className="text-sm text-muted-foreground">저장하는 중…</p>}
       {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       {!empty && status === 'draft' && (
-        <p className="rounded-xl border border-[#f3d9a4] bg-[#fdf2dc] px-4 py-2.5 text-sm text-[#7a4f00]">{REVIEW_NOTICE}</p>
+        <Alert variant="warning" role="note">
+          <TriangleAlert aria-hidden />
+          <AlertDescription>{REVIEW_NOTICE}</AlertDescription>
+        </Alert>
       )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
@@ -318,14 +322,14 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
             </Button>
             {generating && <p role="status" className="text-sm text-primary">초안을 만드는 중이에요. 20초 정도 걸릴 수 있어요.</p>}
             {genError && (
-              <div role="alert" className="grid gap-2 rounded-xl bg-[#fde8e6] px-3 py-2.5 text-sm text-[#a1261c]">
+              <Alert variant="destructive" className="gap-2 px-3">
                 <p>{genError.text}</p>
                 {genError.retry && (
-                  <Button type="button" variant="outline" size="sm" className="justify-self-start bg-white" disabled={!canGenerate} onClick={() => void generate()}>
+                  <Button type="button" variant="outline" size="sm" className="justify-self-start bg-card" disabled={!canGenerate} onClick={() => void generate()}>
                     다시 시도
                   </Button>
                 )}
-              </div>
+              </Alert>
             )}
           </section>
 

@@ -2,6 +2,7 @@ import { ArrowUp, BookOpen, CircleAlert, Clock, ListChecks, MessageSquare, Rotat
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import symbolUrl from './blueward-symbol.png'
@@ -91,7 +92,7 @@ function ChatAside() {
           </Button>
         </header>
 
-        <div ref={bodyRef} className="flex flex-1 flex-col gap-4 overflow-y-auto bg-[#fbfbfd] p-4 lg:p-5">
+        <div ref={bodyRef} className="flex flex-1 flex-col gap-4 overflow-y-auto bg-surface-chat p-4 lg:p-5">
           {messages.length === 0 && (
             <p className="m-auto max-w-[280px] text-center text-sm text-muted-foreground">
               온보딩에 대해 궁금한 걸 물어보세요. 등록된 사내 지식과 내 과제로 답해요.
@@ -134,7 +135,7 @@ function ChatAside() {
           <div
             className={cn(
               'flex items-end gap-2 rounded-[14px] border border-input bg-card py-1.5 pr-1.5 pl-3.5 focus-within:border-ring',
-              tooLong && 'border-[#c4372b] focus-within:border-[#c4372b]',
+              tooLong && 'border-st-rework-fg focus-within:border-st-rework-fg',
             )}
           >
             <label htmlFor="chat-input" className="sr-only">
@@ -157,12 +158,12 @@ function ChatAside() {
               aria-label="보내기"
               disabled={!canSend}
               onClick={() => submit(input)}
-              className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-[var(--primary-hover)] disabled:bg-[#e8e8ed] disabled:text-[#8e8e93]"
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-[var(--primary-hover)] disabled:bg-track disabled:text-disabled-foreground"
             >
               <ArrowUp className="size-4" aria-hidden />
             </button>
           </div>
-          <span id={counterId} className={cn('text-right text-xs text-muted-foreground', tooLong && 'text-[#a1261c]')}>
+          <span id={counterId} className={cn('text-right text-xs text-muted-foreground', tooLong && 'text-st-rework-fg')}>
             {input.length.toLocaleString('ko-KR')} / {MAX_MESSAGE_LENGTH}
             {tooLong && ` · ${MAX_MESSAGE_LENGTH}자까지 보낼 수 있어요`}
           </span>
@@ -196,28 +197,24 @@ function AssistantMessage({
   if (message.error) {
     if (!message.retryable) {
       return (
-        <div role="status" className="flex gap-2 rounded-xl border border-[#f0d9a8] bg-[#fff7e8] p-3 text-sm text-[#6b4500]">
-          <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <div className="flex flex-col gap-0.5">
-            <b>{message.error}</b>
-            {message.error === '오늘 사용 한도를 넘었어요' && <span>{QUOTA_HINT}</span>}
-          </div>
-        </div>
+        <Alert variant="warning" role="status" className="rounded-xl px-3">
+          <Clock aria-hidden />
+          <AlertTitle className="font-semibold">{message.error}</AlertTitle>
+          {message.error === '오늘 사용 한도를 넘었어요' && <AlertDescription>{QUOTA_HINT}</AlertDescription>}
+        </Alert>
       )
     }
     return (
-      <div role="alert" className="flex flex-col gap-2.5 rounded-xl border border-[#f3c9c4] bg-[#fdf1ef] p-3 text-sm text-[#a1261c]">
-        <div className="flex gap-2">
-          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{message.error}</span>
-        </div>
+      <Alert variant="destructive" className="rounded-xl px-3">
+        <CircleAlert aria-hidden />
+        <AlertDescription>{message.error}</AlertDescription>
         {onRetry && (
-          <Button variant="destructive" size="sm" className="self-start" onClick={onRetry}>
+          <Button variant="destructive" size="sm" className="mt-2 justify-self-start" onClick={onRetry}>
             <RotateCw aria-hidden />
             다시 시도
           </Button>
         )}
-      </div>
+      </Alert>
     )
   }
 
@@ -228,9 +225,9 @@ function AssistantMessage({
         aria-label="답변 중"
         className="inline-flex gap-1 self-start rounded-[18px_18px_18px_4px] border border-border bg-card px-3.5 py-4"
       >
-        <i className="size-1.5 animate-pulse rounded-full bg-[#aeaeb2]" />
-        <i className="size-1.5 animate-pulse rounded-full bg-[#c7c7cc] [animation-delay:150ms]" />
-        <i className="size-1.5 animate-pulse rounded-full bg-[#d8d8dc] [animation-delay:300ms]" />
+        <i className="size-1.5 animate-pulse rounded-full bg-tertiary" />
+        <i className="size-1.5 animate-pulse rounded-full bg-tertiary/70 [animation-delay:150ms]" />
+        <i className="size-1.5 animate-pulse rounded-full bg-tertiary/45 [animation-delay:300ms]" />
       </span>
     )
   }
@@ -241,7 +238,7 @@ function AssistantMessage({
       <p
         className={cn(
           'rounded-[18px_18px_18px_4px] border border-border bg-card px-3.5 py-3 text-sm whitespace-pre-wrap',
-          message.unanswered && 'border-[#f0d9a8] bg-[#fff7e8]',
+          message.unanswered && 'border-alert-warn-border bg-alert-warn-bg',
         )}
       >
         {message.text}

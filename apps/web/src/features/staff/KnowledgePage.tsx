@@ -110,7 +110,7 @@ export function KnowledgePage() {
               <EmptyState>미답변 질문이 없어요</EmptyState>
             ) : (
               <table aria-label="미답변 질문" className="w-full text-sm">
-                <thead className="border-b border-border bg-[#fafafc] text-left text-xs text-[var(--text-secondary)]">
+                <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                   <tr>
                     <th className={th}>질문</th>
                     <th className={th}>물은 시각</th>
@@ -176,7 +176,7 @@ export function KnowledgePage() {
                 </div>
               ) : (
                 <table aria-label="지식 목록" className="w-full text-sm">
-                  <thead className="border-y border-border bg-[#fafafc] text-left text-xs text-[var(--text-secondary)]">
+                  <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                     <tr>
                       <th className={th}>질문</th>
                       <th className={th}>답변</th>

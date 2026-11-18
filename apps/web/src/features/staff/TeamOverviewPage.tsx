@@ -21,7 +21,7 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
       className="flex flex-col gap-5 rounded-[18px] border border-border bg-card p-6 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring"
     >
       <div className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#e8eef8] text-sm font-semibold text-primary" aria-hidden>
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-avatar text-sm font-semibold text-primary" aria-hidden>
           {initials(hire.full_name)}
         </span>
         <div className="min-w-0 flex-1">
@@ -55,7 +55,7 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
           aria-valuemin={0}
           aria-valuemax={total}
           aria-valuenow={finished}
-          className="mt-2 h-2 overflow-hidden rounded-full bg-[#e8e8ed]"
+          className="mt-2 h-2 overflow-hidden rounded-full bg-track"
         >
           <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
         </div>
@@ -87,8 +87,8 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
 // 에이전트가 답하지 못한 우리 팀 질문 수 → S10
 function UnansweredBanner({ count }: { count: number }) {
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-[18px] border border-[#f1dfb4] bg-[#fffaf0] px-6 py-5">
-      <span className="grid size-10 place-items-center rounded-xl bg-[#fdf2dc] text-[#7a4f00]" aria-hidden>
+    <div className="flex flex-wrap items-center gap-4 rounded-[18px] border border-alert-warn-border bg-alert-warn-bg px-6 py-5">
+      <span className="grid size-10 place-items-center rounded-xl bg-st-submitted-bg text-st-submitted-fg" aria-hidden>
         <MessageSquare className="size-5" />
       </span>
       <div className="flex-1">

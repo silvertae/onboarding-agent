@@ -36,7 +36,7 @@ export function DemoChip({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="size-1.5 rounded-full bg-[#b26a00]" aria-hidden />
+      <span className="size-1.5 rounded-full bg-demo" aria-hidden />
       데모 환경 · 가상 데이터
       {envName && <span className="font-semibold">· {envName}</span>}
     </span>
@@ -49,7 +49,7 @@ function AppHeader() {
   const caption = profile.department ? OWNER_LABEL[profile.department] : profile.job_title
 
   return (
-    <header className="border-b border-border bg-white/90">
+    <header className="border-b border-border bg-card/90">
       <div className="mx-auto flex min-h-15 max-w-[1376px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-2 sm:px-8">
         {/* 좁은 화면(모바일)에서는 두 줄: 1줄 로고·계정, 2줄 데모 표시·메뉴. sm 이상은 한 줄 */}
         <Link to="/" className="order-1 flex items-center gap-3 text-foreground">
@@ -79,7 +79,7 @@ function AppHeader() {
         </nav>
         <div className="order-2 ml-auto flex items-center gap-2.5 sm:order-4 sm:ml-0">
           <span
-            className="grid size-8 place-items-center rounded-full bg-[#e8eef8] text-[13px] font-semibold text-primary"
+            className="grid size-8 place-items-center rounded-full bg-avatar text-[13px] font-semibold text-primary"
             aria-hidden
           >
             {initials(profile.full_name, profile.role)}

@@ -120,7 +120,7 @@ function AnswerSheet({ exam }: { exam: ExamWithQuestions }) {
         <div className="grid gap-1.5">
           <img src={logoUrl} alt="Blueward" className="h-4 w-auto justify-self-start" />
           <h1 className="text-[22px] leading-7 font-bold">{exam.title} · 답안지</h1>
-          <p className="text-[10pt] font-semibold text-[#a1261c]">채점자용 · 신입에게 배포하지 마세요</p>
+          <p className="text-[10pt] font-semibold text-st-rework-fg">채점자용 · 신입에게 배포하지 마세요</p>
         </div>
         <p className="text-[11pt] font-semibold">총 {totalOf(exam)}점</p>
       </header>

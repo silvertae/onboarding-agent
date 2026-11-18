@@ -18,7 +18,7 @@ export function NaDialog({ pending, onCancel, onConfirm }: Props) {
   return (
     <form
       aria-label="해당 없음 처리"
-      className="flex flex-col gap-3 border-t border-border bg-[#fafafc] px-5 py-5 sm:px-7"
+      className="flex flex-col gap-3 border-t border-border bg-surface-subtle px-5 py-5 sm:px-7"
       onSubmit={(e) => {
         e.preventDefault()
         if (trimmed) onConfirm(trimmed)
@@ -27,7 +27,7 @@ export function NaDialog({ pending, onCancel, onConfirm }: Props) {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id}>
           해당 없음 사유
-          <span className="text-[#a1261c]" aria-hidden>
+          <span className="text-st-rework-fg" aria-hidden>
             *
           </span>
         </Label>

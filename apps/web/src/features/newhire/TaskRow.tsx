@@ -39,7 +39,7 @@ function Meta({ task, all, highlight }: Pick<Props, 'task' | 'all' | 'highlight'
         <span key={p}>{p}</span>
       ))}
       {highlight && task.status === 'rework' && task.rework_reason && (
-        <span className="text-[#a1261c]">사유: {task.rework_reason}</span>
+        <span className="text-st-rework-fg">사유: {task.rework_reason}</span>
       )}
     </>
   )
@@ -51,14 +51,14 @@ export function TaskRow({ task, all, teamName, highlight }: Props) {
     <Link
       to={`/me/tasks/${task.id}`}
       className={cn(
-        'flex items-start gap-3 border-t border-border px-4 py-3.5 text-foreground no-underline first:border-t-0 hover:bg-[#fafafc] sm:items-center sm:px-6',
-        rework && 'bg-[#fff8f7] hover:bg-[#fff1ef]',
+        'flex items-start gap-3 border-t border-border px-4 py-3.5 text-foreground no-underline first:border-t-0 hover:bg-surface-subtle sm:items-center sm:px-6',
+        rework && 'bg-alert-err-bg hover:bg-st-rework-bg',
         task.status === 'blocked' && 'text-[var(--text-secondary)]',
       )}
     >
       {highlight && (
         <span className="hidden w-5 shrink-0 sm:block" aria-hidden>
-          {rework && <AlertCircle className="size-5 text-[#a1261c]" />}
+          {rework && <AlertCircle className="size-5 text-st-rework-fg" />}
         </span>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -71,7 +71,7 @@ export function TaskRow({ task, all, teamName, highlight }: Props) {
         </span>
       </div>
       <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
-      <ChevronRight className="hidden size-4 shrink-0 text-[#aeaeb2] sm:block" aria-hidden />
+      <ChevronRight className="hidden size-4 shrink-0 text-tertiary sm:block" aria-hidden />
     </Link>
   )
 }

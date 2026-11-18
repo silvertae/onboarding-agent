@@ -143,7 +143,7 @@ export function OpsInboxPage() {
             </div>
           ) : (
             <table aria-label="업무 목록" className="w-full text-sm">
-              <thead className="border-y border-border bg-[#fafafc] text-left text-xs text-[var(--text-secondary)]">
+              <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                 <tr>
                   <th className="px-4 py-3 font-semibold">입사자</th>
                   <th className="px-4 py-3 font-semibold">과제</th>
@@ -180,7 +180,7 @@ export function OpsInboxPage() {
                         }
                       }}
                       className={cn(
-                        'cursor-pointer border-b border-border last:border-b-0 hover:bg-[#fafafc] focus-visible:bg-accent focus-visible:outline-none',
+                        'cursor-pointer border-b border-border last:border-b-0 hover:bg-surface-subtle focus-visible:bg-accent focus-visible:outline-none',
                         task.id === selectedId && 'bg-accent',
                       )}
                     >

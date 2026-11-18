@@ -127,7 +127,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
                 key={c.value}
                 className={cn(
                   'cursor-pointer rounded-lg px-3 py-1.5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-40 text-center text-sm text-[var(--text-secondary)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
-                  choice === c.value && 'bg-white font-semibold text-foreground shadow-sm',
+                  choice === c.value && 'bg-card font-semibold text-foreground shadow-sm',
                 )}
               >
                 <input
@@ -164,7 +164,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
         {resultRecorded && <p className="text-xs text-muted-foreground">기록된 결과는 미기록으로 되돌릴 수 없어요. 통과 / 보충 필요 사이에서만 바꿀 수 있어요.</p>}
         {error && <ErrorText>{error}</ErrorText>}
         {saved && (
-          <p role="status" className="text-sm text-[#1b6530]">
+          <p role="status" className="text-sm text-st-done-fg">
             저장했어요.
           </p>
         )}

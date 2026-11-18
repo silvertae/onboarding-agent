@@ -11,17 +11,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
 body{margin:0}
-a{color:#06479a}a:hover{color:#04336f}
+a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
 </style>
 
-<div style="min-height: 1060px; background: #f5f5f7; position: relative">
+<div style="min-height: 1060px; background: var(--canvas); position: relative">
   <header class="topbar">
     <div class="topbar-in">
       <a class="brand" href="#"><img src="../assets/blueward-logo.png" alt="Blueward"><span class="brand-div"></span><span class="brand-name">온보딩 에이전트</span></a>
       <span class="demo-chip"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
       <nav class="nav" aria-label="주 메뉴"><a class="on" href="#">사용자 관리</a></nav>
       <div class="user">
-        <span class="avatar" style="background: #1d1d1f; color: #ffffff">관</span>
+        <span class="avatar" style="background: var(--foreground); color: #ffffff">관</span>
         <div style="display: flex; flex-direction: column; line-height: 1.2"><b style="font-size: 13px">시스템 관리자</b><span class="caption">운영</span></div>
         <span class="role">관리자</span>
         <button class="icon-btn" type="button" aria-label="로그아웃"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></button>
@@ -55,7 +55,7 @@ a{color:#06479a}a:hover{color:#04336f}
           <table class="tbl">
             <thead><tr><th>이름</th><th>메일</th><th>역할</th><th>부서·팀</th><th>입사일</th><th>기본 계정</th></tr></thead>
             <tbody>
-              <tr class="sel"><td><b>한지우</b> <span class="tag" style="background: #e7eef8; color: #06479a">새로 만듦</span></td><td class="mono">jiwoo.han@blueward.demo</td><td>신입</td><td>AI팀</td><td>11/17</td><td class="muted">아니요</td></tr>
+              <tr class="sel"><td><b>한지우</b> <span class="tag" style="background: var(--st-todo-bg); color: var(--primary)">새로 만듦</span></td><td class="mono">jiwoo.han@blueward.demo</td><td>신입</td><td>AI팀</td><td>11/17</td><td class="muted">아니요</td></tr>
               <tr><td><b>김하늘</b></td><td class="mono">haneul.kim@blueward.demo</td><td>신입</td><td>AI팀</td><td>11/14</td><td>예</td></tr>
               <tr><td><b>이도윤</b></td><td class="mono">doyun.lee@blueward.demo</td><td>신입</td><td>AI팀</td><td>11/03</td><td>예</td></tr>
               <tr><td><b>최유나</b></td><td class="mono">yuna.choi@blueward.demo</td><td>신입</td><td>AI팀</td><td>11/24</td><td>예</td></tr>
@@ -83,11 +83,11 @@ a{color:#06479a}a:hover{color:#04336f}
             <div class="field"><label class="label" for="un">이름</label><input class="input" id="un" placeholder="홍길동"></div>
             <div class="field"><label class="label" for="ur">직급</label><input class="input" id="ur" placeholder="사원"></div>
           </div>
-          <div class="field"><label class="label" for="um">메일</label><input class="input err" id="um" value="haneul.kim@blueward.demo"><span class="hint" style="color: #a1261c">이미 등록된 메일이에요.</span></div>
+          <div class="field"><label class="label" for="um">메일</label><input class="input err" id="um" value="haneul.kim@blueward.demo"><span class="hint" style="color: var(--st-rework-fg)">이미 등록된 메일이에요.</span></div>
           <div class="field"><label class="label" for="up">초기 비밀번호</label><input class="input" id="up" type="password" value="temp-pass-01"><span class="hint">8자 이상</span></div>
 
           
-            <div class="col" style="gap: 14px; padding: 14px; border-radius: 12px; background: #f5f5f7">
+            <div class="col" style="gap: 14px; padding: 14px; border-radius: 12px; background: var(--canvas)">
               <div class="grid-2" style="gap: 12px">
                 <div class="field"><label class="label" for="nt">소속 팀</label><select class="select" id="nt"><option>AI팀</option><option>회계팀</option><option>영업팀</option></select></div>
                 <div class="field"><label class="label" for="nd">입사일</label><input class="input" id="nd" value="2026-11-17"></div>
@@ -99,7 +99,7 @@ a{color:#06479a}a:hover{color:#04336f}
           
           
         </div>
-        <div style="padding: 16px 20px; border-top: 1px solid #e3e3e8; display: flex; justify-content: flex-end"><button class="btn btn-primary" type="submit">계정 만들기</button></div>
+        <div style="padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end"><button class="btn btn-primary" type="submit">계정 만들기</button></div>
       </form>
     </div>
   </main>

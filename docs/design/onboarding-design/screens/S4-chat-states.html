@@ -11,33 +11,33 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
 body{margin:0}
-a{color:#06479a}a:hover{color:#04336f}
+a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
 </style>
 
-<div style="width: 1320px; height: 760px; box-sizing: border-box; padding: 24px; background: #f5f5f7; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px">
+<div style="width: 1320px; height: 760px; box-sizing: border-box; padding: 24px; background: var(--canvas); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px">
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: #515154">① 답변 중 (스트리밍)</b>
+    <b style="font-size: 13px; color: var(--secondary)">① 답변 중 (스트리밍)</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="msg-u">cds cli는 어떻게 설치해?</div>
-        <div class="msg-a"><span class="bubble">Node.js 20 이상이 설치되어 있다면 터미널에서 <span class="mono">npm i -g @sap/cds-dk</span>를 실행하세요. 설치 후 <span class="mono">cds version</span>으로<span style="display: inline-block; width: 2px; height: 14px; background: #06479a; margin-left: 2px; vertical-align: -2px"></span></span></div>
+        <div class="msg-a"><span class="bubble">Node.js 20 이상이 설치되어 있다면 터미널에서 <span class="mono">npm i -g @sap/cds-dk</span>를 실행하세요. 설치 후 <span class="mono">cds version</span>으로<span style="display: inline-block; width: 2px; height: 14px; background: var(--primary); margin-left: 2px; vertical-align: -2px"></span></span></div>
       </div>
       <div class="chat-ft">
-        <div class="composer"><label for="a1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label><textarea id="a1" rows="1" placeholder="답변이 끝나면 입력할 수 있어요" disabled></textarea><button class="send" type="button" aria-label="답변 중지" style="background: #1d1d1f"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px; fill: #ffffff"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button></div>
+        <div class="composer"><label for="a1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label><textarea id="a1" rows="1" placeholder="답변이 끝나면 입력할 수 있어요" disabled></textarea><button class="send" type="button" aria-label="답변 중지" style="background: var(--foreground)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px; fill: #ffffff"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button></div>
       </div>
     </div>
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: #515154">② 모르는 질문</b>
+    <b style="font-size: 13px; color: var(--secondary)">② 모르는 질문</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="msg-u">동호회 가입비 얼마야?</div>
         <div class="msg-a">
-          <span class="bubble" style="background: #fff7e8; border-color: #f0d9a8; display: flex; gap: 8px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px; color: #6b4500"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg><span>확인되지 않은 내용이에요. 담당자에게 전달했어요.</span></span>
+          <span class="bubble" style="background: var(--alert-warn-bg); border-color: var(--alert-warn-border); display: flex; gap: 8px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px; color: var(--alert-warn-fg)"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg><span>확인되지 않은 내용이에요. 담당자에게 전달했어요.</span></span>
           <span class="caption">답이 등록되면 같은 질문에 답할 수 있어요.</span>
         </div>
       </div>
@@ -48,7 +48,7 @@ a{color:#06479a}a:hover{color:#04336f}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: #515154">③ 서비스 연결 실패</b>
+    <b style="font-size: 13px; color: var(--secondary)">③ 서비스 연결 실패</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
@@ -65,7 +65,7 @@ a{color:#06479a}a:hover{color:#04336f}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: #515154">④ 하루 사용 한도 초과 · 글자 수 초과</b>
+    <b style="font-size: 13px; color: var(--secondary)">④ 하루 사용 한도 초과 · 글자 수 초과</b>
     <div class="chat" style="flex: 1; min-height: 0">
       <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
@@ -75,8 +75,8 @@ a{color:#06479a}a:hover{color:#04336f}
         </div>
       </div>
       <div class="chat-ft">
-        <div class="composer" style="border-color: #c4372b"><label for="a4" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label><textarea id="a4" rows="2" disabled>질문을 길게 붙여 넣은 경우…</textarea><button class="send" type="button" aria-label="보내기" disabled style="background: #e8e8ed; color: #8e8e93"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button></div>
-        <span class="caption" style="text-align: right; color: #a1261c">1,042 / 1000 · 1000자까지 보낼 수 있어요</span>
+        <div class="composer" style="border-color: var(--st-rework-fg)"><label for="a4" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label><textarea id="a4" rows="2" disabled>질문을 길게 붙여 넣은 경우…</textarea><button class="send" type="button" aria-label="보내기" disabled style="background: var(--track); color: var(--disabled-fg)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button></div>
+        <span class="caption" style="text-align: right; color: var(--st-rework-fg)">1,042 / 1000 · 1000자까지 보낼 수 있어요</span>
       </div>
     </div>
   </div>
