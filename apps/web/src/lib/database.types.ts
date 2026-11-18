@@ -25,6 +25,7 @@ export type Database = {
     Tables: {
       exam_questions: {
         Row: {
+          bank_item_id: string | null;
           exam_id: string;
           id: string;
           model_answer: string;
@@ -36,6 +37,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          bank_item_id?: string | null;
           exam_id: string;
           id?: string;
           model_answer: string;
@@ -46,6 +48,7 @@ export type Database = {
           rubric: string;
         };
         Update: {
+          bank_item_id?: string | null;
           exam_id?: string;
           id?: string;
           model_answer?: string;
@@ -56,6 +59,13 @@ export type Database = {
           rubric?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "exam_questions_bank_item_id_fkey";
+            columns: ["bank_item_id"];
+            isOneToOne: false;
+            referencedRelation: "question_bank_items";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "exam_questions_exam_id_fkey";
             columns: ["exam_id"];
@@ -68,6 +78,66 @@ export type Database = {
             columns: ["org_id"];
             isOneToOne: false;
             referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      exam_sittings: {
+        Row: {
+          assigned_by: string | null;
+          bank_item_ids: string[];
+          created_at: string;
+          exam_id: string;
+          id: string;
+          org_id: string;
+          task_instance_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          assigned_by?: string | null;
+          bank_item_ids?: string[];
+          created_at?: string;
+          exam_id: string;
+          id?: string;
+          org_id: string;
+          task_instance_id: string;
+        };
+        Update: {
+          assigned_by?: string | null;
+          bank_item_ids?: string[];
+          created_at?: string;
+          exam_id?: string;
+          id?: string;
+          org_id?: string;
+          task_instance_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "exam_sittings_assigned_by_fkey";
+            columns: ["assigned_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "exam_sittings_exam_id_fkey";
+            columns: ["exam_id"];
+            isOneToOne: false;
+            referencedRelation: "exams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "exam_sittings_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "exam_sittings_task_instance_id_fkey";
+            columns: ["task_instance_id"];
+            isOneToOne: false;
+            referencedRelation: "task_instances";
             referencedColumns: ["id"];
           },
         ];
@@ -263,6 +333,86 @@ export type Database = {
           },
           {
             foreignKeyName: "profiles_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      question_bank_items: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          id: string;
+          model_answer: string;
+          org_id: string;
+          points: number;
+          prompt: string;
+          prompt_key: string | null;
+          rubric: string;
+          source: Database["public"]["Enums"]["bank_item_source"];
+          status: Database["public"]["Enums"]["bank_item_status"];
+          team_id: string;
+          topic: string;
+          topic_key: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          id?: string;
+          model_answer: string;
+          org_id: string;
+          points: number;
+          prompt: string;
+          prompt_key?: never;
+          rubric: string;
+          source: Database["public"]["Enums"]["bank_item_source"];
+          status?: Database["public"]["Enums"]["bank_item_status"];
+          team_id: string;
+          topic: string;
+          topic_key?: never;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          difficulty?: Database["public"]["Enums"]["exam_difficulty"];
+          id?: string;
+          model_answer?: string;
+          org_id?: string;
+          points?: number;
+          prompt?: string;
+          prompt_key?: never;
+          rubric?: string;
+          source?: Database["public"]["Enums"]["bank_item_source"];
+          status?: Database["public"]["Enums"]["bank_item_status"];
+          team_id?: string;
+          topic?: string;
+          topic_key?: never;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "question_bank_items_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "question_bank_items_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "question_bank_items_team_id_fkey";
             columns: ["team_id"];
             isOneToOne: false;
             referencedRelation: "teams";
@@ -575,6 +725,32 @@ export type Database = {
     };
     Functions: {
       _start_onboarding: { Args: { p_new_hire: string }; Returns: number };
+      assign_exam: {
+        Args: { p_exam: string; p_task: string };
+        Returns: {
+          assigned_by: string | null;
+          bank_item_ids: string[];
+          created_at: string;
+          exam_id: string;
+          id: string;
+          org_id: string;
+          task_instance_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "exam_sittings";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      bank_prompts: {
+        Args: {
+          p_difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          p_limit?: number;
+          p_topic: string;
+        };
+        Returns: string[];
+      };
       confirm_task: {
         Args: { p_id: string };
         Returns: {
@@ -632,6 +808,40 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      pick_bank_items: {
+        Args: {
+          p_count: number;
+          p_difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          p_exclude?: string[];
+          p_exclude_prompts?: string[];
+          p_new_hire?: string;
+          p_topic: string;
+        };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          difficulty: Database["public"]["Enums"]["exam_difficulty"];
+          id: string;
+          model_answer: string;
+          org_id: string;
+          points: number;
+          prompt: string;
+          prompt_key: string | null;
+          rubric: string;
+          source: Database["public"]["Enums"]["bank_item_source"];
+          status: Database["public"]["Enums"]["bank_item_status"];
+          team_id: string;
+          topic: string;
+          topic_key: string | null;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "question_bank_items";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       record_assessment: {
         Args: {
           p_id: string;
@@ -666,6 +876,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      register_exam_to_bank: { Args: { p_exam: string }; Returns: number };
       request_rework: {
         Args: { p_id: string; p_reason: string };
         Returns: {
@@ -716,6 +927,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      seed_demo_bank: { Args: { p_org: string }; Returns: number };
       seed_demo_knowledge: { Args: { p_org: string }; Returns: number };
       start_onboarding: { Args: { p_new_hire: string }; Returns: number };
       submit_task: {
@@ -749,6 +961,8 @@ export type Database = {
     };
     Enums: {
       assessment_result: "pass" | "needs_followup";
+      bank_item_source: "exam" | "manual" | "migrated" | "seed";
+      bank_item_status: "active" | "hidden";
       completion_mode: "self" | "confirm" | "staff_only";
       exam_difficulty: "beginner" | "intermediate";
       exam_status: "draft" | "final";
@@ -879,6 +1093,8 @@ export const Constants = {
   public: {
     Enums: {
       assessment_result: ["pass", "needs_followup"],
+      bank_item_source: ["exam", "manual", "migrated", "seed"],
+      bank_item_status: ["active", "hidden"],
       completion_mode: ["self", "confirm", "staff_only"],
       exam_difficulty: ["beginner", "intermediate"],
       exam_status: ["draft", "final"],

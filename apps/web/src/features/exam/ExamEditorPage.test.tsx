@@ -48,7 +48,7 @@ function examWith(questions: DraftQuestion[]): ExamWithQuestions {
   return {
     id: 'e1', org_id: 'org-1', team_id: 'team-ai', created_by: 'trainer', created_at: '2026-11-17T00:00:00Z',
     title: 'JS 기본기', topic: 'JavaScript 기초', difficulty: 'beginner', status: 'draft',
-    questions: questions.map((x, i) => ({ ...x, id: `q${i}`, exam_id: 'e1', org_id: 'org-1', position: i })),
+    questions: questions.map((x, i) => ({ ...x, id: `q${i}`, exam_id: 'e1', org_id: 'org-1', position: i, bank_item_id: null })),
   }
 }
 
