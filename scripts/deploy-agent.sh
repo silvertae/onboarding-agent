@@ -10,6 +10,7 @@
 #   OPENAI_MODEL          모델 이름
 #   WEB_URL               해당 환경 웹 주소 → ALLOWED_ORIGINS
 #   ALLOWED_ORIGIN_REGEX  (선택) PR 미리보기 채널 주소 패턴. 스테이징에만 둔다
+#   CHAT_DAILY_LIMIT, EXAM_DAILY_LIMIT (선택) 하루 사용 한도(양의 정수). 없으면 서비스 기본값(50, 10)
 #   RUNTIME_SERVICE_ACCOUNT (선택) 기본 agent-runtime@<프로젝트>.iam.gserviceaccount.com
 #
 # 비밀값은 Secret Manager 참조로만 연결한다(값이 이 스크립트·로그를 거치지 않는다):
@@ -39,6 +40,14 @@ if [ "${#missing[@]}" -ne 0 ]; then
   exit 2
 fi
 [ -n "$git_sha" ] || { echo "[deploy-agent] git_sha가 비어 있습니다." >&2; exit 2; }
+# 잘못된 한도 값은 새 리비전이 시작하지 못하게 하므로 배포 전에 막는다
+for var in CHAT_DAILY_LIMIT EXAM_DAILY_LIMIT; do
+  value="${!var:-}"
+  if [ -n "$value" ] && ! [[ "$value" =~ ^[1-9][0-9]*$ ]]; then
+    echo "[deploy-agent] ${var}는 양의 정수여야 합니다: $value" >&2
+    exit 2
+  fi
+done
 
 service="agent-${env_name}"
 region="asia-northeast3"
@@ -57,6 +66,11 @@ trap 'rm -f "$env_file"' EXIT
   if [ -n "${ALLOWED_ORIGIN_REGEX:-}" ]; then
     echo "ALLOWED_ORIGIN_REGEX: $(yaml_quote "$ALLOWED_ORIGIN_REGEX")"
   fi
+  for var in CHAT_DAILY_LIMIT EXAM_DAILY_LIMIT; do
+    if [ -n "${!var:-}" ]; then
+      echo "$var: $(yaml_quote "${!var}")"
+    fi
+  done
   echo "GIT_SHA: $(yaml_quote "$git_sha")"
 } >"$env_file"
 
