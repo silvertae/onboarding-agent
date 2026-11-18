@@ -121,6 +121,10 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .chip:focus-visible,.chip.is-focus{outline:none;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary)}
 .tag{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--canvas);color:var(--secondary)}
 
+/* Badge secondary(Badge variant="secondary"): 문항 출처 — S7 "문제은행", S13 시험·직접 추가·이관·기본. 점수 .tag와 구분되게 pill */
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;font-size:12px;font-weight:500;line-height:16px;padding:2px 8px;border-radius:var(--radius-pill);background:var(--fill);color:var(--foreground);white-space:nowrap}
+.badge .ic{width:12px;height:12px}
+
 /* Forms */
 .field{display:flex;flex-direction:column;gap:6px}
 .label{font-size:13px;font-weight:600;color:var(--foreground)}

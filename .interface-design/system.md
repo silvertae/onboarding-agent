@@ -104,6 +104,7 @@
 
 - **`StatusBadge`:** `Badge`의 variant 6종을 쓴다. 상태 문구는 `lib/labels.ts`에서만 가져온다.
 - **`OwnerBadge`:** 팀이면 own-team 토큰, 부서면 테두리형이다.
+- **출처 배지:** 문항이 어디서 왔는지는 `Badge variant="secondary"`(회색 pill)로 둔다. S7 문항 카드의 "문제은행"은 `Library` 아이콘을 앞에 붙여 바로 옆 점수 칩과 구분하고, S13 출처(시험·직접 추가·이관·기본)는 글자만 쓴다. 시안 클래스는 `.badge`다.
 - **`Alert`:** 의미 4종 variant를 쓰고 직접 색을 칠한 상자를 만들지 않는다. `role`은 상황에 맞게 지정한다.
   - 오류: `alert`
   - 한도·결과 알림: `status`
@@ -113,7 +114,7 @@
 | 하는 일 | 컴포넌트 | 키보드 | 쓰는 곳 |
 |---|---|---|---|
 | 패널을 바꾼다 | `components/ui/tabs.tsx`(Radix Tabs). 화면에서는 `staff/ui.tsx`의 `SegmentTabs` › `SegmentTabList` + `SegmentTabPanel`로 쓴다 | ←/→ 이동과 동시에 선택, Tab은 선택된 탭에만 멈춘다 | S9 업무함, S10 지식 관리. 탭 목록은 패널 머리에 둔다 |
-| 값 하나를 고른다 | `components/SegmentedRadio.tsx`(네이티브 radio) | ←/→ 선택 | S6 평가 결과, S11 역할 |
+| 값 하나를 고른다 | `components/SegmentedRadio.tsx`(네이티브 radio) | ←/→ 선택 | S6 평가 결과, S11 역할, S13 게시/숨김 보기(둘 중 하나는 늘 골라져 있어 "전체"가 없는 보기 전환) |
 | 목록을 거른다 | `components/FilterChips.tsx`(버튼 + `aria-pressed`) | Tab 이동, Enter/Space | S2 담당 필터, S11 역할 필터 |
 
 `role="tab"`이나 `role="radio"`를 붙인 `button`을 직접 만들지 않는다.
@@ -121,6 +122,7 @@
 - **표 선택 행:** 선택·처리 중·새로 만든 행은 `components/tableRow.ts`의 `ROW_SELECTED`를 쓴다(시안 `.tbl tr.sel td`). `tr`에 `bg-accent`를 직접 주지 않는다.
   - 이유: 자동 표 배치는 칸 경계가 소수점(예: 915.27px)이라, Chrome이 행 배경을 칸마다 그리며 경계 픽셀을 반만 칠한다. 창을 띄운 Chrome 1440px에서 칸 사이에 밝은 1px 세로줄이 보였다. 배경을 `td`로 옮기는 것만으로는 사라지지 않아서, 같은 색 `1px` 오른쪽 그림자로 이음새를 덮는다.
   - hover(`ROW_HOVER`)는 선택되지 않은 행에만 준다. 같이 주면 hover가 선택 색을 덮는다. 키보드 포커스 행은 `ROW_FOCUS`(선택과 같은 색).
+- **펼치는 표 행(S13):** 행을 누르는 대신 첫 칸의 버튼(화살표 + 두 줄 미리보기, `line-clamp-2`)이 `aria-expanded`를 갖는다. 펼친 행은 `ROW_SELECTED` 색이고, 바로 아래 `colSpan` 행에 같은 바탕으로 흰 편집 상자(`rounded-lg border bg-card`)를 둔다. 편집 상자 아래 줄은 오른쪽에 동작(36), 왼쪽에 결과·오류 문구다. 한 번에 한 행만 펼친다. 좁은 화면(sm 미만)에서는 주제·난이도·배점 칸을 숨기고 문제 아래 한 줄 메타로 옮긴다.
 - **편집 화면 머리(S7):** 왼쪽에 뒤로 가기 · 제목 · 상태 배지를 붙여 묶고, 오른쪽에 동작 버튼을 묶는다. 고칠 수 있는 제목 입력은 `field-sizing-content`로 글자 길이만큼만 넓히고(최소 `min-w-24`, 최대 `max-w-xl`), `flex-1`을 주지 않는다. 배지가 머리 가운데 떠 있지 않게 하려는 것이다.
 
 - **S2 초점 패턴(지금 할 일):**
