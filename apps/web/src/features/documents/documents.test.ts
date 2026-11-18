@@ -19,8 +19,12 @@ function builder(table: string) {
     calls.push({ table, op: name, args })
     return b
   }
-  for (const name of ['select', 'insert', 'update', 'delete', 'eq', 'order']) b[name] = record(name)
-  const result = () => results.get(`${table}.${op}`) ?? { data: null, error: null, status: 200 }
+  for (const name of ['select', 'insert', 'update', 'delete', 'eq', 'order', 'range']) b[name] = record(name)
+  const result = () => {
+    const r = results.get(`${table}.${op}`) as unknown
+    if (typeof r === 'function') return (r as () => { data: unknown; error: unknown; status: number })()
+    return (r as { data: unknown; error: unknown; status: number } | undefined) ?? { data: null, error: null, status: 200 }
+  }
   b.single = () => Promise.resolve(result())
   b.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve(result()).then(resolve, reject)
   return b
@@ -53,7 +57,7 @@ vi.mock('@/lib/agent', async (importOriginal) => ({ ...(await importOriginal<typ
 import type { Profile } from '@/app/AuthProvider'
 import { AgentError } from '@/lib/agent'
 import { DbError } from '@/lib/errors'
-import { canManage, checkDocumentFile, deleteDocument, documentsRefetchInterval, isStaleProcessing, makeKnowledgeDrafts, STALE_PROCESSING_MS, uploadDocument } from './documents'
+import { canManage, checkDocumentFile, deleteDocument, documentsRefetchInterval, loadClauses, isStaleProcessing, makeKnowledgeDrafts, STALE_PROCESSING_MS, uploadDocument } from './documents'
 
 const ops: Profile = { id: 'u-ops', org_id: 'org-1', role: 'ops_staff', team_id: null } as Profile
 const trainer: Profile = { id: 'u-tr', org_id: 'org-1', role: 'team_trainer', team_id: 'team-ai' } as Profile
@@ -287,5 +291,27 @@ describe('isStaleProcessing', () => {
     expect(isStaleProcessing(doc('processing', STALE_PROCESSING_MS + 1), NOW)).toBe(true)
     expect(isStaleProcessing(doc('ready', 10 * STALE_PROCESSING_MS), NOW)).toBe(false)
     expect(isStaleProcessing(doc('failed', 10 * STALE_PROCESSING_MS), NOW)).toBe(false)
+  })
+})
+
+describe('loadClauses', () => {
+  const rows = (n: number, start = 0) => Array.from({ length: n }, (_, i) => ({ id: `c${start + i}`, ord: start + i + 1, label: null, heading: null, body: 'x' }))
+  it('1000개씩 range로 읽어 모자란 쪽이 올 때까지 이어 붙인다', async () => {
+    const pages = [rows(1000), rows(3, 1000)]
+    results.set('document_clauses.select', (() => ({ data: pages.shift(), error: null, status: 200 })) as never)
+    const clauses = await loadClauses('d1')
+    expect(clauses).toHaveLength(1003)
+    expect(calls.filter((c) => c.op === 'range').map((c) => c.args)).toEqual([[0, 999], [1000, 1999]])
+    expect(calls.filter((c) => c.op === 'order').every((c) => c.args[0] === 'ord')).toBe(true)
+  })
+  it('1000개로 딱 끝나면 빈 다음 쪽까지 읽는다', async () => {
+    const pages = [rows(1000), []]
+    results.set('document_clauses.select', (() => ({ data: pages.shift(), error: null, status: 200 })) as never)
+    expect(await loadClauses('d1')).toHaveLength(1000)
+    expect(calls.filter((c) => c.op === 'range')).toHaveLength(2)
+  })
+  it('오류면 던진다', async () => {
+    results.set('document_clauses.select', { data: null, error: { message: 'x' }, status: 500 })
+    await expect(loadClauses('d1')).rejects.toBeInstanceOf(DbError)
   })
 })

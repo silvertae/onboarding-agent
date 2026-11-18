@@ -13,6 +13,7 @@ import { useTeamName } from '@/features/newhire/useTeamName'
 import { formatDateTime } from '@/features/staff/format'
 import { ErrorText, PageHeader, Panel } from '@/features/staff/ui'
 import { useGuardedAction } from '@/features/staff/useGuardedAction'
+import { AgentError } from '@/lib/agent'
 import { cn } from '@/lib/utils'
 import { DeleteDocumentDialog } from './DeleteDocumentDialog'
 import {
@@ -41,7 +42,7 @@ const STALE_FAILED = FAILED_FALLBACK
 const DRAFT_FAILED = '초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.'
 const DELETE_FAILED = '지우지 못했어요. 잠시 후 다시 시도해 주세요.'
 
-type DraftResult = { kind: 'ok'; count: number } | { kind: 'error' }
+type DraftResult = { kind: 'ok'; count: number } | { kind: 'error'; message: string }
 
 const th = 'px-4 py-3 font-semibold whitespace-nowrap'
 
@@ -127,8 +128,10 @@ export function DocumentsPage() {
       try {
         const count = await makeDrafts(doc.id)
         setDrafts((prev) => ({ ...prev, [doc.id]: { kind: 'ok', count } }))
-      } catch {
-        setDrafts((prev) => ({ ...prev, [doc.id]: { kind: 'error' } }))
+      } catch (err) {
+        // 에이전트 오류(예: 429 하루 한도)는 그 문구를 보여 준다. 그 밖의 오류는 S14 실패 문구다.
+        const message = err instanceof AgentError ? agentMessage(err) : DRAFT_FAILED
+        setDrafts((prev) => ({ ...prev, [doc.id]: { kind: 'error', message } }))
       }
     })
   }
@@ -389,7 +392,7 @@ function DocumentPanel({
               {draft?.kind === 'error' && (
                 <Alert variant="destructive">
                   <AlertCircle aria-hidden />
-                  <AlertDescription>{DRAFT_FAILED}</AlertDescription>
+                  <AlertDescription>{draft.message}</AlertDescription>
                 </Alert>
               )}
             </div>
