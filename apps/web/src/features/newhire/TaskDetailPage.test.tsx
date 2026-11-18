@@ -251,6 +251,6 @@ describe('과제 상세 — 작성할 서식', () => {
   it.each(['blocked', 'done'] as const)('%s 과제에서도 보인다', (status) => {
     state.files = [xlsx]
     renderDetail(makeTask({ code: 'GA-10', title: '법인카드 신청서 작성' }, { status }))
-    expect(screen.getByRole('button', { name: '법인카드 신청서.xlsx 내려받기' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: '법인카드 신청서.xlsx 내려받기' })).toHaveLength(2)
   })
 })
