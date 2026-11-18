@@ -60,7 +60,7 @@ export function LoginPage() {
               <br />
               할 일과 답을 한곳에서.
             </h1>
-            <p className="text-[17px] leading-[25px] text-[var(--text-secondary)]">
+            <p className="text-lead leading-[25px] text-[var(--text-secondary)]">
               온보딩 에이전트는 신입의 과제 타임라인을 안내하고, 회사·팀 지식으로 질문에 답하며, 담당자 확인까지 이어 줍니다.
             </p>
           </div>
@@ -79,7 +79,7 @@ export function LoginPage() {
           <Card className="w-full max-w-[420px] gap-5 rounded-[18px] p-10">
             <form className="flex flex-col gap-5" onSubmit={onSubmit} noValidate>
               <div className="flex flex-col gap-1.5">
-                <h2 className="text-2xl font-semibold">로그인</h2>
+                <h2 className="text-title font-semibold">로그인</h2>
                 <p className="text-sm text-muted-foreground">안내받은 계정으로 로그인해 주세요.</p>
               </div>
               <Alert role="note" className="border-accent bg-accent text-accent-foreground">

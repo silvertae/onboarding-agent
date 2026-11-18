@@ -109,7 +109,7 @@ export function UserForm({ teams, onCreated }: { teams: Team[]; onCreated: (user
   return (
     <form onSubmit={submit} aria-label="계정 등록" noValidate>
       <div className="flex items-baseline justify-between gap-3 border-b border-border px-5 py-4">
-        <h2 className="text-lg font-bold">계정 등록</h2>
+        <h2 className="text-lead font-semibold">계정 등록</h2>
         <p className="text-xs text-muted-foreground">관리자 계정은 만들 수 없어요</p>
       </div>
 

@@ -88,7 +88,7 @@ export function AssessmentCard({ task }: { task: TaskView }) {
   return (
     <Panel aria-label={task.template.title}>
       <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
-        <h2 className="text-[17px] font-semibold">{task.template.title}</h2>
+        <h2 className="text-lead font-semibold">{task.template.title}</h2>
         {task.assessment_result ? (
           <Badge variant={task.assessment_result === 'pass' ? 'done' : 'rework'}>{ASSESSMENT_LABEL[task.assessment_result]}</Badge>
         ) : (

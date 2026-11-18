@@ -42,7 +42,7 @@ export function TaskReviewPanel({ task, hire, onClose }: Props) {
                 .join(' · ')}
             </p>
           )}
-          <h2 className="mt-0.5 text-[17px] font-semibold">{task.template.title}</h2>
+          <h2 className="mt-0.5 text-lead font-semibold">{task.template.title}</h2>
         </div>
         {onClose && (
           <Button type="button" variant="ghost" size="icon" aria-label="상세 닫기" onClick={onClose}>

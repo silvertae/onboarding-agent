@@ -55,7 +55,7 @@ function AppHeader() {
         <Link to="/" className="order-1 flex items-center gap-3 text-foreground">
           <img src={logoUrl} alt="Blueward" className="block h-5 w-auto" />
           <span className="hidden h-[18px] w-px bg-input sm:inline" aria-hidden />
-          <span className="hidden text-[15px] font-semibold sm:inline">온보딩 에이전트</span>
+          <span className="hidden text-row font-semibold sm:inline">온보딩 에이전트</span>
         </Link>
         <div className="order-3 sm:order-2">
           <DemoChip />
@@ -79,13 +79,13 @@ function AppHeader() {
         </nav>
         <div className="order-2 ml-auto flex items-center gap-2.5 sm:order-4 sm:ml-0">
           <span
-            className="grid size-8 place-items-center rounded-full bg-avatar text-[13px] font-semibold text-primary"
+            className="grid size-8 place-items-center rounded-full bg-avatar text-label font-semibold text-primary"
             aria-hidden
           >
             {initials(profile.full_name, profile.role)}
           </span>
           <div className="hidden flex-col leading-tight sm:flex">
-            <b className="text-[13px]">{profile.full_name}</b>
+            <b className="text-label">{profile.full_name}</b>
             {caption && <span className="text-xs text-muted-foreground">{caption}</span>}
           </div>
           <span className="rounded-full bg-foreground px-2 py-0.5 text-xs font-semibold text-white">{ROLE_LABEL[profile.role]}</span>

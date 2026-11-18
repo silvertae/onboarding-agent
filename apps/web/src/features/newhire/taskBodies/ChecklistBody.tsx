@@ -24,7 +24,7 @@ export function ChecklistBody({ task, disabled, children }: BodyProps) {
   return (
     <>
       <div className="flex flex-col gap-3 border-t border-border px-5 py-6 sm:px-7">
-        <h3 className="text-[15px] font-semibold">체크리스트</h3>
+        <h3 className="text-row font-semibold">체크리스트</h3>
         <ul className="flex flex-col gap-2.5">
           {items.map((item) => (
             <li key={item}>

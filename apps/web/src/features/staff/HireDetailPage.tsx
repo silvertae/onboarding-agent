@@ -42,8 +42,8 @@ function ChecklistCard({ task }: { task: TaskView }) {
   return (
     <Panel aria-label="BTP 세팅 체크리스트">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <h2 className="text-[17px] font-semibold">BTP 세팅 체크리스트</h2>
-        <b>
+        <h2 className="text-lead font-semibold">BTP 세팅 체크리스트</h2>
+        <b className="tabular-nums">
           {count} / {items.length}
         </b>
       </div>
@@ -119,7 +119,7 @@ export function HireDetailPage() {
             {initials(hire.full_name)}
           </span>
           <div>
-            <h1 className="text-[28px] font-bold tracking-tight">{hire.full_name}</h1>
+            <h1 className="text-page font-semibold">{hire.full_name}</h1>
             <p className="text-sm text-[var(--text-secondary)]">
               {[
                 hire.job_title,
@@ -141,7 +141,7 @@ export function HireDetailPage() {
         <div className="flex flex-col gap-6">
           <Panel className="overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4">
-              <h2 className="text-[17px] font-semibold">팀 과제</h2>
+              <h2 className="text-lead font-semibold">팀 과제</h2>
               <span className="text-xs text-muted-foreground">경영지원 과제는 표시되지 않아요</span>
             </div>
             <table aria-label="팀 과제" className="w-full text-sm">
@@ -198,7 +198,7 @@ export function HireDetailPage() {
           {survey && (
             <Panel aria-label="기술스택·경력 조사 결과">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                <h2 className="text-[17px] font-semibold">기술스택·경력 조사 결과</h2>
+                <h2 className="text-lead font-semibold">기술스택·경력 조사 결과</h2>
                 {survey.submitted_at && (
                   <span className="text-xs text-muted-foreground">
                     {formatDateTime(survey.submitted_at)} {submittedLabel(survey.template.completion_mode)}

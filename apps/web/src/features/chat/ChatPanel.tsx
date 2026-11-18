@@ -84,7 +84,7 @@ function ChatAside() {
         <header className="flex items-center gap-2.5 border-b border-border px-4 py-3 lg:px-5 lg:py-4">
           <img src={symbolUrl} alt="" className="size-8 shrink-0 rounded-[10px]" />
           <div className="flex flex-1 flex-col leading-tight">
-            <b className="text-[15px]">온보딩 에이전트</b>
+            <b className="text-row">온보딩 에이전트</b>
             <span className="text-xs text-muted-foreground">회사·팀 지식으로 답해요</span>
           </div>
           <Button variant="ghost" size="icon" aria-label="채팅 닫기" className="lg:hidden" onClick={() => setOpen(false)}>
@@ -126,7 +126,7 @@ function ChatAside() {
                 type="button"
                 disabled={sending}
                 onClick={() => submit(s)}
-                className="shrink-0 rounded-full border border-input bg-card px-3 py-1.5 text-[13px] hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+                className="shrink-0 rounded-full border border-input bg-card px-3 py-1.5 text-label hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50"
               >
                 {s}
               </button>
@@ -163,7 +163,7 @@ function ChatAside() {
               <ArrowUp className="size-4" aria-hidden />
             </button>
           </div>
-          <span id={counterId} className={cn('text-right text-xs text-muted-foreground', tooLong && 'text-st-rework-fg')}>
+          <span id={counterId} className={cn('text-right text-xs text-muted-foreground tabular-nums', tooLong && 'text-st-rework-fg')}>
             {input.length.toLocaleString('ko-KR')} / {MAX_MESSAGE_LENGTH}
             {tooLong && ` · ${MAX_MESSAGE_LENGTH}자까지 보낼 수 있어요`}
           </span>

@@ -23,6 +23,8 @@
   /* Owner: 소속 팀 과제는 파란 틴트, 경영지원 부서 과제는 테두리형 */
   --own-team-bg:#f2f6fc;--own-team-border:#c6d6ec;--own-team-fg:#06479a;
   --demo:#b26a00;
+  /* 글자 단계(px): micro 11 · caption 12 · label 13 · body 14 · row 15 · lead 17 · section 18 · title 22 · page 28 · display 48(로그인만) */
+  --fs-micro:11px;--fs-caption:12px;--fs-label:13px;--fs-body:14px;--fs-row:15px;--fs-lead:17px;--fs-section:18px;--fs-title:22px;--fs-page:28px;
   /* 글자 4단계: foreground > secondary > muted > tertiary(장식 아이콘·비어 있음) */
   --tertiary:#aeaeb2;
   --fill:#ececf0;--avatar:#e8eef8;--disabled-fg:#8e8e93;

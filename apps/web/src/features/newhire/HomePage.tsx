@@ -120,7 +120,7 @@ export function HomePage() {
             {formatToday(today)}
             {profile?.hire_date && ` · 입사 ${daysSinceHire(profile.hire_date, today)}일째`}
           </span>
-          <h1 className="text-[22px] leading-7 font-semibold sm:text-[28px] sm:leading-9">
+          <h1 className="text-title font-semibold sm:text-page">
             {profile?.full_name} 님, {greeting}
           </h1>
           {allDone ? (
@@ -136,8 +136,8 @@ export function HomePage() {
         </div>
         <div className="flex min-w-[240px] flex-[0_1_320px] flex-col gap-2">
           <div className="flex items-baseline justify-between">
-            <b className="text-[13px]">전체 진행률</b>
-            <span className="text-[22px] font-semibold tabular-nums">{percent}%</span>
+            <b className="text-label">전체 진행률</b>
+            <span className="text-title font-semibold tabular-nums">{percent}%</span>
           </div>
           <div
             role="progressbar"
@@ -162,7 +162,7 @@ export function HomePage() {
         <Card aria-labelledby="now-heading">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
             <div className="flex items-center gap-2">
-              <h2 id="now-heading" className="text-lg font-semibold">
+              <h2 id="now-heading" className="text-section font-semibold">
                 지금 할 일
               </h2>
               <span className="rounded-full bg-foreground px-2 text-xs leading-5 font-semibold text-white tabular-nums">{now.length}</span>
@@ -180,7 +180,7 @@ export function HomePage() {
               variant="ghost"
               aria-expanded={nowExpanded}
               onClick={() => setNowExpanded((v) => !v)}
-              className="h-11 w-full rounded-none border-t border-border text-[13px] text-[var(--text-secondary)] hover:bg-surface-subtle"
+              className="h-11 w-full rounded-none border-t border-border text-label text-[var(--text-secondary)] hover:bg-surface-subtle"
             >
               {nowExpanded ? '접기' : `나머지 ${hiddenCount}건 보기`}
               <ChevronDown className={cn('size-3.5 transition-transform duration-150', nowExpanded && 'rotate-180')} aria-hidden />
@@ -191,7 +191,7 @@ export function HomePage() {
 
       <Card aria-labelledby="all-heading">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
-          <h2 id="all-heading" className="text-lg font-semibold">
+          <h2 id="all-heading" className="text-section font-semibold">
             전체 과제
           </h2>
           <FilterChips label="담당 필터" items={filters} value={filter} onChange={setFilter} />

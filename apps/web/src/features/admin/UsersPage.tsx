@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import type { Profile } from '@/app/AuthProvider'
 import type { Enums } from '@/lib/database.types'
 import { FilterChips } from '@/components/FilterChips'
+import { PageHeader } from '@/components/PageHeader'
 import { Alert } from '@/components/ui/alert'
 import { OWNER_LABEL, ROLE_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/utils'
@@ -89,15 +90,11 @@ export function UsersPage() {
 
   return (
     <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight">사용자 관리</h1>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            전체 사용자 {users.length}명 · 계정 수정·삭제는 지원하지 않아요.
-          </p>
-        </div>
-        <ResetDemoDialog onDone={handleReset} />
-      </div>
+      <PageHeader
+        title="사용자 관리"
+        description={`전체 사용자 ${users.length}명 · 계정 수정·삭제는 지원하지 않아요.`}
+        actions={<ResetDemoDialog onDone={handleReset} />}
+      />
 
       {notice && <NoticeBanner notice={notice} />}
 
@@ -145,7 +142,7 @@ export function UsersPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-mono text-[13px]">{u.email}</td>
+                        <td className="px-4 py-3 font-mono text-label">{u.email}</td>
                         <td className="px-4 py-3">{ROLE_LABEL[u.role]}</td>
                         <td className="px-4 py-3">{placement(u, teamNames)}</td>
                         <td className="px-4 py-3">{shortDate(u.hire_date)}</td>
