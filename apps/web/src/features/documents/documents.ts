@@ -59,9 +59,17 @@ export function agentMessage(err: unknown): string {
   return '문서를 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
 }
 
-// 처리 중인 문서가 있을 때만 5초마다 다시 불러온다(색인이 끝나면 상태가 바뀐다).
-export function documentsRefetchInterval(docs: Pick<PolicyDocument, 'status'>[] | undefined): number | false {
-  return docs?.some((d) => d.status === 'processing') ? 5000 : false
+// 색인 호출이 실패하면 서버는 문서를 "처리 중"으로 남겨 둔다. 이 시간이 지나도 처리 중이면 요청이 실패한 것으로 본다.
+export const STALE_PROCESSING_MS = 2 * 60 * 1000
+
+export function isStaleProcessing(doc: Pick<PolicyDocument, 'status' | 'created_at'>, now: number = Date.now()): boolean {
+  return doc.status === 'processing' && now - new Date(doc.created_at).getTime() > STALE_PROCESSING_MS
+}
+
+// 방금 올린 "처리 중" 문서가 있을 때만 5초마다 다시 불러온다(색인이 끝나면 상태가 바뀐다). 오래된 처리 중 문서는 기다리지 않는다.
+export function documentsRefetchInterval(docs: Pick<PolicyDocument, 'status' | 'created_at'>[] | undefined): number | false {
+  const now = Date.now()
+  return docs?.some((d) => d.status === 'processing' && !isStaleProcessing(d, now)) ? 5000 : false
 }
 
 export function useDocuments(): UseQueryResult<PolicyDocument[]> {

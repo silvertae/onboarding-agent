@@ -79,7 +79,10 @@ function doc(partial: Partial<PolicyDocument> & Pick<PolicyDocument, 'id' | 'tit
 }
 
 const READY = doc({ id: 'd1', title: '복리후생 규정(가상)' })
+const NOW = '2026-11-18T01:21:00Z'
+// 방금 올린 처리 중 문서(1분 전)와 색인 호출이 실패해 2분 넘게 처리 중으로 남은 문서
 const PROCESSING = doc({ id: 'd2', title: '취업규칙 발췌(가상)', file_type: 'pdf', status: 'processing', clause_count: 0, created_at: '2026-11-18T01:20:00Z' })
+const STALE = doc({ id: 'd5', title: '직무 발명 규정(가상)', file_type: 'pdf', status: 'processing', clause_count: 0, created_at: '2026-11-18T01:10:00Z' })
 const FAILED = doc({
   id: 'd3',
   title: '출장 규정 스캔본',
@@ -112,6 +115,9 @@ function file(name: string, size = 10) {
 const pdf = () => file('취업규칙 발췌(가상).pdf')
 
 beforeEach(() => {
+  // Date만 고정한다(2분 넘게 처리 중인 문서 판단). 타이머는 그대로 둔다.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(NOW))
   vi.clearAllMocks()
   state.profile = OPS
   state.docs = [READY, PROCESSING, FAILED]
@@ -119,7 +125,7 @@ beforeEach(() => {
   state.clausesStatus = 'success'
   state.status = 'success'
   mocks.upload.mockImplementation(async (title: string) => {
-    const created = doc({ id: 'd9', title, file_type: 'pdf', status: 'processing', clause_count: 0 })
+    const created = doc({ id: 'd9', title, file_type: 'pdf', status: 'processing', clause_count: 0, created_at: new Date().toISOString() })
     state.docs = [created, ...state.docs]
     return { document: created, indexError: null }
   })
@@ -127,6 +133,8 @@ beforeEach(() => {
   mocks.deleteDocument.mockResolvedValue(undefined)
   mocks.makeKnowledgeDrafts.mockResolvedValue(5)
 })
+
+afterEach(() => vi.useRealTimers())
 
 describe('S14 규정 문서 표', () => {
   it('문서 이름과 "형식 · 올린 사람 · 시각", 범위, 상태 배지, 조항 수를 보여 준다', () => {
@@ -264,6 +272,63 @@ describe('S14 상세 패널', () => {
     await userEvent.click(within(panel).getByRole('button', { name: '다시 처리' }))
     expect(await within(panel).findByText('문서 처리 서비스에 연결하지 못했어요')).toBeInTheDocument()
     expect(within(panel).getByRole('button', { name: '다시 처리' })).toBeEnabled()
+  })
+
+  it('2분 넘게 처리 중인 문서는 실패 문구와 "다시 처리"를 보여 주고 누르면 색인을 한 번 부른다(배지는 처리 중)', async () => {
+    state.docs = [STALE]
+    renderPage()
+    const row = within(screen.getByRole('table', { name: '규정 문서 목록' })).getAllByRole('row')[1]
+    expect(within(row).getByText('처리 중')).toBeInTheDocument()
+    const panel = screen.getByRole('complementary', { name: '직무 발명 규정(가상)' })
+    expect(within(panel).getByRole('note')).toHaveTextContent('문서를 처리하지 못했어요. 잠시 후 다시 시도해 주세요.')
+    expect(within(panel).queryByText(/1분쯤 걸려요/)).not.toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: '지우기' })).toBeInTheDocument()
+    mocks.indexDocument.mockImplementation(() => new Promise(() => {}))
+    await userEvent.dblClick(within(panel).getByRole('button', { name: '다시 처리' }))
+    expect(mocks.indexDocument).toHaveBeenCalledTimes(1)
+    expect(mocks.indexDocument).toHaveBeenCalledWith('d5')
+  })
+
+  it('방금 올린 처리 중 문서는 안내 문구만 보이고 다시 처리는 없다', () => {
+    state.docs = [PROCESSING]
+    renderPage()
+    const panel = screen.getByRole('complementary')
+    expect(within(panel).getByRole('status')).toHaveTextContent('1분쯤 걸려요')
+    expect(within(panel).queryByRole('button', { name: '다시 처리' })).not.toBeInTheDocument()
+  })
+
+  it('교육 담당자가 보는 회사 공통의 오래된 처리 중 문서에는 다시 처리·지우기가 없다', () => {
+    state.profile = TRAINER
+    state.docs = [STALE]
+    renderPage()
+    const panel = screen.getByRole('complementary')
+    expect(within(panel).getByRole('note')).toHaveTextContent('문서를 처리하지 못했어요')
+    expect(within(panel).queryByRole('button', { name: '다시 처리' })).not.toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: /지우기/ })).not.toBeInTheDocument()
+  })
+
+  it('다시 처리가 실패한 뒤 서버 상태가 바뀌면 낡은 색인 오류 대신 문서의 error를 보여 준다', async () => {
+    mocks.indexDocument.mockRejectedValueOnce(new AgentError(503, '문서 처리 서비스에 연결하지 못했어요'))
+    state.docs = [STALE]
+    const view = renderPage()
+    const panel = screen.getByRole('complementary')
+    await userEvent.click(within(panel).getByRole('button', { name: '다시 처리' }))
+    expect(await within(panel).findByText('문서 처리 서비스에 연결하지 못했어요')).toBeInTheDocument()
+    state.docs = [{ ...STALE, status: 'failed', error: '문서가 너무 커요. 나눠서 올려 주세요.' }]
+    view.rerender(
+      <MemoryRouter>
+        <DocumentsPage />
+      </MemoryRouter>,
+    )
+    expect(within(screen.getByRole('complementary')).getByRole('note')).toHaveTextContent('문서가 너무 커요. 나눠서 올려 주세요.')
+  })
+
+  it('다시 처리하는 동안에도 버튼 문구는 "다시 처리"이고 비활성이다', async () => {
+    mocks.indexDocument.mockImplementation(() => new Promise(() => {}))
+    state.docs = [FAILED]
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: '다시 처리' }))
+    expect(screen.getByRole('button', { name: '다시 처리' })).toBeDisabled()
   })
 
   it('업로드 직후 색인 호출이 실패한 문서는 indexError 문구와 "다시 처리"를 보여 준다', async () => {
@@ -465,7 +530,7 @@ describe('S14 올리기 창', () => {
     mocks.upload.mockImplementation(
       (title: string) =>
         new Promise((resolve) => {
-          finish = () => resolve({ document: doc({ id: 'd9', title, status: 'processing' }), indexError: null })
+          finish = () => resolve({ document: doc({ id: 'd9', title, status: 'processing', created_at: new Date().toISOString() }), indexError: null })
         }),
     )
     renderPage()

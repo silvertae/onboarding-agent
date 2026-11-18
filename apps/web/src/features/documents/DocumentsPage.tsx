@@ -1,5 +1,5 @@
 import { AlertCircle, Check, Loader2, Sparkles, Trash2, Upload } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth, type Profile } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
@@ -18,6 +18,8 @@ import { DeleteDocumentDialog } from './DeleteDocumentDialog'
 import {
   agentMessage,
   canManage,
+  isStaleProcessing,
+  STALE_PROCESSING_MS,
   useDocumentActions,
   useDocumentClauses,
   useDocuments,
@@ -35,6 +37,7 @@ const STATUS: Record<DocStatus, { variant: 'submitted' | 'done' | 'rework'; text
 }
 
 const FAILED_FALLBACK = '문서를 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
+const STALE_FAILED = FAILED_FALLBACK
 const DRAFT_FAILED = '초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.'
 const DELETE_FAILED = '지우지 못했어요. 잠시 후 다시 시도해 주세요.'
 
@@ -67,7 +70,8 @@ export function DocumentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [deleting, setDeleting] = useState<PolicyDocument | null>(null)
   // 색인 호출 자체가 실패한 문서(행은 "처리 중"으로 남는다)의 문구
-  const [indexErrors, setIndexErrors] = useState<Record<string, string>>({})
+  // status는 문구를 남긴 때의 문서 상태다. 서버 상태가 그 뒤에 바뀌면 이 문구는 낡은 것이라 쓰지 않는다.
+  const [indexErrors, setIndexErrors] = useState<Record<string, { message: string; status: string }>>({})
   const [drafts, setDrafts] = useState<Record<string, DraftResult>>({})
 
   const docs = query.data ?? []
@@ -80,10 +84,10 @@ export function DocumentsPage() {
     setSelectedId(id)
   }
 
-  function setIndexError(id: string, message: string | null) {
+  function setIndexError(id: string, message: string | null, status = 'processing') {
     setIndexErrors((prev) => {
       const next = { ...prev }
-      if (message) next[id] = message
+      if (message) next[id] = { message, status }
       else delete next[id]
       return next
     })
@@ -91,7 +95,7 @@ export function DocumentsPage() {
 
   function uploaded(doc: PolicyDocument, indexError: string | null) {
     select(doc.id)
-    setIndexError(doc.id, indexError)
+    setIndexError(doc.id, indexError, doc.status)
   }
 
   function retry(doc: PolicyDocument) {
@@ -100,7 +104,7 @@ export function DocumentsPage() {
       try {
         await reindex(doc.id)
       } catch (err) {
-        setIndexError(doc.id, agentMessage(err))
+        setIndexError(doc.id, agentMessage(err), doc.status)
       }
     })
   }
@@ -228,7 +232,7 @@ export function DocumentsPage() {
               scopeName={scopeName(selected)}
               uploader={uploaderLabel(selected, profile)}
               manageable={canManage(profile, selected)}
-              indexError={indexErrors[selected.id] ?? null}
+              indexError={indexErrors[selected.id]?.status === selected.status ? indexErrors[selected.id].message : null}
               draft={drafts[selected.id] ?? null}
               panelBusy={panelAction.busy}
               panelError={panelAction.error}
@@ -281,7 +285,16 @@ function DocumentPanel({
   const ready = doc.status === 'ready'
   const failed = doc.status === 'failed'
   // 색인을 부르지 못했다면 행은 "처리 중"으로 남는다. 기다리라고 하지 않고 다시 처리를 권한다.
-  const notice = ready ? null : (indexError ?? (failed ? (doc.error ?? FAILED_FALLBACK) : null))
+  const [, setTick] = useState(0)
+  const stale = isStaleProcessing(doc)
+  // 방금 올린 문서가 2분을 넘기면 다시 그려 "처리하지 못했어요"로 바꾼다.
+  useEffect(() => {
+    if (doc.status !== 'processing' || stale) return
+    const left = new Date(doc.created_at).getTime() + STALE_PROCESSING_MS - Date.now() + 1
+    const timer = setTimeout(() => setTick((n) => n + 1), Math.max(left, 0))
+    return () => clearTimeout(timer)
+  }, [doc.status, doc.created_at, stale])
+  const notice = ready ? null : (indexError ?? (failed ? (doc.error ?? FAILED_FALLBACK) : stale ? STALE_FAILED : null))
 
   return (
     <aside aria-labelledby={titleId} className="rounded-[18px] border border-border bg-card">
@@ -328,13 +341,11 @@ function DocumentPanel({
           {manageable && (
             <div className="flex justify-end gap-2">
               <Button type="button" size="sm" variant="ghost" disabled={panelBusy} onClick={onRetry}>
-                {panelBusy ? '처리 중…' : '다시 처리'}
+                다시 처리
               </Button>
-              {failed && (
-                <Button type="button" size="sm" variant="destructive" disabled={panelBusy} onClick={onDelete}>
-                  지우기
-                </Button>
-              )}
+              <Button type="button" size="sm" variant="destructive" disabled={panelBusy} onClick={onDelete}>
+                지우기
+              </Button>
             </div>
           )}
         </div>

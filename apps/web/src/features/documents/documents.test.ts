@@ -53,7 +53,7 @@ vi.mock('@/lib/agent', async (importOriginal) => ({ ...(await importOriginal<typ
 import type { Profile } from '@/app/AuthProvider'
 import { AgentError } from '@/lib/agent'
 import { DbError } from '@/lib/errors'
-import { canManage, checkDocumentFile, deleteDocument, documentsRefetchInterval, makeKnowledgeDrafts, uploadDocument } from './documents'
+import { canManage, checkDocumentFile, deleteDocument, documentsRefetchInterval, isStaleProcessing, makeKnowledgeDrafts, STALE_PROCESSING_MS, uploadDocument } from './documents'
 
 const ops: Profile = { id: 'u-ops', org_id: 'org-1', role: 'ops_staff', team_id: null } as Profile
 const trainer: Profile = { id: 'u-tr', org_id: 'org-1', role: 'team_trainer', team_id: 'team-ai' } as Profile
@@ -257,13 +257,35 @@ describe('canManage', () => {
 })
 
 describe('documentsRefetchInterval', () => {
-  const d = (status: string) => ({ status }) as never
-  it('처리 중인 문서가 있으면 5초마다 다시 불러온다', () => {
-    expect(documentsRefetchInterval([d('ready'), d('processing')])).toBe(5000)
+  const NOW = Date.parse('2026-11-18T01:20:00Z')
+  const d = (status: string, ageMs = 0) => ({ status, created_at: new Date(NOW - ageMs).toISOString() }) as never
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('방금 올린 처리 중 문서가 있으면 5초마다 다시 불러온다', () => {
+    expect(documentsRefetchInterval([d('ready'), d('processing', 30_000)])).toBe(5000)
   })
   it('처리 중인 문서가 없거나 목록이 없으면 다시 불러오지 않는다', () => {
     expect(documentsRefetchInterval([d('ready'), d('failed')])).toBe(false)
     expect(documentsRefetchInterval([])).toBe(false)
     expect(documentsRefetchInterval(undefined)).toBe(false)
+  })
+  it('2분이 지난 처리 중 문서는 다시 불러오지 않는다', () => {
+    expect(documentsRefetchInterval([d('processing', STALE_PROCESSING_MS + 1)])).toBe(false)
+    expect(documentsRefetchInterval([d('processing', STALE_PROCESSING_MS + 1), d('processing', 1000)])).toBe(5000)
+  })
+})
+
+describe('isStaleProcessing', () => {
+  const NOW = Date.parse('2026-11-18T01:20:00Z')
+  const doc = (status: string, ageMs: number) => ({ status, created_at: new Date(NOW - ageMs).toISOString() }) as never
+  it('처리 중이면서 2분을 넘긴 문서만 true다', () => {
+    expect(isStaleProcessing(doc('processing', STALE_PROCESSING_MS), NOW)).toBe(false)
+    expect(isStaleProcessing(doc('processing', STALE_PROCESSING_MS + 1), NOW)).toBe(true)
+    expect(isStaleProcessing(doc('ready', 10 * STALE_PROCESSING_MS), NOW)).toBe(false)
+    expect(isStaleProcessing(doc('failed', 10 * STALE_PROCESSING_MS), NOW)).toBe(false)
   })
 })
