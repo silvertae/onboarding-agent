@@ -173,7 +173,7 @@ def main() -> int:
         r = ask(client, "동호회 가입비 얼마야?")
         # 근거가 없으면 신호만 보낸다. 담당자에게 넘기는 기록은 신입이 화면에서 요청할 때만 생긴다.
         recorded = unanswered_since(started_at)
-        ok = not r["error"] and r["unanswered"] and not re.search(r"\d", r["text"]) and "전달" not in r["text"] and not recorded
+        ok = not r["error"] and r["unanswered"] and not AMOUNT_RE.search(r["text"]) and "전달" not in r["text"] and not recorded
         r["recorded"] = recorded
         results.append(("동호회 가입비 얼마야?", ok, r))
 
