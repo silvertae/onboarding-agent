@@ -62,7 +62,7 @@
 ## Git·PR
 
 - `main`은 보호돼 있다. 브랜치에서 작업하고 PR로만 반영한다. Conventional Commits(`feat`, `fix`, `test`, `docs`, `chore`, `ci`).
-- 머지 조건: CI 5개 통과, 최신 `main` 반영, 리뷰 스레드 모두 해결. 머지는 Leo가 한다(squash, 브랜치 자동 삭제).
+- 머지 조건: CI 5개 통과, 최신 `main` 반영, 리뷰 스레드 모두 해결, PR 자체 변경의 마지막 커밋까지 Codex 리뷰 완료(`main`을 반영한 병합 커밋은 다시 리뷰받지 않아도 된다). 조건을 모두 갖추면 Claude가 머지한다(`gh pr merge <번호> --squash`, 브랜치 자동 삭제). 시안처럼 Leo 확인이 필요한 PR은 확인을 받은 뒤 머지한다.
 - `main`이 앞서면 `git merge origin/main`으로 따라간다. rebase, 강제 푸시, `git reset --hard`, `git tag`는 하지 않는다.
 - Codex가 모든 PR을 리뷰한다. 지적이 타당하면 고치고 스레드에 답글을 단 뒤 해결 처리한다. 수정을 푸시한 뒤에는 PR에 `@codex review` 코멘트를 남겨야 다시 리뷰한다.
 
