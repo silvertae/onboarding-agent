@@ -8,7 +8,7 @@ import { ErrorText } from '@/features/staff/ui'
 import { useGuardedAction } from '@/features/staff/useGuardedAction'
 import { checkDocumentFile, useDocumentActions, type PolicyDocument } from './documents'
 
-const UPLOAD_FAILED = '올리지 못했어요. 잠시 후 다시 시도해 주세요.'
+const UPLOAD_FAILED = '올리지 못했어요. 다시 시도해 주세요.'
 const HINT = 'docx, pdf · 파일당 10MB까지 · 글자가 있는 파일만 읽을 수 있어요(스캔본 제외)'
 const WARNING = '가상 문서만 올려 주세요. 실명·연락처 같은 개인정보나 실제 사내 규정은 올리지 않아요.'
 

@@ -488,7 +488,7 @@ describe('S14 올리기 창', () => {
     await userEvent.clear(within(dialog).getByLabelText('문서 이름'))
     await userEvent.type(within(dialog).getByLabelText('문서 이름'), '내 이름')
     await userEvent.click(within(dialog).getByRole('button', { name: '올리기' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('올리지 못했어요. 잠시 후 다시 시도해 주세요.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('올리지 못했어요. 다시 시도해 주세요.')
     expect(within(dialog).getByLabelText('문서 이름')).toHaveValue('내 이름')
     expect(within(dialog).getByRole('button', { name: '올리기' })).toBeEnabled()
   })
