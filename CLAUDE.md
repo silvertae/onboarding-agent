@@ -30,7 +30,7 @@
 ## 절대 규칙
 
 - 과제 상태는 Postgres RPC로만 바꾼다. 웹에서 `task_instances`를 직접 update하지 않는다.
-- 에이전트는 조회·답변·시험 초안만 한다. 과제 상태를 바꾸는 도구를 만들지 않는다.
+- 에이전트는 조회·답변·초안(시험·지식) 작성만 한다. 게시와 과제 상태 변경은 사람이 한다. 과제 상태를 바꾸는 도구를 만들지 않는다. 예외로 문서 색인(조항·임베딩 저장)은 담당자 토큰으로 RPC를 불러 저장한다(LLM 도구가 아닌 정해진 처리).
 - 에이전트는 사용자의 Supabase 토큰으로 데이터를 읽는다(RLS 적용). `service_client()`는 `services/agent/app/admin_routes.py`와 `services/agent/scripts/`에서만 쓴다.
 - 모든 테이블에 `org_id`, RLS 활성화, 필요한 `grant`를 마이그레이션에 명시. `anon`에는 권한 없음. 공개 가입 끔.
 - 마이그레이션은 추가만 한다. 컬럼·테이블 삭제나 이름 변경 금지.
@@ -41,7 +41,7 @@
 
 ## 데이터·비밀값
 
-- 회사 CI는 화면 브랜딩과 시드 조직명에만 쓴다. 실명·주민번호·계좌·카드번호·지문 관련 값, 실제 내부 업무 문서는 넣지 않는다. 파일 업로드는 담당자가 과제 템플릿에 서식(docx·xlsx·pdf, 10MB 이하)을 올리는 기능만 있다(`task-forms` 버킷, Leo 승인 2026-11-18). 시드 서식도 가상 내용만 담는다.
+- 회사 CI는 화면 브랜딩과 시드 조직명에만 쓴다. 실명·주민번호·계좌·카드번호·지문 관련 값, 실제 내부 업무 문서는 넣지 않는다. 파일 업로드는 두 가지뿐이다. 담당자가 과제 템플릿에 서식(docx·xlsx·pdf, 10MB 이하)을 올리는 기능(`task-forms` 버킷)과 담당자가 가상 규정 문서(docx·pdf, 10MB 이하)를 올리는 기능(`policy-docs` 버킷)이다(Leo 승인 2026-11-18). 시드 서식·시드 규정 문서도 가상 내용만 담는다.
 - `.env*` 파일을 만들거나 읽지 않는다. 비밀값은 Secret Manager와 GitHub Secrets에만 두고, 웹 번들에는 `VITE_*` 공개 값만 넣는다.
 - 키·비밀번호가 필요하면 출력하지 않고 스테이징 Secret Manager에서 바로 넘긴다. 예: `OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)"`. 없는 값은 이름만 말하고 Leo에게 맡긴다.
 - 로그인 화면의 데모 계정 버튼은 개발 모드(`import.meta.env.DEV`)에서만.
@@ -62,7 +62,7 @@
 ## Git·PR
 
 - `main`은 보호돼 있다. 브랜치에서 작업하고 PR로만 반영한다. Conventional Commits(`feat`, `fix`, `test`, `docs`, `chore`, `ci`).
-- 머지 조건: CI 5개 통과, 최신 `main` 반영, 리뷰 스레드 모두 해결, PR 자체 변경의 마지막 커밋까지 Codex 리뷰 완료(`main`을 반영한 병합 커밋은 다시 리뷰받지 않아도 된다). 조건을 모두 갖추면 Claude가 머지한다(`gh pr merge <번호> --squash`, 브랜치 자동 삭제). 시안처럼 Leo 확인이 필요한 PR은 확인을 받은 뒤 머지한다.
+- 머지 조건: CI 5개 통과(문서만 바뀐 PR은 건너뛴 상태가 통과다), 최신 `main` 반영, 리뷰 스레드 모두 해결, PR 자체 변경의 마지막 커밋까지 Codex 리뷰 완료(`main`을 반영한 병합 커밋은 다시 리뷰받지 않아도 된다). 조건을 모두 갖추면 Claude가 머지한다(`gh pr merge <번호> --squash`, 브랜치 자동 삭제). 시안처럼 Leo 확인이 필요한 PR은 확인을 받은 뒤 머지한다.
 - `main`이 앞서면 `git merge origin/main`으로 따라간다. rebase, 강제 푸시, `git reset --hard`, `git tag`는 하지 않는다.
 - Codex가 모든 PR을 리뷰한다. 지적이 타당하면 고치고 스레드에 답글을 단 뒤 해결 처리한다. 수정을 푸시한 뒤에는 PR에 `@codex review` 코멘트를 남겨야 다시 리뷰한다.
 
