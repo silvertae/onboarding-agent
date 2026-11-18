@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
@@ -100,6 +100,109 @@ describe('ChatPanel', () => {
 
     expect(await chat().findByText('명함을 다시 만들고 싶어')).toBeInTheDocument()
     expect(chat().getByRole('link', { name: /명함 신청/ })).toHaveAttribute('href', '/me/tasks/task-ga07')
+  })
+
+  describe('규정 원문 출처', () => {
+    const clause = {
+      id: 'c1',
+      document_title: '복리후생 규정(가상)',
+      label: '제8조',
+      heading: '경조금',
+      body: '① 결혼하는 경우 경조금을 준다.\n② <b>굵게</b>',
+    }
+    const withDocuments = () =>
+      streamResponse([
+        { type: 'token', text: '경조금은 규정에 있어요.' },
+        {
+          type: 'sources',
+          knowledge: [{ id: 'k1', question: '경조금 신청' }],
+          tasks: [{ id: 'task-1', code: 'GA-01', title: '경조금 과제' }],
+          documents: [clause],
+        },
+        { type: 'done' },
+      ])
+
+    it('규정 원문 칩을 근거·관련 과제보다 위에 "문서명 제N조 제목"으로 보인다', async () => {
+      agent.agentFetch.mockResolvedValueOnce(withDocuments())
+      renderPanel()
+
+      await ask('경조금 얼마야?')
+
+      const chip = await chat().findByRole('button', { name: '복리후생 규정(가상) 제8조 경조금' })
+      expect(chip).toHaveAttribute('aria-haspopup', 'dialog')
+      const knowledge = chat().getByText('경조금 신청')
+      const task = chat().getByRole('link', { name: /경조금 과제/ })
+      expect(chip.compareDocumentPosition(knowledge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(knowledge.compareDocumentPosition(task) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(chat().getByText('규정 원문')).toBeInTheDocument()
+    })
+
+    it('규정 원문 칩을 누르면 조항 창에 문서명, 조항 제목, 본문, 안내 문구가 보이고 닫기로 닫힌다', async () => {
+      agent.agentFetch.mockResolvedValueOnce(withDocuments())
+      renderPanel()
+      await ask('경조금 얼마야?')
+      const chip = await chat().findByRole('button', { name: '복리후생 규정(가상) 제8조 경조금' })
+
+      await userEvent.click(chip)
+
+      const dialog = await screen.findByRole('dialog', { name: '제8조 경조금' })
+      expect(within(dialog).getByText('복리후생 규정(가상)')).toBeInTheDocument()
+      expect(within(dialog).getByText(/결혼하는 경우 경조금을 준다/)).toBeInTheDocument()
+      expect(within(dialog).getByRole('note')).toHaveTextContent(
+        '담당자가 검토한 답이 아니라 규정 원문에서 찾은 내용이에요. 정확한 적용은 담당 부서에 확인해 주세요.',
+      )
+      const close = within(dialog).getByRole('button', { name: '닫기' })
+      expect(close).toHaveClass('h-11')
+
+      await userEvent.click(close)
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it.each([
+      ['닫기 버튼', async () => userEvent.click(screen.getByRole('button', { name: '닫기' }))],
+      ['Escape', async () => userEvent.keyboard('{Escape}')],
+    ])('%s로 닫으면 포커스가 칩으로 돌아온다', async (_name, close) => {
+      agent.agentFetch.mockResolvedValueOnce(withDocuments())
+      renderPanel()
+      await ask('경조금 얼마야?')
+      const chip = await chat().findByRole('button', { name: '복리후생 규정(가상) 제8조 경조금' })
+      await userEvent.click(chip)
+      await screen.findByRole('dialog')
+
+      await close()
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(chip).toHaveFocus())
+    })
+
+    it('조항 본문은 글자로만 보인다', async () => {
+      agent.agentFetch.mockResolvedValueOnce(withDocuments())
+      renderPanel()
+      await ask('경조금 얼마야?')
+
+      await userEvent.click(await chat().findByRole('button', { name: '복리후생 규정(가상) 제8조 경조금' }))
+
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText(/<b>굵게<\/b>/)).toBeInTheDocument()
+      expect(dialog.querySelector('b')).toBeNull()
+    })
+
+    it('documents가 없으면 규정 원문 줄이 없다', async () => {
+      agent.agentFetch.mockResolvedValueOnce(
+        streamResponse([
+          { type: 'token', text: '답' },
+          { type: 'sources', knowledge: [{ id: 'k1', question: '경조금 신청' }], tasks: [] },
+          { type: 'done' },
+        ]),
+      )
+      renderPanel()
+
+      await ask('경조금 얼마야?')
+
+      expect(await chat().findByText('경조금 신청')).toBeInTheDocument()
+      expect(chat().queryByText('규정 원문')).not.toBeInTheDocument()
+    })
   })
 
   it('unanswered → 등록 요청 버튼만 보이고, 누르기 전에는 아무것도 기록하지 않는다', async () => {
