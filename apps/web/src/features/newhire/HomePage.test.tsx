@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   tasks: [] as TaskView[],
   query: { isPending: false, isError: false, isFetching: false } as Record<string, boolean>,
   refetch: vi.fn(),
+  counts: new Map<string, number>(),
 }))
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
@@ -19,6 +20,7 @@ vi.mock('@/lib/tasks', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/tasks')>()),
   useMyTasks: () => ({ data: state.query.isPending || state.query.isError ? undefined : state.tasks, ...state.query, refetch: state.refetch }),
 }))
+vi.mock('@/lib/taskFiles', () => ({ useFileCounts: () => ({ data: state.counts }) }))
 vi.mock('./useTeamName', () => ({ useTeamName: () => 'AI팀' }))
 
 import { HomePage } from './HomePage'
@@ -261,6 +263,22 @@ describe('신입 홈 — 지금 할 일 초점', () => {
   it('인사말은 진행 중인 단계를 말한다', () => {
     renderHome(demo)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('가상하늘 님, 첫 주를 보내고 있어요')
+  })
+})
+
+describe('신입 홈 — 서식 표시', () => {
+  beforeEach(() => {
+    state.query = { isPending: false, isError: false, isFetching: false }
+  })
+
+  it('서식이 있는 과제 행에 "서식 N"을 보이고, 없으면 표시하지 않는다', () => {
+    const a = makeTask({ code: 'GA-01', title: '법인카드 신청서 작성' })
+    const b = makeTask({ code: 'GA-02', title: '카드사 온라인 동의' })
+    state.counts = new Map([[a.template_id, 2]])
+    renderHome([a, b])
+    expect(screen.getAllByText('서식 2').length).toBeGreaterThan(0)
+    expect(screen.queryByText('서식 0')).not.toBeInTheDocument()
+    state.counts = new Map()
   })
 })
 
