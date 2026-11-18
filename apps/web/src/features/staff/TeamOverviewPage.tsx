@@ -1,13 +1,16 @@
 import { MessageSquare } from 'lucide-react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
+import { LoadError } from '@/components/LoadError'
+import { LoadingStatus } from '@/components/LoadingStatus'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { progress, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { formatKoreanDate, formatSchedule, hireDayLabel, isBeforeHire } from './format'
 import { useHires, type Hire } from './hires'
 import { useUnanswered } from './knowledge'
 import { ASSESSMENT_LABEL, assessmentsOf, initials, isTeamTask } from './teamTasks'
-import { EmptyState, ErrorText, LoadingText, PageHeader, Panel } from './ui'
+import { EmptyState, PageHeader, Panel } from './ui'
 
 function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
   const { finished, total } = progress(tasks)
@@ -84,6 +87,35 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
   )
 }
 
+const CARD_GRID = 'grid gap-5 md:grid-cols-2 xl:grid-cols-3'
+
+// 로딩: HireCard와 같은 자리(이니셜·이름·메타 / 진행률 막대) 3장
+function HireCardsSkeleton() {
+  return (
+    <LoadingStatus className={CARD_GRID}>
+      {Array.from({ length: 3 }, (_, i) => (
+        <div key={i} className="flex flex-col gap-5 rounded-[18px] border border-border bg-card p-6">
+          <div className="flex items-start gap-3">
+            <Skeleton className="size-11 shrink-0 rounded-full" />
+            <div className="flex flex-1 flex-col gap-2 pt-0.5">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+            <Skeleton className="h-[22px] w-20 rounded-full" />
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <Skeleton className="h-2 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </LoadingStatus>
+  )
+}
+
 // 에이전트가 답하지 못한 우리 팀 질문 수 → S10
 function UnansweredBanner({ count }: { count: number }) {
   return (
@@ -135,15 +167,23 @@ export function TeamOverviewPage() {
       )}
 
       {tasksQuery.isLoading || hiresQuery.isLoading ? (
-        <LoadingText />
+        <HireCardsSkeleton />
       ) : tasksQuery.isError || hiresQuery.isError ? (
-        <ErrorText>신입 현황을 불러오지 못했어요. 새로고침해 주세요.</ErrorText>
+        <LoadError
+          retrying={tasksQuery.isFetching || hiresQuery.isFetching}
+          onRetry={() => {
+            if (tasksQuery.isError) void tasksQuery.refetch()
+            if (hiresQuery.isError) void hiresQuery.refetch()
+          }}
+        >
+          신입 현황을 불러오지 못했어요. 새로고침해 주세요.
+        </LoadError>
       ) : hires.length === 0 ? (
         <Panel>
           <EmptyState>아직 우리 팀 신입이 없어요.</EmptyState>
         </Panel>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className={CARD_GRID}>
           {hires.map((hire) => (
             <HireCard key={hire.id} hire={hire} tasks={teamTasks.filter((t) => t.new_hire_id === hire.id)} />
           ))}

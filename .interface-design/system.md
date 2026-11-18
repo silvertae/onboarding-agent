@@ -83,6 +83,18 @@
 - **폼 컨트롤:** `components/ui`의 `Input`, `NativeSelect`, `Textarea`, `Checkbox`만 쓴다. `NativeSelect`는 브라우저 기본 select에 Input과 같은 테두리와 화살표를 입힌 것이고, `className`은 바깥 상자(너비)에 붙는다. 입력 스타일 문자열을 화면 파일에 복사하지 않는다.
 - **체크리스트 행:** 신입 화면에서는 한 줄 높이를 44(`min-h-11`), 체크박스를 18px로 한다.
 
+## 상태(로딩·빈·오류)
+
+시안 `S0-system`의 "상태 · 로딩과 오류" 절이 기준이다.
+
+- **로딩:** "불러오는 중…" 글자만 띄우지 않는다. 데이터가 올 자리와 같은 배치·크기로 `components/ui/skeleton.tsx`(`bg-secondary` pulse, `motion-reduce:animate-none`)를 그린다.
+  - `components/LoadingStatus.tsx`의 `LoadingStatus`로 감싼다. 스켈레톤은 `aria-hidden`이고, 화면 읽기 프로그램에는 `role="status"`의 "불러오는 중…"만 알린다.
+  - 표는 `TableSkeleton`(실제 표와 같은 머리 글자 + 칸 모양 `line`·`two-line`·`badge`·`button`)을 쓴다. 카드·과제 행처럼 화면마다 다른 모양은 그 화면 파일 안에 작은 스켈레톤 조각으로 둔다.
+  - 페이지 머리(제목·설명·요약 카드)처럼 데이터 없이 그릴 수 있는 부분은 로딩 중에도 그대로 그린다. 페이지 여백(`main`)도 같다.
+- **빈 목록:** 패널 안 가운데 한 줄(`EmptyState`, "아직 …이 없어요").
+- **목록·화면 오류:** `components/LoadError.tsx`(`Alert variant="destructive"` + "다시 불러오기" 버튼 → `query.refetch`). 다시 불러오는 동안(`isFetching`)은 버튼을 막는다. 신입 화면은 `size="lg"`. 목록 오류는 그 패널 안, 화면 전체 오류는 페이지 머리(뒤로 가기 링크) 아래에 둔다.
+- **동작 오류:** 저장·처리 실패(`useGuardedAction` 등)는 버튼 옆 인라인 문구(`staff/ui`의 `ErrorText`)로 둔다. `LoadError`를 쓰지 않는다.
+
 ## 컴포넌트
 
 - **`StatusBadge`:** `Badge`의 variant 6종을 쓴다. 상태 문구는 `lib/labels.ts`에서만 가져온다.

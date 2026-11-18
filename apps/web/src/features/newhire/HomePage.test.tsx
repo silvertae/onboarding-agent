@@ -5,7 +5,11 @@ import { afterEach, beforeEach, vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { makeTask, PROFILE, TEAM_ID } from './testFixtures'
 
-const state = vi.hoisted(() => ({ tasks: [] as TaskView[] }))
+const state = vi.hoisted(() => ({
+  tasks: [] as TaskView[],
+  query: { isPending: false, isError: false, isFetching: false } as Record<string, boolean>,
+  refetch: vi.fn(),
+}))
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 vi.mock('@/app/AuthProvider', () => ({
@@ -13,7 +17,7 @@ vi.mock('@/app/AuthProvider', () => ({
 }))
 vi.mock('@/lib/tasks', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/tasks')>()),
-  useMyTasks: () => ({ data: state.tasks, isPending: false, isError: false }),
+  useMyTasks: () => ({ data: state.query.isPending || state.query.isError ? undefined : state.tasks, ...state.query, refetch: state.refetch }),
 }))
 vi.mock('./useTeamName', () => ({ useTeamName: () => 'AI팀' }))
 
@@ -55,6 +59,8 @@ const all = [hr02, hr03, ga07, ai01, ai02, ac04, ga08]
 
 // 오늘을 2026-11-18(수)로 고정한다. 픽스처 기한은 모두 11-20이라 처음에는 "입사일" 단계가 진행 중이다.
 beforeEach(() => {
+  state.query = { isPending: false, isError: false, isFetching: false }
+  state.refetch.mockClear()
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 10, 18, 9, 0))
 })
@@ -244,5 +250,21 @@ describe('신입 홈 — 지금 할 일 초점', () => {
   it('인사말은 진행 중인 단계를 말한다', () => {
     renderHome(demo)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('가상하늘 님, 첫 주를 보내고 있어요')
+  })
+})
+
+describe('신입 홈 — 로딩·오류', () => {
+  it('불러오는 동안 "불러오는 중…" 상태를 알린다', () => {
+    state.query = { isPending: true, isError: false, isFetching: true }
+    renderHome([])
+    expect(screen.getByRole('status')).toHaveTextContent('불러오는 중…')
+  })
+
+  it('불러오지 못하면 오류 알림의 "다시 불러오기"로 다시 조회한다', async () => {
+    state.query = { isPending: false, isError: true, isFetching: false }
+    renderHome([])
+    expect(screen.getByRole('alert')).toHaveTextContent('과제를 불러오지 못했어요')
+    await userEvent.click(screen.getByRole('button', { name: '다시 불러오기' }))
+    expect(state.refetch).toHaveBeenCalledTimes(1)
   })
 })

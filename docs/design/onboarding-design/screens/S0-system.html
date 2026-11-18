@@ -17,6 +17,7 @@
 .spec dt{font-size:12px;color:var(--muted)}
 .spec dd{margin:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .ramp span{font-size:15px}
+.spec.plain dd{display:block;line-height:20px}
 </style>
 </head>
 <body>
@@ -132,6 +133,62 @@
       </div>
     </section>
   </div>
+
+  <section class="card">
+    <div class="card-hd"><h2>상태 · 로딩과 오류</h2><span class="caption">로딩은 데이터가 올 자리와 같은 모양으로, 목록 오류는 그 자리에서 다시 불러온다</span></div>
+    <div class="card-bd col" style="gap: 24px">
+      <div class="grid-3" style="align-items: start">
+        <div class="col" style="gap: 8px">
+          <span class="label">과제 행 · S2 신입 홈</span>
+          <div class="card" style="overflow: hidden" aria-hidden="true">
+            <div class="card-hd"><span class="skel" style="width: 96px; height: 20px"></span></div>
+            <div class="task" style="padding: 14px 24px"><div class="task-main" style="gap: 8px"><span class="skel" style="width: 58%; height: 15px"></span><span class="row" style="gap: 8px"><span class="skel" style="width: 44px; height: 20px"></span><span class="skel skel-line" style="width: 96px"></span></span></div><span class="skel skel-pill" style="width: 60px; height: 22px"></span></div>
+            <div class="task" style="padding: 14px 24px"><div class="task-main" style="gap: 8px"><span class="skel" style="width: 44%; height: 15px"></span><span class="row" style="gap: 8px"><span class="skel" style="width: 44px; height: 20px"></span><span class="skel skel-line" style="width: 80px"></span></span></div><span class="skel skel-pill" style="width: 60px; height: 22px"></span></div>
+            <div class="task" style="padding: 14px 24px"><div class="task-main" style="gap: 8px"><span class="skel" style="width: 66%; height: 15px"></span><span class="row" style="gap: 8px"><span class="skel" style="width: 44px; height: 20px"></span><span class="skel skel-line" style="width: 104px"></span></span></div><span class="skel skel-pill" style="width: 60px; height: 22px"></span></div>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="label">신입 카드 · S5 팀 신입 현황</span>
+          <div class="card card-pad col" style="gap: 20px" aria-hidden="true">
+            <div class="row"><span class="skel skel-circle" style="width: 44px; height: 44px"></span><div class="col" style="gap: 8px; flex: 1"><span class="skel" style="width: 40%; height: 17px"></span><span class="skel skel-line" style="width: 72%"></span></div></div>
+            <div class="col" style="gap: 10px"><div class="between"><span class="skel skel-line" style="width: 88px"></span><span class="skel skel-line" style="width: 64px"></span></div><span class="skel skel-pill" style="height: 8px"></span></div>
+          </div>
+        </div>
+        <div class="col" style="gap: 8px">
+          <span class="label">표 행 · S6 S7 S9 S10 S11</span>
+          <div class="card" style="overflow: hidden" aria-hidden="true">
+            <table class="tbl">
+              <thead><tr><th>입사자</th><th>과제</th><th>상태</th></tr></thead>
+              <tbody>
+                <tr><td><span class="skel skel-line" style="width: 64px"></span></td><td><span class="skel skel-line" style="width: 110px"></span></td><td><span class="skel skel-pill" style="width: 60px; height: 22px"></span></td></tr>
+                <tr><td><span class="skel skel-line" style="width: 52px"></span></td><td><span class="skel skel-line" style="width: 84px"></span></td><td><span class="skel skel-pill" style="width: 60px; height: 22px"></span></td></tr>
+                <tr><td><span class="skel skel-line" style="width: 60px"></span></td><td><span class="skel skel-line" style="width: 120px"></span></td><td><span class="skel skel-pill" style="width: 60px; height: 22px"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="align-items: start">
+        <div class="col" style="gap: 8px">
+          <span class="label">목록을 불러오지 못했을 때</span>
+          <div class="alert alert-err" role="alert">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+            <div class="col" style="gap: 10px; align-items: flex-start">
+              <span>업무 목록을 불러오지 못했어요. 새로고침해 주세요.</span>
+              <button type="button" class="btn btn-sm" style="background: var(--surface); border-color: var(--alert-err-border); color: var(--alert-err-fg)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"></path><path d="M21 3v5h-5"></path></svg>다시 불러오기</button>
+            </div>
+          </div>
+        </div>
+        <dl class="spec plain" style="grid-template-columns: 96px 1fr; align-self: center">
+          <dt>로딩</dt><dd class="secondary">스켈레톤 · <code class="caption">Skeleton</code> · fill 색, 2초 pulse, 움직임 줄이기면 멈춤. 화면 읽기 프로그램에는 "불러오는 중…"</dd>
+          <dt>빈 목록</dt><dd class="secondary">패널 안 가운데 문구 한 줄 · "아직 …이 없어요"</dd>
+          <dt>오류</dt><dd class="secondary">빨간 알림 + "다시 불러오기" · <code class="caption">LoadError</code> · 목록 오류는 그 패널 안, 화면 전체 오류는 페이지 머리 아래</dd>
+          <dt>동작 오류</dt><dd class="secondary">저장·처리 실패는 지금처럼 버튼 옆 인라인 문구</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
 </main>
 </body>
 </html>
