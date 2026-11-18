@@ -79,6 +79,73 @@ export function useBankTopics(): UseQueryResult<string[]> {
   })
 }
 
+export type BankStatus = BankItem['status']
+export type BankSource = BankItem['source']
+export type BankFilter = { topic?: string; difficulty?: Difficulty; status: BankStatus }
+
+export const BANK_SOURCE_LABEL: Record<BankSource, string> = { exam: '시험', manual: '직접 추가', migrated: '이관', seed: '기본' }
+
+// 주제 비교 키(DB topic_key와 같은 규칙: 앞뒤 공백을 지우고 소문자). ilike는 _·%를 와일드카드로 읽어 쓰지 않는다.
+export const topicKey = (topic: string) => topic.trim().toLowerCase()
+
+// S13 목록: 게시/숨김 하나와 주제·난이도로 거른 우리 팀 문항, 최신순
+export function useBankItems(f: BankFilter): UseQueryResult<BankItem[]> {
+  const { session } = useAuth()
+  const userId = session?.user.id
+  const topic = f.topic?.trim() ? topicKey(f.topic) : null
+  return useQuery({
+    queryKey: [...bankKeys.list(userId), f.status, topic, f.difficulty ?? null],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      let query = supabase.from('question_bank_items').select('*').eq('status', f.status)
+      if (topic) query = query.eq('topic_key', topic)
+      if (f.difficulty) query = query.eq('difficulty', f.difficulty)
+      // 시드·이관 문항은 created_at이 같아서 id로 순서를 고정한다(고친 행이 자리를 바꾸지 않게)
+      const { data, error, status } = await query.order('created_at', { ascending: false }).order('id')
+      if (error) fail(status, error)
+      return data ?? []
+    },
+  })
+}
+
+type BankPatch = Partial<Pick<BankItem, 'prompt' | 'model_answer' | 'rubric' | 'points' | 'topic' | 'difficulty' | 'status'>>
+
+// 문항 하나를 고친다(숨기기·다시 게시 포함). 은행 문항은 지우지 않는다. 같은 문제면 code 23505.
+export async function updateBankItem(id: string, patch: BankPatch): Promise<void> {
+  // RLS로 막힌 행은 오류 없이 0행이 되므로 고친 행을 돌려받아 확인한다
+  const { error, status } = await supabase.from('question_bank_items').update(patch).eq('id', id).select('id').single()
+  if (error) fail(status, error)
+}
+
+// 직접 추가: org·팀은 내 프로필에서 가져온다. 같은 문제면 code 23505. 새 문항 id를 돌려준다.
+export async function addBankItem(input: { topic: string; difficulty: Difficulty } & DraftQuestion): Promise<string> {
+  const { data: auth } = await supabase.auth.getSession()
+  const userId = auth.session?.user.id
+  if (!userId) throw new DbError(401, '로그인이 필요해요')
+  const { data: me, error: meError, status: meStatus } = await supabase.from('profiles').select('org_id, team_id').eq('id', userId).single()
+  if (meError) fail(meStatus, meError)
+  if (!me.team_id) throw new DbError(403, '소속 팀이 없어 문항을 추가할 수 없어요')
+  const { data, error, status } = await supabase
+    .from('question_bank_items')
+    .insert({
+      org_id: me.org_id,
+      team_id: me.team_id,
+      topic: input.topic.trim(),
+      difficulty: input.difficulty,
+      prompt: input.prompt,
+      model_answer: input.model_answer,
+      rubric: input.rubric,
+      points: input.points,
+      source: 'manual',
+    })
+    .select('id')
+    .single()
+  if (error) fail(status, error)
+  return data.id
+}
+
+export const isDuplicate = (error: unknown) => error instanceof DbError && error.code === '23505'
+
 export function toDraft(item: BankItem): DraftQuestion {
   return { prompt: item.prompt, model_answer: item.model_answer, rubric: item.rubric, points: item.points, bank_item_id: item.id }
 }

@@ -15,8 +15,8 @@ export function LoadingStatus({ className, children }: { className?: string; chi
   )
 }
 
-// 표 칸 모양: 글자 한 줄, 두 줄(이름 + 소속), 상태 배지, 행 버튼, 빈 칸
-type Cell = 'line' | 'two-line' | 'badge' | 'button' | 'none'
+// 표 칸 모양: 글자 한 줄, 두 줄(이름 + 소속), 긴 글 두 줄(문항 미리보기), 상태 배지, 행 버튼, 빈 칸
+type Cell = 'line' | 'two-line' | 'paragraph' | 'badge' | 'button' | 'none'
 export type SkeletonColumn = { label: string; cell?: Cell; className?: string }
 
 // 줄마다 길이를 조금씩 달리해 실제 목록처럼 보이게 한다
@@ -27,6 +27,14 @@ function SkeletonCell({ cell, row, col }: { cell: Cell; row: number; col: number
   if (cell === 'none') return null
   if (cell === 'badge') return <Skeleton className="h-[22px] w-16 rounded-full" />
   if (cell === 'button') return <Skeleton className="ml-auto h-8 w-20 rounded-full" />
+  if (cell === 'paragraph') {
+    return (
+      <div className="flex flex-col gap-2">
+        <Skeleton className={cn('h-4', row % 2 ? 'w-10/12' : 'w-11/12')} />
+        <Skeleton className={cn('h-4', row % 2 ? 'w-5/12' : 'w-7/12')} />
+      </div>
+    )
+  }
   if (cell === 'two-line') {
     return (
       <div className="flex flex-col gap-1.5">

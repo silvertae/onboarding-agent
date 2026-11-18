@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Library, Pencil, RefreshCw, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ function regenerateErrorMessage(error: unknown): { text: string; retry: boolean 
 }
 
 type Props = {
+  mode?: 'exam'
   number: number
   total: number
   question: DraftQuestion
@@ -30,7 +31,60 @@ type Props = {
   onRegenerate: (instruction: string) => Promise<void>
 }
 
-export function QuestionCard({ number, total, question, startEditing = false, disabled, onChange, onRemove, onMove, onRegenerate }: Props) {
+// S13 문제은행 편집 상자: 순서 이동·수정 전환·다시 만들기·삭제 없이 편집 칸만 그린다.
+// 배점 줄 앞에 주제·난이도 칸(metaFields)을 함께 둔다. 상자 테두리와 저장 버튼은 부르는 쪽이 둔다.
+type BankProps = {
+  mode: 'bank'
+  idPrefix: string
+  question: DraftQuestion
+  disabled?: boolean
+  onChange: (next: DraftQuestion) => void
+  metaFields?: ReactNode
+}
+
+export function QuestionCard(props: Props | BankProps) {
+  return props.mode === 'bank' ? <BankQuestionFields {...props} /> : <ExamQuestionCard {...props} />
+}
+
+function BankQuestionFields({ idPrefix, question, disabled, onChange, metaFields }: BankProps) {
+  const field = (key: keyof DraftQuestion) => `${idPrefix}-${key}`
+  return (
+    <div className="grid gap-4">
+      <div>
+        <Label htmlFor={field('prompt')} className="mb-1">문제</Label>
+        <Textarea id={field('prompt')} disabled={disabled} value={question.prompt} rows={4} onChange={(e) => onChange({ ...question, prompt: e.target.value })} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor={field('model_answer')} className="mb-1">모범 답안</Label>
+          <Textarea id={field('model_answer')} disabled={disabled} value={question.model_answer} rows={3} onChange={(e) => onChange({ ...question, model_answer: e.target.value })} />
+        </div>
+        <div>
+          <Label htmlFor={field('rubric')} className="mb-1">채점 기준</Label>
+          <Textarea id={field('rubric')} disabled={disabled} value={question.rubric} rows={3} onChange={(e) => onChange({ ...question, rubric: e.target.value })} />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-4">
+        {metaFields}
+        <div className="w-28 flex-none">
+          <Label htmlFor={field('points')} className="mb-1">배점</Label>
+          <Input
+            id={field('points')}
+            disabled={disabled}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100}
+            value={question.points || ''}
+            onChange={(e) => onChange({ ...question, points: Math.trunc(Number(e.target.value)) || 0 })}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ExamQuestionCard({ number, total, question, startEditing = false, disabled, onChange, onRemove, onMove, onRegenerate }: Props) {
   const [editing, setEditing] = useState(startEditing)
   const [regenOpen, setRegenOpen] = useState(false)
   const [instruction, setInstruction] = useState('')
