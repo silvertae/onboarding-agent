@@ -284,14 +284,19 @@ function StageSection({
   return (
     <Collapsible.Root open={open} onOpenChange={onOpenChange} className="group/stage border-t border-border first:border-t-0">
       <h3>
-        <Collapsible.Trigger className="flex w-full items-center gap-2.5 border-border bg-surface-subtle px-4 py-3 text-left group-data-[state=open]/stage:border-b outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-6">
+        <Collapsible.Trigger className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-0.5 border-border bg-surface-subtle px-4 py-3 text-left group-data-[state=open]/stage:border-b outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-6">
           <ChevronRight
             className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-out-ui group-data-[state=open]/stage:rotate-90 motion-reduce:transition-none"
             aria-hidden
           />
-          <span className="text-sm font-semibold">{STAGE_LABEL[stage]}</span>
-          <span className="text-xs font-normal text-muted-foreground tabular-nums">{caption}</span>
-          {summary && <span className="ml-auto text-xs font-normal text-[var(--text-secondary)] tabular-nums">{summary}</span>}
+          <span className="shrink-0 text-sm font-semibold whitespace-nowrap">{STAGE_LABEL[stage]}</span>
+          {/* 좁은 화면: 1줄 = 화살표·단계 이름·남은 일, 2줄 = 날짜·완료 수(단계 이름 아래에 맞춤). sm부터 한 줄 */}
+          <span className="order-last basis-full pl-6 text-xs font-normal text-muted-foreground tabular-nums sm:order-none sm:basis-auto sm:pl-0">
+            {caption}
+          </span>
+          {summary && (
+            <span className="ml-auto min-w-0 text-right text-xs font-normal text-[var(--text-secondary)] tabular-nums">{summary}</span>
+          )}
         </Collapsible.Trigger>
       </h3>
       <Collapsible.Content>

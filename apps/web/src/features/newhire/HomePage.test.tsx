@@ -247,6 +247,17 @@ describe('신입 홈 — 지금 할 일 초점', () => {
     expect(weekHeader).toHaveTextContent('할 일 3 · 보완 요청 1 · 확인 대기 1')
   })
 
+  it('모바일 단계 머리: 단계 이름은 줄바꿈하지 않고, 날짜·완료 수는 둘째 줄로 내린다', () => {
+    renderHome(demo)
+    const list = screen.getByRole('region', { name: '전체 과제' })
+    const header = within(list).getByRole('button', { name: /^첫 주/ })
+    expect(header).toHaveClass('flex-wrap')
+    expect(within(header).getByText('첫 주')).toHaveClass('shrink-0', 'whitespace-nowrap')
+    // 좁은 화면: 둘째 줄 전체(basis-full)를 쓰고 단계 이름 아래(pl-6 = 화살표 14 + 간격 10)에 맞춘다. sm부터 한 줄
+    expect(within(header).getByText(/11월 22일 · 6개 중 0개 완료/)).toHaveClass('order-last', 'basis-full', 'pl-6', 'sm:order-none', 'sm:basis-auto', 'sm:pl-0')
+    expect(within(header).getByText(/할 일 3 · 보완 요청 1/)).toHaveClass('ml-auto', 'min-w-0', 'text-right')
+  })
+
   it('인사말은 진행 중인 단계를 말한다', () => {
     renderHome(demo)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('가상하늘 님, 첫 주를 보내고 있어요')
