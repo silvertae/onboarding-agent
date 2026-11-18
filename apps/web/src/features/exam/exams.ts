@@ -5,6 +5,7 @@ import { agentFetch } from '@/lib/agent'
 import type { Tables } from '@/lib/database.types'
 import { DbError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
+import { AVOID_MAX_ITEMS, AVOID_PROMPT_MAX } from './bank'
 
 export type Exam = Tables<'exams'>
 export type ExamQuestionRow = Tables<'exam_questions'>
@@ -13,7 +14,8 @@ export type ExamListItem = Exam & { question_count: number }
 export type Difficulty = Exam['difficulty']
 export type ExamStatus = Exam['status']
 
-export type DraftQuestion = { prompt: string; model_answer: string; rubric: string; points: number }
+// bank_item_id: 은행에서 왔거나 은행에 등록된 문항의 출처(exam_questions.bank_item_id)
+export type DraftQuestion = { prompt: string; model_answer: string; rubric: string; points: number; bank_item_id?: string | null }
 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = { beginner: '입문', intermediate: '중급' }
 export const EXAM_STATUS_LABEL: Record<ExamStatus, string> = { draft: '초안', final: '확정' }
@@ -72,10 +74,16 @@ export type GenerateRequest = {
   question_count: number
   style?: string
   new_hire_id?: string
+  avoid_prompts?: string[]
 }
 
 export async function generateExam(req: GenerateRequest): Promise<{ title: string; questions: DraftQuestion[] }> {
-  const res = await agentFetch('/exams/generate', req)
+  const res = await agentFetch(
+    '/exams/generate',
+    req.avoid_prompts
+      ? { ...req, avoid_prompts: req.avoid_prompts.slice(0, AVOID_MAX_ITEMS).map((p) => p.slice(0, AVOID_PROMPT_MAX)) }
+      : req,
+  )
   return (await res.json()) as { title: string; questions: DraftQuestion[] }
 }
 
@@ -143,6 +151,7 @@ export async function saveExam(e: SaveExamInput): Promise<string> {
       model_answer: q.model_answer,
       rubric: q.rubric,
       points: q.points,
+      bank_item_id: q.bank_item_id ?? null,
     }))
     const { error, status } = await supabase.from('exam_questions').insert(rows)
     if (error) fail(status, error)
