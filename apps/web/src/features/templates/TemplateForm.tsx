@@ -32,6 +32,8 @@ type Props = {
   showPrerequisites: boolean
   // 같은 담당 범위의 사용 중인 기본 과제(자기 자신 제외)
   prerequisiteOptions: TaskTemplate[]
+  // 좁은 대화 상자: 두 칸으로 나누는 기준을 낮춘다(시안 S6·S9 .form-grid 260px). S12는 340px(시안 S12)
+  compact?: boolean
 }
 
 const KIND_OPTIONS: { value: TaskKind; label: string }[] = [
@@ -61,15 +63,26 @@ const READ_ONLY_SELECT = '[&_select:disabled]:bg-muted [&_select:disabled]:text-
 const READ_ONLY_CHECK = 'disabled:aria-checked:opacity-100'
 const LABEL = 'text-label font-semibold'
 const LEGEND = 'mb-1.5 text-label font-semibold'
-// 넓으면 두 칸, 좁으면 한 칸(시안 .form-grid)
-const TWO_COLUMNS = 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-5'
+// 넓으면 두 칸, 좁으면 한 칸(시안 .form-grid). S12 패널은 340px, 대화 상자는 260px 기준
+// (S12에서 260px이면 1100px 화면쯤에서 종류 세그먼트가 칸 밖으로 넘친다)
+const TWO_COLUMNS = 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-5'
+const TWO_COLUMNS_COMPACT = 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-5'
 const CHECK_LABEL = 'flex cursor-pointer items-center gap-2.5 text-sm has-[:disabled]:cursor-not-allowed'
 // 세그먼트 칸은 같은 너비로 나누되 글자보다 좁아지지 않게 한다("체크리스트"가 줄바꿈되지 않게. 시안 .seg label flex:1)
 const SEGMENT_FIT = 'auto-cols-[minmax(max-content,1fr)]'
 
 // S12 편집 칸. S12 화면과 "이 신입에게 과제 추가" 대화 상자가 함께 쓴다. 저장·동작 버튼은 쓰는 쪽이 둔다.
-export function TemplateForm({ value, onChange, lockedFields, allowAssessment, showPrerequisites, prerequisiteOptions }: Props) {
+export function TemplateForm({
+  value,
+  onChange,
+  lockedFields,
+  allowAssessment,
+  showPrerequisites,
+  prerequisiteOptions,
+  compact = false,
+}: Props) {
   const id = useId()
+  const columns = compact ? TWO_COLUMNS_COMPACT : TWO_COLUMNS
   const [newItem, setNewItem] = useState('')
   const set = (patch: Partial<TemplateInput>) => onChange({ ...value, ...patch })
 
@@ -139,7 +152,7 @@ export function TemplateForm({ value, onChange, lockedFields, allowAssessment, s
         />
       </div>
 
-      <div className={TWO_COLUMNS}>
+      <div className={columns}>
         <fieldset className="min-w-0">
           <legend className={LEGEND}>종류</legend>
           <SegmentedRadio name={`${id}-kind`} options={kindOptions} value={value.kind} onChange={changeKind} className={SEGMENT_FIT} />
@@ -156,7 +169,7 @@ export function TemplateForm({ value, onChange, lockedFields, allowAssessment, s
         </fieldset>
       </div>
 
-      <div className={TWO_COLUMNS}>
+      <div className={columns}>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`${id}-stage`} className={LABEL}>
             단계

@@ -50,6 +50,16 @@ describe('AddTaskDialog', () => {
     expect(screen.getByRole('radio', { name: '안내' })).toBeChecked()
   })
 
+  it('좁은 대화 상자라 두 칸 기준을 260px로 낮춘다(시안 S6 .form-grid). S12 편집 칸은 340px 그대로', () => {
+    render(<AddTaskDialog hire={HIRE} open onOpenChange={() => {}} allowAssessment />)
+    const rows = [screen.getByRole('group', { name: '종류' }), screen.getByLabelText('단계')].map(
+      (el) => el.closest('[class*="grid-cols-"]')?.className,
+    )
+    for (const row of rows) {
+      expect(row).toContain('minmax(min(100%,260px),1fr)')
+    }
+  })
+
   it('제목이 비어 있으면 "추가"를 누를 수 없다', async () => {
     const user = userEvent.setup()
     render(<AddTaskDialog hire={HIRE} open onOpenChange={() => {}} allowAssessment />)

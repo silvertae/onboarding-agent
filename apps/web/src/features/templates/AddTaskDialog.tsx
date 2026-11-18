@@ -82,6 +82,7 @@ export function AddTaskDialog({ hire, open, onOpenChange, allowAssessment, onAdd
             allowAssessment={allowAssessment}
             showPrerequisites={false}
             prerequisiteOptions={[]}
+            compact
           />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-6 py-4">

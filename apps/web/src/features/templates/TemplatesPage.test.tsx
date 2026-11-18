@@ -479,6 +479,16 @@ describe('TemplatesPage 편집', () => {
     expect(screen.getByLabelText('단계')).toBeEnabled()
   })
 
+  it('편집 칸은 340px 기준으로 두 칸이 된다(시안 S12 .form-grid). 대화 상자용 260px 기준을 쓰지 않는다', () => {
+    renderPage({ path: '/tasks?template=AI-09' })
+    const rows = [screen.getByRole('group', { name: '종류' }), screen.getByLabelText('단계')].map(
+      (el) => el.closest('[class*="grid-cols-"]')?.className,
+    )
+    for (const row of rows) {
+      expect(row).toContain('minmax(min(100%,340px),1fr)')
+    }
+  })
+
   it('이 과제를 이미 (보관한 과제를 거쳐서라도) 기다리는 과제는 선행 후보에서 빠진다', () => {
     renderPage({
       path: '/tasks?template=AI-11',
