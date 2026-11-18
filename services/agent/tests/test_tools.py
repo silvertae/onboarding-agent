@@ -71,6 +71,8 @@ def clause_fixture(service, newhire_token):
     hire = as_user(newhire_token)
     suffix = uuid.uuid4().hex[:8]
     other_team = service.table("teams").insert({"org_id": hire.org_id, "name": f"테스트팀 {suffix}"}).execute().data[0]
+    # 0012의 CHECK: file_path = org_id/id.file_type
+    company_id, other_id = str(uuid.uuid4()), str(uuid.uuid4())
     doc_ids: list[str] = []
     try:
         docs = (
@@ -78,12 +80,13 @@ def clause_fixture(service, newhire_token):
             .insert(
                 [
                     {
-                        "org_id": hire.org_id, "scope": "company", "team_id": None, "title": f"회사 규정 {suffix}",
-                        "file_path": f"{hire.org_id}/{suffix}-c.pdf", "file_type": "pdf", "status": "ready",
+                        "id": company_id, "org_id": hire.org_id, "scope": "company", "team_id": None,
+                        "title": f"회사 규정 {suffix}", "file_path": f"{hire.org_id}/{company_id}.pdf",
+                        "file_type": "pdf", "status": "ready",
                     },
                     {
-                        "org_id": hire.org_id, "scope": "team", "team_id": other_team["id"],
-                        "title": f"다른 팀 규정 {suffix}", "file_path": f"{hire.org_id}/{suffix}-t.pdf",
+                        "id": other_id, "org_id": hire.org_id, "scope": "team", "team_id": other_team["id"],
+                        "title": f"다른 팀 규정 {suffix}", "file_path": f"{hire.org_id}/{other_id}.pdf",
                         "file_type": "pdf", "status": "ready",
                     },
                 ]
