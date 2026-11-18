@@ -10,6 +10,7 @@
 | `docs/architecture.md` | 아키텍처, 데이터 모델, 권한, 배포 구조 |
 | `docs/screens.md` | 화면 S1~S12와 상태 문구 |
 | `docs/design/onboarding-design/README.md` | 디자인 토큰(색·라운드·글꼴), 화면 시안 |
+| `.interface-design/system.md` | 디자인 시스템 규칙(색·글자·크기·상태·컴포넌트). UI를 만들거나 고치기 전에 읽는다 |
 | `docs/deploy.md` | 클라우드 준비, 배포 흐름, 되돌리기, 운영 점검 |
 | `docs/superpowers/specs/2026-11-17-onboarding-agent-design.md` | 목표·비목표·실패 조건 |
 
@@ -36,7 +37,7 @@
 - 에이전트 서비스는 상태를 갖지 않는다. 채팅 내용은 저장하거나 로그에 남기지 않는다.
 - 모델 이름은 `OPENAI_MODEL` 환경변수. 특정 모델 전용 기능은 구조화 출력 외에 쓰지 않는다.
 - ADK·LiteLLM·OpenAI·Supabase 사용법은 설치된 버전의 문서·소스로 확인한다. 기억에 의존하지 않는다.
-- 화면 문구는 한국어, 상태 문구는 `docs/screens.md` 표를 따른다. UI는 shadcn/ui와 디자인 토큰으로 만든다.
+- 화면 문구는 한국어, 상태 문구는 `docs/screens.md` 표를 따른다. UI는 `.interface-design/system.md`를 따르고 `components/ui`·공통 컴포넌트와 의미 토큰으로 만든다. 색 hex, 임의 글자 크기, 직접 만든 탭·라디오는 쓰지 않는다(`scripts/check-design.sh`가 CI에서 막는다).
 
 ## 데이터·비밀값
 
@@ -50,6 +51,12 @@
 
 - 테스트 먼저: 실패하는 테스트 → 구현 → 통과. 테스트 결과를 보여 주기 전에는 완료라고 말하지 않는다.
 - 공통 영역(`supabase/`, `apps/web/src/lib`, `apps/web/src/app`, `services/agent/app/{main,auth,db,quota,config}.py`, `.github/`, `docs/contracts.md`)을 고칠 때는 PR 설명에 이유를 적는다. 여러 세션이 동시에 작업할 때는 맡은 폴더만 고친다.
+- UI 작업(새 화면·기능 포함):
+  1. `.interface-design/system.md`와 시안(`docs/design/onboarding-design`, 견본 `S0-system`)을 먼저 본다. 규칙에 없는 결정이 필요하면 시안과 system.md를 먼저 고친다.
+  2. 화면 구성이 새로 생기거나 크게 바뀌면 시안(`screens/*.html`과 `png/`)을 먼저 만들어 Leo에게 확인받은 뒤 구현한다.
+  3. 테스트 먼저 → 구현. `bash scripts/check-design.sh`를 통과시킨다.
+  4. PR 전에 `/design-review`로 바뀐 화면을 검토한다. 막는 문제(blocker)가 남아 있으면 PR을 열지 않는다.
+  5. PR 설명에 바뀐 부분의 수정 전 → 후 스크린샷을 넣는다(`scripts/design/README.md`).
 - 로컬 Supabase는 여러 worktree가 함께 쓴다. `supabase stop`, `supabase db reset`, `npm run db:reset`은 Leo가 요청할 때만 한다.
 
 ## Git·PR
@@ -71,6 +78,9 @@
 | `npm run test:agent` | pytest (`services/agent`, 일부는 로컬 Supabase 필요) |
 | `npm run db:test` | pgTAP (`supabase/tests`) |
 | `bash scripts/tests/smoke_test.sh` 등 | 배포 스크립트 테스트(`scripts/tests/`) |
+| `bash scripts/check-design.sh` | 디자인 규칙 검사(CI와 같음). 꼭 필요한 예외는 그 줄에 `design-allow: <이유>` |
+| `/design-review`, `/design-deslop` | 화면 디자인 리뷰 / 생성형 UI 티 지우기(`.claude/commands`, 스킬 `interface-design`) |
+| `npm --prefix scripts/design ci` | PR 전·후 스크린샷 도구 설치(`scripts/design/README.md`) |
 | `npm run types` | `apps/web/src/lib/database.types.ts` 생성 |
 
 의존성 추가: 웹 `npm --prefix apps/web install <pkg>`, 에이전트 `cd services/agent && uv add <pkg>`. shadcn CLI로 컴포넌트를 추가하면 `cn` 패키지가 끼어드는 버그가 있으니 `package.json`을 확인한다.
