@@ -60,3 +60,7 @@ class ModelDraft(BaseModel):
 
 class ModelDrafts(BaseModel):
     drafts: list[ModelDraft] = Field(max_length=10)
+
+
+class KnowledgeIndexResult(BaseModel):
+    embedded: int

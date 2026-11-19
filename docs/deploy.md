@@ -390,8 +390,26 @@ SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret supa
 
 운영은 같은 명령에서 프로젝트를 `$PROD_PROJECT`, 서비스 키 비밀 이름을 `supabase-service-role-key-prod`(OpenAI 키는 같은 이름 `openai-api-key`)로 바꾸고, 운영 Supabase URL·anon 키와 운영 환경의 `OPENAI_EMBEDDING_MODEL` 값을 쓴다. 문서마다 "색인 완료(조항 N개)" 또는 "이미 있어 건너뜀"이 한 줄씩 나오고 종료 코드는 0이다. 환경변수가 빠지면 변수 이름만 알리고 2로 끝난다.
 
-- `OPENAI_EMBEDDING_MODEL`을 바꾸면 이미 저장된 벡터와 새 질문 벡터가 호환되지 않아 검색이 어긋난다. 모델을 바꾼 뒤에는 모든 문서를 다시 색인한다. "사용 중" 문서에는 "다시 처리"가 없으므로 S14에서 지우고 다시 올리고, 시드 문서는 지운 뒤 위 명령을 다시 실행한다.
+- `OPENAI_EMBEDDING_MODEL`을 바꾸면 이미 저장된 벡터와 새 질문 벡터가 호환되지 않아 검색이 어긋난다. 모델을 바꾼 뒤에는 모든 문서를 다시 색인한다. "사용 중" 문서에는 "다시 처리"가 없으므로 S14에서 지우고 다시 올리고, 시드 문서는 지운 뒤 위 명령을 다시 실행한다. 지식 임베딩도 비우고(`delete from public.knowledge_embeddings;`, SQL 편집기) 아래 "지식 임베딩 백필"을 다시 실행한다.
 - 첫 운영 배포 전에 운영 DB에서 `select extversion from pg_extension where extname='vector'`가 0.8 이상인지 확인한다(`hnsw.iterative_scan`에 필요하다).
+
+## 지식 임베딩 백필(환경별 1회)
+
+채팅은 질문과 가까운 게시 지식 20건과 임베딩이 없는 게시 지식을 넣는다. 마이그레이션 `0014` 직후에는 시드 지식 30건에 임베딩이 없어 지금까지처럼 전부 들어간다. 스테이징과 운영에서 마이그레이션이 반영된 뒤 각각 한 번 실행해 임베딩을 채운다. 조직은 `--org`로 정하며 기본값은 데모 조직이다.
+
+임베딩이 없거나 본문이 바뀐 게시 지식만 100건씩 처리하므로 여러 번 실행해도 안전하다. 데모 초기화(S11) 뒤에는 선택이다(담당자가 지식을 저장하면 그 범위가 채워지고, 그 전에도 채팅은 지식을 전부 넣는다). 환경변수와 비밀값은 "규정 문서 시드 색인"과 같다.
+
+```bash
+# 스테이징
+cd services/agent
+SUPABASE_URL="<스테이징 Supabase URL>" SUPABASE_ANON_KEY="<스테이징 anon 키>" \
+OPENAI_EMBEDDING_MODEL="text-embedding-3-small" \
+OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
+SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret supabase-service-role-key-staging --project blueward-onboarding-stg)" \
+  uv run python scripts/index_knowledge.py
+```
+
+운영은 "규정 문서 시드 색인"과 같은 방식으로 프로젝트·비밀 이름·공개 값을 바꾼다. "완료: 임베딩 N건"이 나오고 종료 코드는 0이다. 실패하면 오류 종류만 알리고 1로 끝나며, 이미 저장한 것은 남으니 다시 실행하면 이어서 채운다.
 
 ## 배포 흐름
 
