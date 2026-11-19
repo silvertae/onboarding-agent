@@ -250,6 +250,46 @@ export type Database = {
           },
         ];
       };
+      knowledge_embeddings: {
+        Row: {
+          content_hash: string;
+          embedded_at: string;
+          embedding: string;
+          knowledge_id: string;
+          org_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          content_hash: string;
+          embedded_at?: string;
+          embedding: string;
+          knowledge_id: string;
+          org_id: string;
+        };
+        Update: {
+          content_hash?: string;
+          embedded_at?: string;
+          embedding?: string;
+          knowledge_id?: string;
+          org_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_embeddings_knowledge_id_fkey";
+            columns: ["knowledge_id"];
+            isOneToOne: true;
+            referencedRelation: "knowledge_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "knowledge_embeddings_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "orgs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       knowledge_items: {
         Row: {
           answer: string;
@@ -1100,6 +1140,14 @@ export type Database = {
         };
       };
       consume_quota: { Args: { p_kind: string; p_limit: number }; Returns: boolean };
+      knowledge_without_embedding: {
+        Args: { p_org?: string };
+        Returns: {
+          answer: string;
+          id: string;
+          question: string;
+        }[];
+      };
       mark_na: {
         Args: { p_id: string; p_reason: string };
         Returns: {
@@ -1137,6 +1185,16 @@ export type Database = {
           heading: string;
           id: string;
           label: string;
+          similarity: number;
+        }[];
+      };
+      match_knowledge: {
+        Args: { p_count?: number; p_embedding: string };
+        Returns: {
+          answer: string;
+          category: string;
+          id: string;
+          question: string;
           similarity: number;
         }[];
       };
@@ -1308,6 +1366,7 @@ export type Database = {
         };
       };
       save_knowledge_drafts: { Args: { p_items: Json }; Returns: number };
+      save_knowledge_embeddings: { Args: { p_items: Json }; Returns: number };
       save_task_template: {
         Args: {
           p_allow_na: boolean;

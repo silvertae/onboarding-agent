@@ -16,8 +16,14 @@
            OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
            OPENAI_EMBEDDING_MODEL=text-embedding-3-small uv run python scripts/index_seed_docs.py --all'
 
-  2. 위의 평가 명령을 실행한다(OPENAI_EMBEDDING_MODEL도 같이 넘긴다).
-  3. 끝나면 시연에 방해되지 않게 S14에서 두 문서를 지워도 된다(시연 8-2가 복리후생 규정을 직접 올린다).
+  2. 지식 임베딩을 채운다. 건너뛰면 지식은 검색 없이 전부 들어가 "가까운 20건" 경로를 평가하지 못한다.
+
+         bash scripts/with-local-env.sh sh -c 'cd services/agent && \
+           OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
+           OPENAI_EMBEDDING_MODEL=text-embedding-3-small uv run python scripts/index_knowledge.py'
+
+  3. 위의 평가 명령을 실행한다(OPENAI_EMBEDDING_MODEL도 같이 넘긴다).
+  4. 끝나면 시연에 방해되지 않게 S14에서 두 문서를 지워도 된다(시연 8-2가 복리후생 규정을 직접 올린다).
 "복리후생 규정(가상)"이 ready로 보이지 않으면 문항을 보내기 전에 안내를 출력하고 종료 코드 2로 끝난다.
 """
 

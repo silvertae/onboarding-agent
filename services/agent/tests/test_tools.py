@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 
-from app.assistant_tools import get_my_tasks, search_documents, search_knowledge
+from app.assistant_tools import get_my_tasks, match_knowledge, search_documents, search_knowledge
 from app.auth import CurrentUser, _load_user
 from app.embeddings import EMBEDDING_DIM
 
@@ -127,3 +127,26 @@ def test_search_documents_scoped_by_rls(newhire_token, clause_fixture):
     }
     assert other_clause["id"] not in [c["id"] for c in found]
     assert len(found) <= 6
+
+
+def test_match_knowledge_scoped_by_rls(make_org, service):
+    """가까운 게시 지식 count개 + 임베딩 없는 게시 지식. 다른 팀·초안 지식과 그 임베딩은 빠진다."""
+    org = make_org()
+    hire = as_user(org.add_user("new_hire", team_id=org.team_a))
+    near = org.add_knowledge("company", "가까운 질문", "가까운 답")
+    far = org.add_knowledge("company", "먼 질문", "먼 답")
+    fresh = org.add_knowledge("team", "새 팀 질문", "새 팀 답", team_id=org.team_a)
+    other_team = org.add_knowledge("team", "다른 팀 질문", "다른 팀 답", team_id=org.team_b)
+    draft = org.add_knowledge("company", "초안 질문", "초안 답", status="draft")
+    rows = service.table("knowledge_items").select("id, question, answer").in_("id", [near, far, other_team, draft]).execute().data
+    other = [0.0, 1.0] + [0.0] * (EMBEDDING_DIM - 2)
+    service.rpc(
+        "save_knowledge_embeddings",
+        {"p_items": [{**r, "embedding": other if r["id"] == far else PROBE} for r in rows]},
+    ).execute()
+
+    found = match_knowledge(hire, PROBE, 1)
+
+    assert [k["id"] for k in found] == [near, fresh]
+    assert found[0] == {"id": near, "question": "가까운 질문", "answer": "가까운 답", "category": "테스트"}
+    assert {k["id"] for k in match_knowledge(hire, PROBE, 20)} == {near, far, fresh}

@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 from google.adk.models.llm_request import LlmRequest
 
 from app import assistant, embeddings
+from app.assistant_tools import search_knowledge
+from app.auth import _load_user
 from app.config import Settings, get_settings
 from app.main import create_app
 
@@ -55,8 +57,13 @@ VECTOR = [0.1] * embeddings.EMBEDDING_DIM
 
 @pytest.fixture(autouse=True)
 def clauses(monkeypatch):
-    """조항 검색은 가짜로 바꾼다(임베딩 API·조항 RPC를 부르지 않는다). rows를 채우면 그 조항이 검색된다."""
-    state = SimpleNamespace(rows=[], embedded=[], searched=[])
+    """질문 임베딩과 검색은 가짜로 바꾼다(임베딩 API·검색 RPC를 부르지 않는다). rows를 채우면 그 조항이 검색된다.
+
+    지식 검색(match_knowledge)은 기록만 하고 신입이 볼 수 있는 게시 지식 전부(search_knowledge)를 돌려준다.
+    knowledge를 채우면 그 지식만 검색된다. 로컬 DB에 지식 임베딩이 있든 없든 결과가 같다.
+    """
+    state = SimpleNamespace(rows=[], embedded=[], searched=[], knowledge=None, matched=[])
+    real_search_knowledge = assistant.assistant_tools.search_knowledge
 
     async def fake_embed(texts):
         state.embedded.append(texts)
@@ -66,8 +73,13 @@ def clauses(monkeypatch):
         state.searched.append((user.id, embedding, count))
         return list(state.rows)
 
+    def fake_match(user, embedding, count=20):
+        state.matched.append((embedding, count))
+        return list(state.knowledge) if state.knowledge is not None else real_search_knowledge(user)
+
     monkeypatch.setattr(embeddings, "embed", fake_embed)
     monkeypatch.setattr(assistant.assistant_tools, "search_documents", fake_search)
+    monkeypatch.setattr(assistant.assistant_tools, "match_knowledge", fake_match)
     return state
 
 
@@ -364,6 +376,62 @@ def test_real_ids_in_marker_are_ignored(client, fake_model, newhire_token, seed_
     assert "".join(e["text"] for e in events if e["type"] == "token") == "소모품비예요."
 
 
+# ---------------------------------------------------------------- 지식 검색
+
+
+KNOWN = {"id": str(uuid.uuid4()), "question": "가까운 질문", "answer": "가까운 답", "category": "테스트"}
+
+
+def test_knowledge_comes_from_question_search(client, fake_model, newhire_token, clauses):
+    """질문 임베딩 한 번으로 가까운 지식 20건과 조항을 함께 찾는다. 검색된 지식만 K 키로 넘긴다."""
+    clauses.knowledge = [KNOWN]
+    fake_model.turns = [lambda req: text_turn(f"가까운 답이에요.\n[[출처: {key_of(req, 'question', '가까운 질문')}]]")]
+
+    events = read_events(post_chat(client, newhire_token, {"message": "가까운 질문?", "history": []}))
+
+    assert clauses.embedded == [["가까운 질문?"]]
+    assert clauses.matched == [(VECTOR, assistant.KNOWLEDGE_COUNT)] and assistant.KNOWLEDGE_COUNT == 20
+    assert [(embedding, count) for _, embedding, count in clauses.searched] == [(VECTOR, 6)]
+    items = data_items(fake_model.requests[0])
+    assert [i for i in items if i["key"].startswith("K")] == [
+        {"key": "K1", "category": "테스트", "question": "가까운 질문", "answer": "가까운 답"}
+    ]
+    assert events[-2] == {
+        "type": "sources", "knowledge": [{"id": KNOWN["id"], "question": "가까운 질문"}], "tasks": [], "documents": []
+    }
+
+
+def test_tasks_come_before_knowledge_and_clauses(client, fake_model, newhire_token, clauses):
+    """과제는 신입마다 고정이라 앞에, 질문마다 바뀌는 지식·조항은 뒤에 둔다(프롬프트 캐시)."""
+    clauses.knowledge = [KNOWN]
+    clauses.rows = [CLAUSE]
+    fake_model.turns = [text_turn("네.")]
+
+    post_chat(client, newhire_token, {"message": "안녕", "history": []})
+
+    prefixes = [i["key"][0] for i in data_items(fake_model.requests[0])]
+    assert prefixes == sorted(prefixes, key="TKD".index)
+    assert prefixes[0] == "T" and "K" in prefixes and prefixes[-1] == "D"
+
+
+def test_embedding_failure_puts_all_knowledge(client, fake_model, newhire_token, clauses, monkeypatch):
+    """질문 임베딩이 실패하면 지식 검색 없이 볼 수 있는 게시 지식을 전부 넣는다(지식이 빠지지 않게)."""
+
+    async def broken(_texts):
+        raise embeddings.EmbeddingError("임베딩 API 호출에 실패했습니다(Timeout)")
+
+    monkeypatch.setattr(embeddings, "embed", broken)
+    clauses.knowledge = [KNOWN]
+    fake_model.turns = [text_turn("네.")]
+
+    events = read_events(post_chat(client, newhire_token, {"message": "안녕", "history": []}))
+
+    assert "error" not in [e["type"] for e in events]
+    assert clauses.matched == [] and clauses.searched == []
+    knowledge = [i["question"] for i in data_items(fake_model.requests[0]) if i["key"].startswith("K")]
+    assert knowledge == [k["question"] for k in search_knowledge(_load_user(newhire_token))]
+
+
 # ---------------------------------------------------------------- 규정 문서 조항
 
 
@@ -416,7 +484,7 @@ def test_document_search_timeout_does_not_break_chat(client, fake_model, newhire
         return [VECTOR]
 
     monkeypatch.setattr(embeddings, "embed", slow)
-    monkeypatch.setattr(assistant, "CLAUSE_EMBED_TIMEOUT", 0.05)
+    monkeypatch.setattr(assistant, "QUERY_EMBED_TIMEOUT", 0.05)
     clauses.rows = [CLAUSE]
     fake_model.turns = [text_turn("확인되지 않은 내용이에요.\n[[미답변]]")]
 
@@ -454,10 +522,10 @@ def test_follow_up_question_embeds_previous_turn(client, fake_model, newhire_tok
 
 
 def test_lookup_failure_emits_error_without_model_call(client, fake_model, newhire_token, monkeypatch):
-    def broken(_user):
+    def broken(*_args):
         raise RuntimeError("DB 연결 실패")
 
-    monkeypatch.setattr(assistant.assistant_tools, "search_knowledge", broken)
+    monkeypatch.setattr(assistant.assistant_tools, "match_knowledge", broken)
     fake_model.turns = [text_turn("안녕하세요")]
 
     events = read_events(post_chat(client, newhire_token, {"message": "안녕", "history": []}))
