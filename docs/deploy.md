@@ -417,6 +417,8 @@ SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret supa
 2. CI 통과 → squash 머지 → `deploy-staging`이 스테이징 프로젝트에 반영하고 `smoke.sh`로 점검한다.
 3. 스테이징에서 확인되면 Leo가 `main`의 커밋에 태그(`git tag v0.1.0 && git push origin v0.1.0`) → Leo가 Actions 화면에서 `production` 배포를 승인 → `deploy-prod`가 운영 프로젝트에 같은 순서로 반영한다. `main`에 없는 커밋의 태그는 거부된다.
 
+버전은 실제 도입 전까지 `v0.x.y`를 쓴다(Leo 결정, 2026-11-19). 고친 것만 올리면 끝자리(`v0.1.1`), 기능을 더하면 가운데 자리(`v0.2.0`)를 올리고, 실제 도입이 정해지면 `v1.0.0`으로 한다. 워크플로·환경·태그 보호는 `v*`만 보므로 버전 형식이 배포 동작을 바꾸지 않는다.
+
 "기본 서식 부트스트랩"(`services/agent/scripts/bootstrap_forms.py`, `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`만 필요)은 계정 부트스트랩 다음에 기본 서식 3개(`supabase/seed-forms/`의 가상 파일: AC-01 2개, HR-08 1개)를 `task-forms` 버킷에 올리고 `task_template_files`에 기본 서식(`is_seed`)으로 등록한다. 객체 경로가 고정이고 행은 `(template_id, file_name)` 기준 upsert라 배포마다 다시 실행해도 같은 결과다. 파일이나 템플릿이 없으면 이름을 출력하고 종료 코드 2로 멈춘다. 로컬은 `npm run bootstrap`이 계정과 함께 실행한다.
 
 각 단계는 실패하면 그 자리에서 멈춘다. DB 마이그레이션은 에이전트·웹보다 먼저 적용되며, 추가만 하므로 앞 버전 코드와도 동작한다.
@@ -451,13 +453,17 @@ npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_
 
 | 항목 | 확인 방법 | 결과 |
 |---|---|---|
-| `agent-prod` 최소 인스턴스 1 | `gcloud run services describe agent-prod --region $REGION --project $PROD_PROJECT --format='value(spec.template.metadata.annotations)'` | |
-| `/health` 가동 시간 점검과 알림 | 운영 프로젝트 Cloud Monitoring 가동 시간 확인(`AGENT_URL/health`, 5분 간격) + 알림 채널 | |
-| GCP 예산 알림(프로젝트별) | 결제 → 예산 및 알림 | |
-| OpenAI 월 한도(환경별) | OpenAI Project → Limits | |
-| Supabase 일시 정지 방지 | Actions → `keepalive` 최근 실행이 성공(하루 세 번), 실패 알림 메일 수신 설정 | |
-| 공개 가입 꺼짐(두 환경) | `smoke.sh` 5단계 | |
-| 최소 인스턴스를 0으로 내릴 날짜 | 운영 시작 + 한 달: `gcloud run services update agent-prod --region $REGION --project $PROD_PROJECT --min-instances 0` | |
+| `agent-prod` 최소 인스턴스 1 | `gcloud run services describe agent-prod --region $REGION --project $PROD_PROJECT --format='value(spec.template.metadata.annotations)'` | 1 확인(2026-11-19, 리비전 `agent-prod-00001`) |
+| `/health` 가동 시간 점검과 알림 | 운영 프로젝트 Cloud Monitoring 가동 시간 확인(`AGENT_URL/health`, 5분 간격) + 알림 채널 | 가동 시간 확인 `agent-prod-health` 만듦(5분 간격, 제한 10초, 2026-11-19). 알림 정책·채널은 아직 없음 |
+| GCP 예산 알림(프로젝트별) | 결제 → 예산 및 알림 | 운영 `onboarding-agent-prod` 20,000 KRW(50·90·100%) 확인. 스테이징 예산은 없음 |
+| OpenAI 월 한도(환경별) | OpenAI Project → Limits | 확인 필요(Leo) |
+| Supabase 일시 정지 방지 | Actions → `keepalive` 최근 실행이 성공(하루 세 번), 실패 알림 메일 수신 설정 | 스테이징·운영 모두 성공(2026-11-19 수동 실행). 운영 첫 배포 전에는 데모 계정이 없어 운영 쪽이 로그인 400으로 실패했다 |
+| 공개 가입 꺼짐(두 환경) | `smoke.sh` 5단계 | 두 환경 통과(운영은 `v0.1.0` 배포, 2026-11-19) |
+| 최소 인스턴스를 0으로 내릴 날짜 | 운영 시작 + 한 달: `gcloud run services update agent-prod --region $REGION --project $PROD_PROJECT --min-instances 0` | 2026-12-19(운영 시작 2026-11-19) |
+
+운영 기록:
+
+- 2026-11-19 `v0.1.0`(`e39a92d`) 첫 운영 배포. `deploy-prod` 전 단계와 `smoke.sh` 통과. 이어서 규정 문서 시드 색인("취업규칙 발췌(가상)", 조항 9개)과 지식 임베딩 백필(30건, 다시 실행하면 0건)을 한 번씩 실행했다. 운영 pgvector 0.8.2.
 
 ## 확인이 필요한 부분 (첫 스테이징 배포에서 검증)
 
