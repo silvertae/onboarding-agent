@@ -37,6 +37,10 @@ DRAFT_ERROR = "초안을 만들지 못했어요. 잠시 후 다시 시도해 주
 MAX_LLM_CALLS = 6
 # PostgREST 한 번 조회 상한(supabase/config.toml max_rows = 1000)을 넘지 않는 페이지 크기
 CLAUSE_PAGE = 1000
+# 한 번에 모델에 보내는 조항 글자 수(ord 순으로 채운다). 큰 문서는 앞부분만 쓴다
+DRAFT_CLAUSE_CHAR_BUDGET = 60000
+# 피할 질문으로 보내는 기존 지식 질문의 최대 개수(최근 수정 순)
+AVOID_QUESTION_LIMIT = 300
 
 ANSWER_INSTRUCTION = """너는 교육 담당자와 경영지원 담당자가 신입의 질문에 답을 달도록 돕는 도우미다. 출력은 담당자가 검토하고 고칠 초안이다.
 
@@ -254,6 +258,33 @@ def _load_document(user: CurrentUser, document_id: UUID) -> tuple[str, list[dict
             return doc[0]["title"], clauses
 
 
+def _load_avoid_questions(user: CurrentUser) -> list[dict]:
+    """내가 읽을 수 있는 지식 질문 전부(상태 무관). RLS로 게시된 읽기 범위 지식과 내 관리 범위의 초안이 돌아온다.
+    게시 전 초안도 넣어야 초안 만들기를 다시 눌러도 같은 질문이 또 저장되지 않는다."""
+    return cast(
+        list[dict[str, Any]],
+        user_client(user.token)
+        .table("knowledge_items")
+        .select("question, category")
+        .order("updated_at", desc=True)
+        .limit(AVOID_QUESTION_LIMIT)
+        .execute()
+        .data,
+    )
+
+
+def _within_budget(rows: list[dict]) -> list[dict]:
+    """ord 순 조항을 글자 예산까지 담는다. 조항이 하나는 들어가게 한다."""
+    kept: list[dict] = []
+    used = 0
+    for row in rows:
+        used += len(row["body"] or "") + len(row["label"] or "") + len(row["heading"] or "")
+        if kept and used > DRAFT_CLAUSE_CHAR_BUDGET:
+            break
+        kept.append(row)
+    return kept
+
+
 def build_document_message(title: str, clauses: dict[str, dict], existing: list[dict], count: int) -> str:
     """조항과 기존 지식 질문은 참고 자료로 넘긴다. 한 줄에 JSON 하나."""
     lines = [f"아래 규정 문서로 사내 지식 초안을 최대 {count}개 만들어 줘.", f"- 문서명: {title}", "", "참고 자료(조항):"]
@@ -275,11 +306,11 @@ async def drafts_from_document(user: CurrentUser, document_id: UUID, count: int)
     """ensure_can_manage를 통과한 문서에만 부른다. 조항이 없으면(색인 전·실패) 모델을 부르지 않는다."""
     (title, rows), existing = await asyncio.gather(
         asyncio.to_thread(_load_document, user, document_id),
-        asyncio.to_thread(assistant_tools.search_knowledge, user),
+        asyncio.to_thread(_load_avoid_questions, user),
     )
     if not rows:
         return []
-    clauses = {f"D{i}": row for i, row in enumerate(rows, 1)}
+    clauses = {f"D{i}": row for i, row in enumerate(_within_budget(rows), 1)}
     try:
         text = await call_model(DOCUMENT_INSTRUCTION, build_document_message(title, clauses, existing, count), ModelDrafts)
     except Exception as exc:

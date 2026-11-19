@@ -352,3 +352,25 @@ def test_article_number_digits_do_not_backtrack():
     assert split_clauses("제12조의23(가지) x")[0].label == "제12조의23"
     assert [c.label for c in split_clauses("제1조 가\n제12조 본문")] == ["제1조", "제12조"]
     assert [c.label for c in split_clauses("제1조 가\n제123조에 따른다")] == ["제1조"]
+
+
+def test_too_many_clauses_is_too_large():
+    text = "\n".join(f"제{i}조 내용이다." for i in range(1, documents.MAX_CLAUSES + 2))
+    with pytest.raises(DocumentTooLarge) as exc:
+        split_clauses(text)
+    assert str(exc.value) == TOO_LARGE
+
+
+def test_clause_count_at_cap_is_allowed():
+    text = "\n".join(f"제{i}조 내용이다." for i in range(1, documents.MAX_CLAUSES + 1))
+    assert len(split_clauses(text)) == documents.MAX_CLAUSES
+
+
+def test_payload_embeddings_are_rounded():
+    import asyncio
+
+    async def embed(texts):
+        return [[0.123456789, 1 / 3] for _ in texts]
+
+    [item] = asyncio.run(documents.build_clause_payload([documents.Clause(0, "제1조", "", "본문")], embed))
+    assert item["embedding"] == [0.123457, 0.333333]

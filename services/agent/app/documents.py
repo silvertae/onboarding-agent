@@ -20,6 +20,8 @@ MAX_DOCX_UNCOMPRESSED = 30 * 1024 * 1024  # docx(zip) 압축을 풀었을 때 �
 MAX_PDF_PAGES = 300
 MAX_TEXT_CHARS = 1_000_000
 MAX_DOCX_CELLS = 20_000  # 표 칸 수(읽은 w:tc 개수) 상한
+MAX_CLAUSES = 300  # 조항 수 상한(임베딩 호출·RPC 크기를 묶는다)
+EMBEDDING_DECIMALS = 6  # RPC로 보내는 임베딩 실수의 소수 자릿수
 
 PREAMBLE_MIN = 20  # 전문이 이보다 짧으면(공백 제외) 문서 제목만 있는 줄로 보고 버린다
 
@@ -156,6 +158,13 @@ def _pack(text: str, target: int, cap: int) -> list[str]:
 
 
 def split_clauses(text: str) -> list[Clause]:
+    clauses = _split_clauses(text)
+    if len(clauses) > MAX_CLAUSES:
+        raise DocumentTooLarge(TOO_LARGE)
+    return clauses
+
+
+def _split_clauses(text: str) -> list[Clause]:
     matches = list(_ARTICLE_RE.finditer(text))
     if not matches:
         chunks = _pack(text, CHUNK_TARGET, CHUNK_CAP)
@@ -185,6 +194,6 @@ async def build_clause_payload(
     texts = [f"{c.label or ''} {c.heading or ''}".strip() + "\n" + c.body for c in clauses]
     vectors = await embed_fn(texts)
     return [
-        {"ord": c.ord, "label": c.label, "heading": c.heading, "body": c.body, "embedding": v}
+        {"ord": c.ord, "label": c.label, "heading": c.heading, "body": c.body, "embedding": [round(x, EMBEDDING_DECIMALS) for x in v]}
         for c, v in zip(clauses, vectors, strict=True)
     ]

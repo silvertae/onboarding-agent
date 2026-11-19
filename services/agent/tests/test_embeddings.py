@@ -34,6 +34,7 @@ async def test_embed_batches_and_checks_dimension(embedding_env, monkeypatch):
     assert len(calls) == 2
     assert [len(c["input"]) for c in calls] == [100, 50]
     assert calls[0]["model"] == "openai/text-embedding-test"
+    assert calls[0]["timeout"] == embeddings.EMBED_TIMEOUT
     assert len(result) == 150 and all(len(v) == 1536 for v in result)
 
     async def wrong_dim(**kwargs):
