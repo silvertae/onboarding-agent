@@ -82,7 +82,7 @@ async function* readEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Str
   }
 }
 
-export function useChatStream(): { messages: ChatMessage[]; sending: boolean; send(text: string): Promise<void> } {
+export function useChatStream(): { messages: ChatMessage[]; sending: boolean; send(text: string): Promise<void>; reset(): void } {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sending, setSending] = useState(false)
   // 렌더 사이에 최신 값을 읽기 위한 사본(전송 중 중복 호출 방지, 이력 계산)
@@ -144,5 +144,11 @@ export function useChatStream(): { messages: ChatMessage[]; sending: boolean; se
     [patchAnswer, update],
   )
 
-  return { messages, sending, send }
+  // 새 대화: 화면의 대화만 비운다(어디에도 저장하지 않으므로 되돌릴 수 없다). 답변을 받는 중에는 비우지 않는다.
+  const reset = useCallback(() => {
+    if (sendingRef.current) return
+    update([])
+  }, [update])
+
+  return { messages, sending, send, reset }
 }
