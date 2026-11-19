@@ -18,6 +18,8 @@ const { actions, templateActions, state } = vi.hoisted(() => ({
     tasks: [] as unknown[],
     hires: null as unknown[] | null,
     hiresLoading: false,
+    hiresError: false,
+    hiresRefetch: vi.fn(),
     query: { isLoading: false, isError: false, isFetching: false } as Record<string, boolean>,
     refetch: vi.fn(),
   },
@@ -36,7 +38,13 @@ vi.mock('@/lib/tasks', async (importOriginal) => ({
   useVisibleTasks: () => ({ data: state.query.isLoading || state.query.isError ? undefined : state.tasks, ...state.query, refetch: state.refetch }),
   useTaskActions: () => actions,
 }))
-vi.mock('./hires', () => ({ useHires: () => ({ data: state.hiresLoading ? undefined : (state.hires ?? HIRES), isLoading: state.hiresLoading, isError: false }) }))
+vi.mock('./hires', () => ({ useHires: () => ({
+    data: state.hiresLoading || state.hiresError ? undefined : (state.hires ?? HIRES),
+    isLoading: state.hiresLoading,
+    isError: state.hiresError,
+    isFetching: false,
+    refetch: state.hiresRefetch,
+  }), }))
 // "이 신입에게 과제 추가" 대화 상자의 동작은 AddTaskDialog.test.tsx에서 본다.
 vi.mock('@/features/templates/templates', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/templates/templates')>()),
@@ -102,6 +110,8 @@ beforeEach(() => {
   state.query = { isLoading: false, isError: false, isFetching: false }
   state.hires = null
   state.hiresLoading = false
+  state.hiresError = false
+  state.hiresRefetch.mockClear()
   state.refetch.mockClear()
 })
 
@@ -383,6 +393,16 @@ describe('OpsInboxPage (S9) 입사자별 탭', () => {
     // 스켈레톤 표는 aria-hidden이라 역할로 찾지 않고 글자로 본다
     expect(document.body).toHaveTextContent('입사일')
     expect(document.body).not.toHaveTextContent('제출 시각')
+  })
+
+  // 신입 목록 조회가 실패하면 "입사자가 없어요"가 아니라 오류와 다시 불러오기(Codex P2)
+  it('신입 목록을 불러오지 못하면 오류 문구와 "다시 불러오기"로 신입 목록을 다시 조회한다', async () => {
+    state.hiresError = true
+    const user = await openHiresTab()
+    expect(screen.getByRole('alert')).toHaveTextContent('입사자 목록을 불러오지 못했어요. 다시 시도해 주세요.')
+    expect(screen.queryByText('업무함에 입사자가 없어요')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '다시 불러오기' }))
+    expect(state.hiresRefetch).toHaveBeenCalledTimes(1)
   })
 
   it('입사자가 없으면 빈 상태 문구', async () => {

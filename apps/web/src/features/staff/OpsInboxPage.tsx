@@ -271,6 +271,12 @@ export function OpsInboxPage() {
                     업무 목록을 불러오지 못했어요. 다시 시도해 주세요.
                   </LoadError>
                 </div>
+              ) : tab === 'hires' && hiresQuery.isError ? (
+                <div className="px-6 pb-6">
+                  <LoadError retrying={hiresQuery.isFetching} onRetry={() => void hiresQuery.refetch()}>
+                    입사자 목록을 불러오지 못했어요. 다시 시도해 주세요.
+                  </LoadError>
+                </div>
               ) : tab === 'hires' ? (
                 <HireTable hires={deptHires} tasks={deptTasks} deptLabel={deptLabel} onOpen={openHire} />
               ) : (
