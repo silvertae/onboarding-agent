@@ -11,8 +11,11 @@
 | `docs/screens.md` | 화면 S1~S14와 상태 문구 |
 | `docs/design/onboarding-design/README.md` | 디자인 토큰(색·라운드·글꼴), 화면 시안 |
 | `.interface-design/system.md` | 디자인 시스템 규칙(색·글자·크기·상태·컴포넌트). UI를 만들거나 고치기 전에 읽는다 |
-| `docs/deploy.md` | 클라우드 준비, 배포 흐름, 되돌리기, 운영 점검 |
-| `docs/superpowers/specs/2026-11-17-onboarding-agent-design.md` | 목표·비목표·실패 조건 |
+| `docs/deploy.md` | 클라우드 준비, 배포 흐름, 되돌리기, 운영 점검, 색인·백필 스크립트 |
+| `docs/judge-guide.md`, `docs/demo-script.md` | 심사위원 안내(계정·체험 순서·한도)와 시연 흐름. 한도·화면 흐름을 바꾸면 함께 고친다 |
+| `SECURITY.md` | 보안 기준. Codex가 P0로 막는 항목. 인증·RLS·파일·LLM을 고치기 전에 읽는다 |
+| `AGENTS.md` | Codex 리뷰 기준(P0·P1, 지적하지 않을 것) |
+| `docs/superpowers/specs/2026-11-17-onboarding-agent-design.md` | 목표·비목표·실패 조건. 기능별 설계는 같은 폴더, 구현 계획은 `docs/superpowers/plans/` |
 
 계약·설계와 코드가 다르면 멈추고 묻는다. 계획에 없는 기능은 만들지 않는다.
 
@@ -25,16 +28,16 @@
 | `supabase` | 스키마, RLS, RPC(업무 규칙), 가상 조직 데이터 | Supabase 무료 플랜 + `keepalive` |
 | `.github/workflows` | CI, 스테이징·운영 배포, keepalive | GitHub Actions |
 
-환경: 로컬 → 스테이징(`main` 머지 시 자동) → 운영(`v*` 태그 + Leo 승인). 스테이징과 운영은 서로 다른 GCP 프로젝트다.
+환경: 로컬 → 스테이징(`main` 머지 시 자동) → 운영(`v*` 태그 + Leo 승인). 스테이징과 운영은 서로 다른 GCP 프로젝트다. 운영 버전은 실제 도입 전까지 `v0.x.y`(수정은 끝자리, 기능은 가운데 자리), 도입이 정해지면 `v1.0.0`. 태그는 Leo만 만든다.
 
 ## 절대 규칙
 
-- 과제 상태는 Postgres RPC로만 바꾼다. 웹에서 `task_instances`를 직접 update하지 않는다.
+- 과제 상태는 Postgres RPC로만 바꾼다. 웹에서 `task_instances`를 직접 update하지 않는다. 과제 템플릿은 템플릿 RPC(`save_task_template` 등)로만, 시험 응시 연결은 `assign_exam`으로만 바꾼다.
 - 에이전트는 조회·답변·초안(시험·지식) 작성만 한다. 게시와 과제 상태 변경은 사람이 한다. 과제 상태를 바꾸는 도구를 만들지 않는다. 예외로 문서 색인(조항·임베딩 저장)과 게시 지식의 임베딩 저장은 담당자 토큰으로 RPC를 불러 저장한다(LLM 도구가 아닌 정해진 처리). 지식 본문·상태는 쓰지 않는다.
-- 에이전트는 사용자의 Supabase 토큰으로 데이터를 읽는다(RLS 적용). `service_client()`는 `services/agent/app/admin_routes.py`와 `services/agent/scripts/`에서만 쓴다.
+- 에이전트는 사용자의 Supabase 토큰으로 데이터를 읽는다(RLS 적용). 관리자 키(`service_client()`나 `SUPABASE_SERVICE_ROLE_KEY`로 만든 클라이언트)는 `services/agent/app/admin_routes.py`와 `services/agent/scripts/`에서만 쓴다.
 - 모든 테이블에 `org_id`, RLS 활성화, 필요한 `grant`를 마이그레이션에 명시. `anon`에는 권한 없음. 공개 가입 끔.
 - 마이그레이션은 추가만 한다. 컬럼·테이블 삭제나 이름 변경 금지.
-- 에이전트 서비스는 상태를 갖지 않는다. 채팅 내용은 저장하거나 로그에 남기지 않는다.
+- 에이전트 서비스는 상태를 갖지 않는다. 채팅 내용은 저장하거나 로그에 남기지 않는다. 미답변은 신입이 "담당자에게 등록 요청"을 누를 때만 웹이 기록한다.
 - 모델 이름은 `OPENAI_MODEL` 환경변수. 특정 모델 전용 기능은 구조화 출력 외에 쓰지 않는다.
 - ADK·LiteLLM·OpenAI·Supabase 사용법은 설치된 버전의 문서·소스로 확인한다. 기억에 의존하지 않는다.
 - 화면 문구는 한국어, 상태 문구는 `docs/screens.md` 표를 따른다. UI는 `.interface-design/system.md`를 따르고 `components/ui`·공통 컴포넌트와 의미 토큰으로 만든다. 색 hex, 임의 글자 크기, 직접 만든 탭·라디오는 쓰지 않는다(`scripts/check-design.sh`가 CI에서 막는다).
@@ -82,5 +85,7 @@
 | `/design-review`, `/design-deslop` | 화면 디자인 리뷰 / 생성형 UI 티 지우기(`.claude/commands`, 스킬 `interface-design`) |
 | `npm --prefix scripts/design ci` | PR 전·후 스크린샷 도구 설치(`scripts/design/README.md`) |
 | `npm run types` | `apps/web/src/lib/database.types.ts` 생성 |
+| `npm run bootstrap` | 로컬 계정·기본 서식 부트스트랩 |
+| `cd services/agent && uv run python scripts/index_seed_docs.py` / `scripts/index_knowledge.py` | 시드 규정 문서 색인 / 지식 임베딩 백필. 관리자 키를 쓰고 환경마다 한 번, 다시 실행해도 안전(`docs/deploy.md`) |
 
 의존성 추가: 웹 `npm --prefix apps/web install <pkg>`, 에이전트 `cd services/agent && uv add <pkg>`. shadcn CLI로 컴포넌트를 추가하면 `cn` 패키지가 끼어드는 버그가 있으니 `package.json`을 확인한다.
