@@ -1,7 +1,8 @@
-import { ChevronDown, ChevronRight, PartyPopper } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Collapsible } from 'radix-ui'
 import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { useAuth } from '@/app/AuthProvider'
+import { Mascot } from '@/components/Mascot'
 import { FilterChips } from '@/components/FilterChips'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus } from '@/components/LoadingStatus'
@@ -185,9 +186,9 @@ export function HomePage() {
             {profile?.full_name} 님, {greeting}
           </h1>
           {allDone ? (
-            <p className="inline-flex items-center gap-1.5 text-sm text-st-done-fg">
-              <PartyPopper className="size-4" aria-hidden />
-              축하해요! 온보딩 과제를 모두 마쳤어요.
+            <p className="flex items-center gap-2.5 text-sm text-st-done-fg">
+              <Mascot size={48} pose="wave" />
+              <span>축하해요! 온보딩 과제를 모두 마쳤어요.</span>
             </p>
           ) : (
             <p className="text-sm text-[var(--text-secondary)]">

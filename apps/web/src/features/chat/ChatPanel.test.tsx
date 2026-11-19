@@ -506,6 +506,48 @@ describe('ChatPanel', () => {
     expect(page).toHaveClass('pb-16', 'lg:pb-0')
   })
 
+  describe('마스코트(system.md "마스코트")', () => {
+    function aside() {
+      return screen.getByRole('complementary', { name: '온보딩 에이전트 채팅' })
+    }
+
+    it('머리는 서 있는 마스코트, 대화 전 소개는 손 흔드는 마스코트이고 둘 다 화면 읽기에 드러나지 않는다', () => {
+      renderPanel()
+      const head = aside().querySelector('header .mascot')
+      expect(head).toHaveAttribute('aria-hidden', 'true')
+      expect(head).not.toHaveClass('is-wave', 'is-sit')
+
+      const intro = chat().getByRole('region', { name: '온보딩에 대해 물어보세요' })
+      const waves = intro.querySelectorAll('.mascot.is-wave')
+      expect(waves.length).toBeGreaterThan(0)
+      for (const m of waves) expect(m).toHaveAttribute('aria-hidden', 'true')
+      // 데스크톱 패널(88)만 움직인다
+      expect(intro.querySelectorAll('.mascot.is-idle')).toHaveLength(1)
+      expect(chat().queryAllByRole('img')).toHaveLength(0)
+    })
+
+    it('모바일 묻기 버튼은 흰 원 안에 앉은 마스코트를 두고, 이름은 여전히 "에이전트에게 묻기"다', () => {
+      renderPanel()
+      const button = screen.getByRole('button', { name: '에이전트에게 묻기' })
+      const mascot = button.querySelector('.mascot.is-sit')
+      expect(mascot).toHaveAttribute('aria-hidden', 'true')
+      expect(mascot!.parentElement).toHaveClass('bg-card', 'rounded-full')
+    })
+
+    it('답변을 기다리는 말풍선에 앉은 마스코트를 두고, 알리는 문구는 그대로다', async () => {
+      const pending = pendingResponse([])
+      agent.agentFetch.mockResolvedValueOnce(pending.response)
+      renderPanel()
+
+      await ask('오늘 뭐 해야 해?')
+
+      const waiting = await chat().findByRole('status')
+      expect(waiting).toHaveTextContent('사내 지식과 내 과제를 확인하고 있어요')
+      expect(waiting.querySelector('.mascot.is-sit')).toHaveAttribute('aria-hidden', 'true')
+      await act(async () => pending.finish([{ type: 'done' }]))
+    })
+  })
+
   it('대화 전에는 "새 대화" 버튼이 없다', () => {
     renderPanel()
     expect(chat().queryByRole('button', { name: '새 대화' })).not.toBeInTheDocument()

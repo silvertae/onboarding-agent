@@ -1,0 +1,99 @@
+/* 젤리 큐브 마스코트(system.md "마스코트"). 원본 docs/design/onboarding-design/assets/mascot/jelly-mascot-poses.html의 CSS를 옮겼다.
+   색은 index.css의 --mascot-* 토큰만 쓴다. 표시(display)·위치는 Mascot.tsx의 Tailwind 클래스가 맡는다
+   (이 파일은 cascade layer 밖이라, 여기서 display를 주면 hidden·lg:block 같은 유틸리티를 이긴다).
+   안쪽 클래스는 Tailwind 유틸리티(shadow 등)와 겹치지 않게 mascot- 접두어를 붙였다.
+   --size·--k는 Mascot.tsx가 숫자로 넘긴다. --k = size / 235(원본 크기)로 안쪽 빛·테두리 두께를 맞춘다. */
+.mascot {
+  width: calc(var(--size) * 1px);
+  height: calc(var(--size) * 1px);
+}
+.mascot-shadow {
+  position: absolute;
+  bottom: 1%;
+  left: 18%;
+  width: 64%;
+  height: 8%;
+  border-radius: 50%;
+  background: var(--mascot-shadow);
+  filter: blur(calc(var(--k) * 9px));
+}
+.mascot-float,
+.mascot-cube {
+  position: absolute;
+  inset: 0;
+}
+.mascot-cube {
+  transform-origin: 50% 94%;
+}
+.mascot-face,
+.mascot-limb {
+  position: absolute;
+  border: max(1px, calc(var(--k) * 1px)) solid var(--mascot-edge);
+  background: var(--mascot-fill);
+  box-shadow:
+    inset calc(var(--k) * 3px) calc(var(--k) * 3px) calc(var(--k) * 6px) var(--mascot-glow-1),
+    inset calc(var(--k) * -6px) calc(var(--k) * -5px) calc(var(--k) * 9px) var(--mascot-glow-2),
+    inset calc(var(--k) * -12px) calc(var(--k) * 3px) calc(var(--k) * 18px) var(--mascot-glow-3);
+}
+.mascot-face {
+  inset: 3% 9% 13%;
+  border-radius: 21% 22% 19% 18% / 20% 22% 18% 20%;
+  z-index: 1;
+}
+.mascot-face::before {
+  content: "";
+  position: absolute;
+  inset: 3% 4%;
+  border-radius: inherit;
+  border-top: max(1px, calc(var(--k) * 2px)) solid var(--mascot-highlight);
+  border-right: max(1px, calc(var(--k) * 1px)) solid var(--mascot-highlight-2);
+}
+.mascot-eye {
+  position: absolute;
+  top: 42%;
+  width: 8%;
+  height: 16%;
+  border-radius: 99px;
+  background: var(--mascot-eye);
+}
+.mascot-eye.mascot-left { left: 32%; }
+.mascot-eye.mascot-right { right: 32%; }
+.mascot-limb { border-radius: 46%; }
+.mascot-arm {
+  top: 55%;
+  width: 12%;
+  height: 23%;
+  transform-origin: 50% 15%;
+}
+.mascot-arm.mascot-left { left: 6%; rotate: 23deg; }
+.mascot-arm.mascot-right { right: 6%; rotate: -23deg; }
+.mascot-foot {
+  bottom: 5%;
+  width: 15%;
+  height: 19%;
+}
+.mascot-foot.mascot-left { left: 25%; }
+.mascot-foot.mascot-right { right: 25%; }
+
+/* 포즈: wave 오른팔을 들어 흔듦 · sit 몸을 내리고 발을 앞으로 모음 · 기본 stand */
+.mascot.is-wave .mascot-arm.mascot-right { right: 2%; rotate: -128deg; }
+.mascot.is-sit .mascot-face { inset: 8% 9% 9%; }
+.mascot.is-sit .mascot-arm { top: 60%; }
+.mascot.is-sit .mascot-foot { bottom: 2%; width: 19%; height: 17%; z-index: 2; }
+.mascot.is-sit .mascot-foot.mascot-left { left: 22%; }
+.mascot.is-sit .mascot-foot.mascot-right { right: 22%; }
+
+/* 움직임: is-idle은 88px 이상에서만 붙는다(Mascot.tsx). transform·scale·rotate만 움직인다 */
+.mascot.is-idle .mascot-float { animation: mascot-float 3.3s ease-in-out infinite; }
+.mascot.is-idle .mascot-eye { animation: mascot-blink 4.6s infinite; }
+.mascot.is-idle.is-wave .mascot-arm.mascot-right { animation: mascot-wave 1.2s ease-in-out infinite; }
+@keyframes mascot-float { 50% { transform: translateY(calc(var(--k) * -10px)) rotate(-1.5deg); } }
+@keyframes mascot-blink { 0%, 44%, 48%, 100% { scale: 1 1; } 46% { scale: 1 0.12; } }
+@keyframes mascot-wave { 50% { rotate: -146deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .mascot *,
+  .mascot *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}
