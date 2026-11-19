@@ -6,7 +6,7 @@ from app.config import get_settings
 
 EMBEDDING_DIM = 1536
 BATCH_SIZE = 100
-EMBED_TIMEOUT = 20  # 초. litellm 기본(6000초)이면 색인·초안 요청이 오래 매달린다. 시간 초과는 EmbeddingError가 된다
+EMBED_TIMEOUT = 20  # 초. litellm 기본(600초)이면 색인·초안 요청이 오래 매달린다. 시간 초과는 EmbeddingError가 된다
 
 
 class EmbeddingError(Exception):
