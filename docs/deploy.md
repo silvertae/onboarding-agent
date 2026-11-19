@@ -454,8 +454,8 @@ npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_
 | 항목 | 확인 방법 | 결과 |
 |---|---|---|
 | `agent-prod` 최소 인스턴스 1 | `gcloud run services describe agent-prod --region $REGION --project $PROD_PROJECT --format='value(spec.template.metadata.annotations)'` | 1 확인(2026-11-19, 리비전 `agent-prod-00001`) |
-| `/health` 가동 시간 점검과 알림 | 운영 프로젝트 Cloud Monitoring 가동 시간 확인(`AGENT_URL/health`, 5분 간격) + 알림 채널 | 가동 시간 확인 `agent-prod-health` 만듦(5분 간격, 제한 10초, 2026-11-19). 알림 정책·채널은 아직 없음 |
-| GCP 예산 알림(프로젝트별) | 결제 → 예산 및 알림 | 운영 `onboarding-agent-prod` 20,000 KRW(50·90·100%) 확인. 스테이징 예산은 없음 |
+| `/health` 가동 시간 점검과 알림 | 운영 프로젝트 Cloud Monitoring 가동 시간 확인(`AGENT_URL/health`, 5분 간격) + 알림 채널 | 가동 시간 확인 `agent-prod-health`(5분 간격, 제한 10초)와 알림 정책 "agent-prod /health 가동 시간 실패"(20분 안에 2개 지역 이상 실패하면 Leo 메일로 알림, 30분 뒤 자동 종료) 만듦(2026-11-19) |
+| GCP 예산 알림(프로젝트별) | 결제 → 예산 및 알림 | 운영 `onboarding-agent-prod` 20,000 KRW, 스테이징 `onboarding-agent-staging` 10,000 KRW(각 50·90·100%, 2026-11-19) |
 | OpenAI 월 한도(환경별) | OpenAI Project → Limits | 확인 필요(Leo) |
 | Supabase 일시 정지 방지 | Actions → `keepalive` 최근 실행이 성공(하루 세 번), 실패 알림 메일 수신 설정 | 스테이징·운영 모두 성공(2026-11-19 수동 실행). 운영 첫 배포 전에는 데모 계정이 없어 운영 쪽이 로그인 400으로 실패했다 |
 | 공개 가입 꺼짐(두 환경) | `smoke.sh` 5단계 | 두 환경 통과(운영은 `v0.1.0` 배포, 2026-11-19) |
