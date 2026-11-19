@@ -3,6 +3,7 @@
 import io
 import re
 import zipfile
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -19,6 +20,8 @@ MAX_DOCX_UNCOMPRESSED = 30 * 1024 * 1024  # docx(zip) 압축을 풀었을 때 �
 MAX_PDF_PAGES = 300
 MAX_TEXT_CHARS = 1_000_000
 MAX_DOCX_CELLS = 20_000  # 표 칸 수(읽은 w:tc 개수) 상한
+
+PREAMBLE_MIN = 20  # 전문이 이보다 짧으면(공백 제외) 문서 제목만 있는 줄로 보고 버린다
 
 ARTICLE_MAX = 2000  # 조항 하나(조각)의 최대 글자 수
 CHUNK_TARGET = 800  # 조항 표시가 없을 때 단락 묶음의 목표 글자 수
@@ -167,9 +170,21 @@ def split_clauses(text: str) -> list[Clause]:
             clauses.append(Clause(len(clauses), part_label, heading, part))
 
     preamble = text[: matches[0].start()].strip()
-    if preamble:
+    if len(re.sub(r"\s+", "", preamble)) >= PREAMBLE_MIN:
         add("전문", "", preamble)
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         add(re.sub(r"\s+", "", m.group(1)), (m.group(2) or "").strip(), text[m.end() : end].strip())
     return clauses
+
+
+async def build_clause_payload(
+    clauses: list[Clause], embed_fn: Callable[[list[str]], Awaitable[list[list[float]]]]
+) -> list[dict]:
+    """조항마다 임베딩해 replace_document_clauses의 p_clauses 형태로 만든다. 임베딩 오류는 그대로 올라간다."""
+    texts = [f"{c.label or ''} {c.heading or ''}".strip() + "\n" + c.body for c in clauses]
+    vectors = await embed_fn(texts)
+    return [
+        {"ord": c.ord, "label": c.label, "heading": c.heading, "body": c.body, "embedding": v}
+        for c, v in zip(clauses, vectors, strict=True)
+    ]

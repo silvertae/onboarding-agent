@@ -24,7 +24,7 @@ Cloud Run 공통(`scripts/deploy-agent.sh`): 리전 `asia-northeast3`, 메모리
 |---|---|
 | `.github/workflows/ci.yml` | PR: 웹 테스트·빌드 / 배포 스크립트 검사 / 로컬 Supabase로 pgTAP·에이전트 pytest / 스테이징 설정 웹 빌드(인증 없음) → 미리보기 채널(`pr-<번호>`, 7일)에 배포하고 PR에 주소 댓글. 문서만 바뀐 PR(`docs/` 아래, `.github/` 밖의 `*.md`)은 "변경 범위" 작업(`scripts/ci-changes.sh`)이 판정해 다섯 검사를 건너뛴다. 건너뛴 필수 체크는 통과로 친다 |
 | `.github/workflows/preview-cleanup.yml` | PR이 닫히면(머지·닫기) 그 PR의 미리보기 채널 `pr-<번호>`를 지운다. 스테이징 웹 사이트의 미리보기 채널은 50개까지라, 쌓이면 새 PR의 "웹 미리보기 배포"가 실패한다. 채널이 없으면(문서만 바뀐 PR) 그냥 끝낸다. 미리보기 계정(`roles/firebasehosting.admin`)을 쓴다 |
-| `.github/workflows/deploy-staging.yml` | `main` 푸시: 설정 확인 → DB 마이그레이션 → 계정 부트스트랩 → 에이전트 → 웹 → `smoke.sh` |
+| `.github/workflows/deploy-staging.yml` | `main` 푸시: 설정 확인 → DB 마이그레이션 → 계정 부트스트랩 → 기본 서식 부트스트랩 → 에이전트 → 웹 → `smoke.sh` |
 | `.github/workflows/deploy-prod.yml` | `v*` 태그: 태그 커밋이 `main`에 있는지 확인한 뒤 위와 같은 순서를 운영 대상으로 |
 | `.github/workflows/keepalive.yml` | 하루 세 번(한국 09:17·17:17·01:17) 스테이징·운영 Supabase에 신입 로그인·과제 조회를 보내 무료 플랜 일시 정지를 막는다. 실패하면 알림. Actions에서 수동 실행도 가능 |
 | `scripts/keepalive.sh <supabase_url> <anon_key>` | 위 요청. `DEMO_PASSWORD` 필요, 아무것도 바꾸지 않는다 |
@@ -105,6 +105,7 @@ npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROD_PR
 | 자동 백업이 보장되지 않고 다운로드할 수 없다 | 데모 데이터는 마이그레이션·부트스트랩·데모 초기화로 다시 만들 수 있다. 관리자가 만든 심사위원 계정만 다시 만들어야 한다 |
 | 활성 무료 프로젝트는 계정당 2개 | 스테이징·운영 두 개로 딱 맞다. 다른 무료 프로젝트를 켜지 않는다 |
 | DB 500MB, 월 사용자 5만, 트래픽 5GB | 시연 규모에서는 여유 있다 |
+| Storage 1GB | 서식 버킷 `task-forms`는 파일당 10MB로 제한해 1GB 안에 둔다. 기본 서식 3개는 작은 가상 파일이고, 담당자가 올린 서식은 데모 초기화가 지운다 |
 
 정지되면 Supabase 대시보드에서 프로젝트를 열고 **Restore**를 누른다(데이터·설정·키는 그대로). 정지가 실제로 생기면 **Billing → Upgrade to Pro**로 같은 프로젝트를 바로 Pro로 올릴 수 있다(주소·키 변경 없음).
 
@@ -369,11 +370,33 @@ gh secret list --repo "$REPO" --env staging; gh secret list --repo "$REPO" --env
 grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging apps/web/.env.production .firebaserc   # 출력 없어야 함
 ```
 
+## 규정 문서 시드 색인(환경별 1회)
+
+규정 문서 검색 시연용 가상 문서를 올리고 조항으로 색인한다. 스테이징과 운영에서 각각 한 번 실행한다. 기본은 "취업규칙 발췌(가상)" 하나만 올린다(시연에서 경영지원이 "복리후생 규정(가상)"을 S14에서 직접 올리기 때문이다. 둘 다 미리 올리려면 `--all`). 조직은 `--org`로 정하며 기본값은 데모 조직(`00000000-0000-0000-0000-000000000001`)이다.
+
+같은 제목이 이미 `ready`면 건너뛰고, `failed`·`processing`이면 지우고 다시 색인하므로 여러 번 실행해도 안전하다. 처리 중 실패하면 방금 만든 행과 객체를 지우고 종료 코드 1로 끝나며, 다시 실행하면 처음부터 시도한다. 임베딩 호출 비용이 조금 든다.
+
+비밀값은 화면에 출력하지 않고 Secret Manager에서 바로 넘긴다. `SUPABASE_URL`·`SUPABASE_ANON_KEY`·`OPENAI_EMBEDDING_MODEL`은 공개 값이라 그 환경의 변수 값을 그대로 쓴다(스테이징 임베딩 모델 `text-embedding-3-small`).
+
+```bash
+# 스테이징
+cd services/agent
+SUPABASE_URL="<스테이징 Supabase URL>" SUPABASE_ANON_KEY="<스테이징 anon 키>" \
+OPENAI_EMBEDDING_MODEL="text-embedding-3-small" \
+OPENAI_API_KEY="$(gcloud secrets versions access latest --secret openai-api-key --project blueward-onboarding-stg)" \
+SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret supabase-service-role-key-staging --project blueward-onboarding-stg)" \
+  uv run python scripts/index_seed_docs.py
+```
+
+운영은 같은 명령에서 프로젝트를 `$PROD_PROJECT`, 서비스 키 비밀 이름을 `supabase-service-role-key-prod`(OpenAI 키는 같은 이름 `openai-api-key`)로 바꾸고, 운영 Supabase URL·anon 키와 운영 환경의 `OPENAI_EMBEDDING_MODEL` 값을 쓴다. 문서마다 "색인 완료(조항 N개)" 또는 "이미 있어 건너뜀"이 한 줄씩 나오고 종료 코드는 0이다. 환경변수가 빠지면 변수 이름만 알리고 2로 끝난다.
+
 ## 배포 흐름
 
 1. 작업 브랜치 → PR. `ci`가 테스트하고, 스테이징 설정으로 빌드한 웹을 미리보기 채널 `pr-<번호>`(스테이징 프로젝트)에 올려 PR에 주소를 남긴다. 미리보기 웹은 스테이징 Supabase·스테이징 에이전트를 쓴다.
 2. CI 통과 → squash 머지 → `deploy-staging`이 스테이징 프로젝트에 반영하고 `smoke.sh`로 점검한다.
 3. 스테이징에서 확인되면 Leo가 `main`의 커밋에 태그(`git tag v0.1.0 && git push origin v0.1.0`) → Leo가 Actions 화면에서 `production` 배포를 승인 → `deploy-prod`가 운영 프로젝트에 같은 순서로 반영한다. `main`에 없는 커밋의 태그는 거부된다.
+
+"기본 서식 부트스트랩"(`services/agent/scripts/bootstrap_forms.py`, `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`만 필요)은 계정 부트스트랩 다음에 기본 서식 3개(`supabase/seed-forms/`의 가상 파일: AC-01 2개, HR-08 1개)를 `task-forms` 버킷에 올리고 `task_template_files`에 기본 서식(`is_seed`)으로 등록한다. 객체 경로가 고정이고 행은 `(template_id, file_name)` 기준 upsert라 배포마다 다시 실행해도 같은 결과다. 파일이나 템플릿이 없으면 이름을 출력하고 종료 코드 2로 멈춘다. 로컬은 `npm run bootstrap`이 계정과 함께 실행한다.
 
 각 단계는 실패하면 그 자리에서 멈춘다. DB 마이그레이션은 에이전트·웹보다 먼저 적용되며, 추가만 하므로 앞 버전 코드와도 동작한다.
 
@@ -381,7 +404,7 @@ grep -nE '^[^#]*REPLACE_ME' apps/web/.env.staging apps/web/.env.production .fire
 
 ## 되돌리기
 
-DB는 되돌리지 않는다(마이그레이션은 추가만). 코드만 이전 버전으로 돌린다.
+DB는 되돌리지 않는다(마이그레이션은 추가만). 코드만 이전 버전으로 돌린다. `task-forms` 버킷과 그 안의 서식 객체도 되돌리지 않는다. 이전 버전으로 돌려도 버킷·객체·`task_template_files` 행은 그대로 남는다.
 
 **가장 간단한 방법**: GitHub Actions에서 이전 태그의 `deploy-prod` 실행을 **Re-run all jobs**. 마이그레이션은 이미 적용돼 있어 건너뛰고, 그 태그의 에이전트·웹이 다시 배포된다.
 

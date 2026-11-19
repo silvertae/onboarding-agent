@@ -25,15 +25,28 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def test_split_by_article_headings():
     text = (
-        "목적 안내\n제1조(목적) 이 규정은...\n제2조 (경조금) ① 본인 결혼 시...\n제2조의2(조위금) ..."
+        "이 규정은 가상 회사의 구성원에게 적용하는 안내 전문이다.\n제1조(목적) 이 규정은...\n제2조 (경조금) ① 본인 결혼 시...\n제2조의2(조위금) ..."
     )
     clauses = split_clauses(text)
     assert [c.label for c in clauses] == ["전문", "제1조", "제2조", "제2조의2"]
     assert [c.heading for c in clauses] == ["", "목적", "경조금", "조위금"]
     assert [c.ord for c in clauses] == [0, 1, 2, 3]
-    assert clauses[0].body == "목적 안내"
+    assert clauses[0].body == "이 규정은 가상 회사의 구성원에게 적용하는 안내 전문이다."
     assert clauses[1].body == "이 규정은..."
     assert clauses[2].body == "① 본인 결혼 시..."
+
+
+def test_title_only_preamble_is_dropped():
+    clauses = split_clauses("복리후생 규정(가상)\n제1조(목적) 가상 규정\n제2조(범위) 범위")
+    assert [c.label for c in clauses] == ["제1조", "제2조"]
+    assert [c.ord for c in clauses] == [0, 1]
+
+
+def test_preamble_of_twenty_chars_is_kept():
+    pre = "가" * 20
+    clauses = split_clauses(f"{pre}\n제1조(목적) 가상 규정")
+    assert [c.label for c in clauses] == ["전문", "제1조"]
+    assert split_clauses(f"{'가' * 19}\n제1조(목적) 가상 규정")[0].label == "제1조"
 
 
 def test_no_preamble_when_document_starts_with_article():
