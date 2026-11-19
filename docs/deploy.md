@@ -390,6 +390,9 @@ SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret supa
 
 운영은 같은 명령에서 프로젝트를 `$PROD_PROJECT`, 서비스 키 비밀 이름을 `supabase-service-role-key-prod`(OpenAI 키는 같은 이름 `openai-api-key`)로 바꾸고, 운영 Supabase URL·anon 키와 운영 환경의 `OPENAI_EMBEDDING_MODEL` 값을 쓴다. 문서마다 "색인 완료(조항 N개)" 또는 "이미 있어 건너뜀"이 한 줄씩 나오고 종료 코드는 0이다. 환경변수가 빠지면 변수 이름만 알리고 2로 끝난다.
 
+- `OPENAI_EMBEDDING_MODEL`을 바꾸면 이미 저장된 벡터와 새 질문 벡터가 호환되지 않아 검색이 어긋난다. 모델을 바꾼 뒤에는 모든 문서를 다시 색인한다(S14 "다시 처리" 또는 시드 문서는 지우고 위 명령을 다시 실행).
+- 첫 운영 배포 전에 운영 DB에서 `select extversion from pg_extension where extname='vector'`가 0.8 이상인지 확인한다(`hnsw.iterative_scan`에 필요하다).
+
 ## 배포 흐름
 
 1. 작업 브랜치 → PR. `ci`가 테스트하고, 스테이징 설정으로 빌드한 웹을 미리보기 채널 `pr-<번호>`(스테이징 프로젝트)에 올려 PR에 주소를 남긴다. 미리보기 웹은 스테이징 Supabase·스테이징 에이전트를 쓴다.
