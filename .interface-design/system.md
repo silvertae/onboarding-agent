@@ -124,6 +124,8 @@
 
 `role="tab"`이나 `role="radio"`를 붙인 `button`을 직접 만들지 않는다.
 
+- **표 머리의 거르기 select:** 후보가 많아 칩으로 늘어놓기 어려운 거르기(S9 입사자)는 `NativeSelect`의 `variant="filter"`와 `label`(상자 안 라벨, 접근 이름)을 쓴다. 탭 묶음과 같은 회색 상자(`bg-secondary rounded-[10px]`)와 높이(38)에 라벨을 안에 두고, 테두리가 없다. 고른 값은 `font-semibold`. 포커스 링은 키보드 포커스에만(`ring-2 ring-ring`) 보이고 고른 뒤에는 남지 않는다. 폼 안의 select는 지금처럼 기본(40, 테두리)이다(2026-11-19). 시안 `S9-ops`, `.filter-select`.
+
 - **표 선택 행:** 선택·처리 중·새로 만든 행은 `components/tableRow.ts`의 `ROW_SELECTED`를 쓴다(시안 `.tbl tr.sel td`). `tr`에 `bg-accent`를 직접 주지 않는다.
   - 이유: 자동 표 배치는 칸 경계가 소수점(예: 915.27px)이라, Chrome이 행 배경을 칸마다 그리며 경계 픽셀을 반만 칠한다. 창을 띄운 Chrome 1440px에서 칸 사이에 밝은 1px 세로줄이 보였다. 배경을 `td`로 옮기는 것만으로는 사라지지 않아서, 같은 색 `1px` 오른쪽 그림자로 이음새를 덮는다.
   - hover(`ROW_HOVER`)는 선택되지 않은 행에만 준다. 같이 주면 hover가 선택 색을 덮는다. 키보드 포커스 행은 `ROW_FOCUS`(선택과 같은 색).

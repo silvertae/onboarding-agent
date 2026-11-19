@@ -2,24 +2,28 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
+import { ProgressBar } from '@/components/ProgressBar'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ROW_FOCUS, ROW_HOVER, ROW_SELECTED } from '@/components/tableRow'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { AddTaskButton } from '@/features/templates/AddTaskDialog'
 import { OWNER_LABEL } from '@/lib/labels'
-import { useTaskActions, useVisibleTasks, type TaskView } from '@/lib/tasks'
+import { progress, useTaskActions, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
-import { formatDateTime, formatMonthDay, isOverdue } from './format'
+import { formatDateTime, formatKoreanDate, formatMonthDay, isBeforeHire, isOverdue } from './format'
 import { useHires, type Hire } from './hires'
 import { isOneOff, reviewActions } from './reviewActions'
 import { TaskReviewPanel } from './TaskReviewPanel'
 import { EmptyState, ErrorText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs, TaskTitle } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
-type Tab = 'submitted' | 'mine' | 'all'
+// 'hires'(입사자별)는 과제가 아니라 입사자 한 줄씩 보여 주는 탭이라 아래 업무 표 함수들에는 오지 않는다.
+type Tab = 'submitted' | 'mine' | 'hires' | 'all'
+type TaskTab = Exclude<Tab, 'hires'>
 
-const EMPTY_TEXT: Record<Tab, string> = {
+const EMPTY_TEXT: Record<TaskTab, string> = {
   submitted: '확인 대기 중인 과제가 없어요',
   mine: '지금 처리할 과제가 없어요',
   all: '업무함에 과제가 없어요',
@@ -27,13 +31,13 @@ const EMPTY_TEXT: Record<Tab, string> = {
 
 const FINISHED = new Set(['done', 'na'])
 
-function inTab(task: TaskView, tab: Tab): boolean {
+function inTab(task: TaskView, tab: TaskTab): boolean {
   if (tab === 'submitted') return task.status === 'submitted'
   if (tab === 'mine') return task.template.completion_mode === 'staff_only' && task.status === 'todo'
   return true
 }
 
-function byTab(tab: Tab, hireName: (id: string) => string) {
+function byTab(tab: TaskTab, hireName: (id: string) => string) {
   return (a: TaskView, b: TaskView) => {
     // 확인 대기는 오래 기다린 것부터, 나머지는 기한 순
     if (tab === 'submitted') return (a.submitted_at ?? '').localeCompare(b.submitted_at ?? '')
@@ -49,6 +53,80 @@ function SummaryCard({ label, value, caption }: { label: string; value: number; 
       <p className="mt-1 text-page font-semibold tabular-nums">{value}</p>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">{caption}</p>
     </Panel>
+  )
+}
+
+// S9 입사자별 탭: 우리 부서 과제가 있는 신입을 입사일 최신순으로. 줄을 누르면 "전체" 탭을 그 입사자로 거른다.
+function HireTable({ hires, tasks, deptLabel, onOpen }: { hires: Hire[]; tasks: TaskView[]; deptLabel: string; onOpen(hireId: string): void }) {
+  const progressLabel = `${deptLabel} 과제`
+  return (
+    <table aria-label="입사자 목록" className="w-full text-sm">
+      <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
+        <tr>
+          <th className="px-4 py-3 font-semibold">입사자</th>
+          <th className="px-4 py-3 font-semibold">입사일</th>
+          <th className="w-60 px-4 py-3 font-semibold">{progressLabel}</th>
+          <th className="px-4 py-3 font-semibold">확인 대기</th>
+          <th className="px-4 py-3">
+            <span className="sr-only">동작</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {hires.length === 0 && (
+          <tr>
+            <td colSpan={5}>
+              <EmptyState>업무함에 입사자가 없어요</EmptyState>
+            </td>
+          </tr>
+        )}
+        {hires.map((hire) => {
+          const mine = tasks.filter((t) => t.new_hire_id === hire.id)
+          const { finished, total } = progress(mine)
+          const pending = mine.filter((t) => t.status === 'submitted').length
+          return (
+            <tr
+              key={hire.id}
+              tabIndex={0}
+              onClick={() => onOpen(hire.id)}
+              onKeyDown={(e) => {
+                if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault()
+                  onOpen(hire.id)
+                }
+              }}
+              className={cn('cursor-pointer border-b border-border last:border-b-0', ROW_HOVER, ROW_FOCUS)}
+            >
+              <td className="px-4 py-3">
+                <b className="block">{hire.full_name}</b>
+                <span className="text-xs text-muted-foreground">{hire.team?.name ?? ''}</span>
+              </td>
+              <td className="px-4 py-3">
+                {formatKoreanDate(hire.hire_date)}
+                {isBeforeHire(hire.hire_date) && <span className="ml-1 text-xs text-muted-foreground">입사 전</span>}
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <ProgressBar label={`${hire.full_name} ${progressLabel} 진행률`} value={finished} max={total} className="flex-1" />
+                  <b className="text-label tabular-nums">
+                    {finished} / {total}
+                  </b>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                {pending > 0 ? <Badge variant="submitted">{pending}</Badge> : <span className="text-muted-foreground">0</span>}
+              </td>
+              {/* 대화 상자는 포털이지만 React 이벤트는 포털을 거쳐 이 줄까지 올라온다. 여기서 막아야 대화 상자 안을 눌러도 탭이 바뀌지 않는다 */}
+              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                <div className="flex justify-end">
+                  <AddTaskButton hire={hire} allowAssessment={false} compact />
+                </div>
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }
 
@@ -84,9 +162,21 @@ export function OpsInboxPage() {
     .map((id) => ({ id, name: hireName(id) }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const rows = deptTasks
-    .filter((t) => inTab(t, tab) && (!hireFilter || t.new_hire_id === hireFilter))
-    .sort(byTab(tab, hireName))
+  // 입사자별 탭: 우리 부서 과제가 있는 신입, 입사일 최신순
+  const deptHires = hireOptions
+    .map((h) => hireById.get(h.id))
+    .filter((h): h is Hire => Boolean(h))
+    .sort((a, b) => (b.hire_date ?? '').localeCompare(a.hire_date ?? ''))
+
+  const rows =
+    tab === 'hires'
+      ? []
+      : deptTasks.filter((t) => inTab(t, tab) && (!hireFilter || t.new_hire_id === hireFilter)).sort(byTab(tab, hireName))
+
+  function openHire(hireId: string) {
+    setTab('all')
+    setHireFilter(hireId)
+  }
 
   const selected = deptTasks.find((t) => t.id === selectedId) ?? null
   // "이 신입에게 과제 추가"는 입사자 필터로 한 명을 고른 상태에서만 보인다
@@ -117,15 +207,20 @@ export function OpsInboxPage() {
                 items={[
                   { key: 'submitted', label: '확인 대기', count: counts.submitted },
                   { key: 'mine', label: '내가 처리할 일', count: counts.mine },
+                  { key: 'hires', label: '입사자별' },
                   { key: 'all', label: '전체' },
                 ]}
               />
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="ops-hire-filter" className="text-sm text-[var(--text-secondary)]">
-                    입사자
-                  </label>
-                  <NativeSelect id="ops-hire-filter" className="w-40" value={hireFilter} onChange={(e) => setHireFilter(e.target.value)}>
+              {/* 입사자별 탭은 표 자체가 입사자 목록이라 거르기가 없다 */}
+              {tab !== 'hires' && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <NativeSelect
+                    variant="filter"
+                    label="입사자"
+                    className="w-48"
+                    value={hireFilter}
+                    onChange={(e) => setHireFilter(e.target.value)}
+                  >
                     <option value="">전체</option>
                     {hireOptions.map((h) => (
                       <option key={h.id} value={h.id}>
@@ -133,10 +228,10 @@ export function OpsInboxPage() {
                       </option>
                     ))}
                   </NativeSelect>
+                  {/* 입사자를 바꾸면 결과 문구("추가했어요")가 다른 입사자에게 남지 않게 새로 그린다 */}
+                  {filteredHire && <AddTaskButton key={filteredHire.id} hire={filteredHire} allowAssessment={false} />}
                 </div>
-                {/* 입사자를 바꾸면 결과 문구("추가했어요")가 다른 입사자에게 남지 않게 새로 그린다 */}
-                {filteredHire && <AddTaskButton key={filteredHire.id} hire={filteredHire} allowAssessment={false} />}
-              </div>
+              )}
             </div>
 
             {rowAction.error && (
@@ -146,17 +241,28 @@ export function OpsInboxPage() {
             )}
 
             <SegmentTabPanel value={tab}>
-              {tasksQuery.isLoading ? (
+              {/* 입사자별 탭은 신입 목록도 와야 그릴 수 있다(아직이면 "입사자가 없어요"로 잘못 보인다) */}
+              {tasksQuery.isLoading || (tab === 'hires' && hiresQuery.isLoading) ? (
                 <LoadingStatus>
                   <TableSkeleton
-                    columns={[
-                      { label: '입사자', cell: 'two-line' },
-                      { label: '과제' },
-                      { label: '상태', cell: 'badge' },
-                      { label: '제출 시각' },
-                      { label: '기한' },
-                      { label: '', cell: 'none' },
-                    ]}
+                    columns={
+                      tab === 'hires'
+                        ? [
+                            { label: '입사자', cell: 'two-line' },
+                            { label: '입사일' },
+                            { label: `${deptLabel} 과제` },
+                            { label: '확인 대기', cell: 'badge' },
+                            { label: '', cell: 'none' },
+                          ]
+                        : [
+                            { label: '입사자', cell: 'two-line' },
+                            { label: '과제' },
+                            { label: '상태', cell: 'badge' },
+                            { label: '제출 시각' },
+                            { label: '기한' },
+                            { label: '', cell: 'none' },
+                          ]
+                    }
                   />
                 </LoadingStatus>
               ) : tasksQuery.isError ? (
@@ -165,6 +271,14 @@ export function OpsInboxPage() {
                     업무 목록을 불러오지 못했어요. 다시 시도해 주세요.
                   </LoadError>
                 </div>
+              ) : tab === 'hires' && hiresQuery.isError ? (
+                <div className="px-6 pb-6">
+                  <LoadError retrying={hiresQuery.isFetching} onRetry={() => void hiresQuery.refetch()}>
+                    입사자 목록을 불러오지 못했어요. 다시 시도해 주세요.
+                  </LoadError>
+                </div>
+              ) : tab === 'hires' ? (
+                <HireTable hires={deptHires} tasks={deptTasks} deptLabel={deptLabel} onOpen={openHire} />
               ) : (
                 <table aria-label="업무 목록" className="w-full text-sm">
                   <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
