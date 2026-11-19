@@ -49,7 +49,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       <section class="card split-main" style="gap: 0">
         <div class="card-hd">
           <div class="tabs" role="tablist"><button type="button" class="on" role="tab" aria-selected="true">확인 대기 <span class="count">3</span></button><button type="button" role="tab">내가 처리할 일 <span class="count" style="background: var(--disabled-fg)">2</span></button><button type="button" role="tab">입사자별</button><button type="button" role="tab">전체</button></div>
-          <label class="row" style="gap: 8px; font-size: 13px"><span class="muted">입사자</span><select class="select" style="min-height: 36px; padding: 6px 10px; width: 160px"><option>전체</option><option>김하늘</option><option>이도윤</option><option>최유나</option><option>정민서</option></select></label>
+          <label class="filter-select"><span>입사자</span><select><option>전체</option><option>김하늘</option><option>이도윤</option><option>최유나</option><option>정민서</option></select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></label>
         </div>
         <div class="tbl-wrap">
           <table class="tbl">
@@ -123,7 +123,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           <div class="card-hd">
             <div class="tabs" role="tablist"><button type="button" role="tab" aria-selected="false">확인 대기 <span class="count" style="background: var(--disabled-fg)">1</span></button><button type="button" role="tab" aria-selected="false">내가 처리할 일</button><button type="button" role="tab" aria-selected="false">입사자별</button><button type="button" class="on" role="tab" aria-selected="true">전체</button></div>
             <div class="row" style="gap: 12px; flex-wrap: wrap">
-              <label class="row" style="gap: 8px; font-size: 13px"><span class="muted">입사자</span><select class="select" style="min-height: 36px; padding: 6px 10px; width: 160px"><option>전체</option><option>김하늘</option><option selected>이도윤</option><option>최유나</option><option>정민서</option></select></label>
+              <label class="filter-select"><span>입사자</span><select><option>전체</option><option>김하늘</option><option selected>이도윤</option><option>최유나</option><option>정민서</option></select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></label>
               <button class="btn btn-ghost btn-sm" type="button" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>이 신입에게 과제 추가</button>
             </div>
           </div>
