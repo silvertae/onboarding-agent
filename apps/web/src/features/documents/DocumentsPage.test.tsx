@@ -541,10 +541,38 @@ describe('S14 올리기 창', () => {
     expect(within(dialog).getByRole('button', { name: '올리기' })).toBeEnabled()
   })
 
-  it('이름을 직접 고친 뒤 다른 파일을 골라도 고친 이름을 지키지 않고 새 파일 이름으로 바뀐다', async () => {
+  it('파일 이름으로 채운 이름은 다른 파일을 고르면 새 파일 이름으로 바뀐다', async () => {
     renderPage()
     const dialog = await openDialog()
     await userEvent.upload(within(dialog).getByLabelText('파일'), pdf())
+    await userEvent.upload(within(dialog).getByLabelText('파일'), file('출장 규정.docx'))
+    expect(within(dialog).getByLabelText('문서 이름')).toHaveValue('출장 규정')
+  })
+
+  it('이름을 먼저 입력하고 파일을 고르면 입력한 이름을 그대로 둔다', async () => {
+    renderPage()
+    const dialog = await openDialog()
+    await userEvent.type(within(dialog).getByLabelText('문서 이름'), '복리후생 규정(가상)')
+    await userEvent.upload(within(dialog).getByLabelText('파일'), file('welfare-policy.docx'))
+    expect(within(dialog).getByLabelText('문서 이름')).toHaveValue('복리후생 규정(가상)')
+    expect(within(dialog).getByRole('button', { name: '올리기' })).toBeEnabled()
+  })
+
+  it('채워진 이름을 직접 고친 뒤 다른 파일을 골라도 고친 이름을 그대로 둔다', async () => {
+    renderPage()
+    const dialog = await openDialog()
+    await userEvent.upload(within(dialog).getByLabelText('파일'), pdf())
+    await userEvent.clear(within(dialog).getByLabelText('문서 이름'))
+    await userEvent.type(within(dialog).getByLabelText('문서 이름'), '취업규칙')
+    await userEvent.upload(within(dialog).getByLabelText('파일'), file('출장 규정.docx'))
+    expect(within(dialog).getByLabelText('문서 이름')).toHaveValue('취업규칙')
+  })
+
+  it('이름 칸을 비운 뒤 파일을 고르면 다시 파일 이름으로 채운다', async () => {
+    renderPage()
+    const dialog = await openDialog()
+    await userEvent.type(within(dialog).getByLabelText('문서 이름'), '임시')
+    await userEvent.clear(within(dialog).getByLabelText('문서 이름'))
     await userEvent.upload(within(dialog).getByLabelText('파일'), file('출장 규정.docx'))
     expect(within(dialog).getByLabelText('문서 이름')).toHaveValue('출장 규정')
   })
