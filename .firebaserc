@@ -6,7 +6,7 @@
   "targets": {
     "blueward-onboarding-stg": {
       "hosting": {
-        "staging": ["blueward-onboarding-stg-web"]
+        "staging": ["blueward-onboarding-stg"]
       }
     },
     "blueward-onboarding-prod": {

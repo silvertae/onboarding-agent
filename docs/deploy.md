@@ -41,7 +41,7 @@ Cloud Run 공통(`scripts/deploy-agent.sh`): 리전 `asia-northeast3`, 메모리
 ```bash
 export STAGING_PROJECT=<스테이징 GCP 프로젝트 ID>
 export PROD_PROJECT=<운영 GCP 프로젝트 ID>
-export STAGING_SITE=<스테이징 Hosting 사이트 ID>   # 예: ${STAGING_PROJECT}-web
+export STAGING_SITE="$STAGING_PROJECT"             # 스테이징은 프로젝트 기본 사이트(사이트 ID = 프로젝트 ID)
 export PROD_SITE=<운영 Hosting 사이트 ID>          # 예: ${PROD_PROJECT}-web
 export REGION=asia-northeast3
 export REPO=<GitHub 소유자>/<저장소>               # 이 저장소의 owner/name
@@ -82,11 +82,14 @@ gcloud billing budgets create --billing-account="$BILLING" --display-name="onboa
 npx firebase-tools@15.36.0 login
 npx firebase-tools@15.36.0 projects:addfirebase "$STAGING_PROJECT"
 npx firebase-tools@15.36.0 projects:addfirebase "$PROD_PROJECT"
-npx firebase-tools@15.36.0 hosting:sites:create "$STAGING_SITE" --project "$STAGING_PROJECT"
+# 스테이징은 기본 사이트를 쓴다. 목록에 "$STAGING_SITE"가 없을 때만 hosting:sites:create로 만든다
+npx firebase-tools@15.36.0 hosting:sites:list --project "$STAGING_PROJECT"
 npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROD_PROJECT"
 ```
 
 웹 주소는 `https://$STAGING_SITE.web.app`, `https://$PROD_SITE.web.app`이 된다. `.firebaserc`의 `REPLACE_ME`는 6에서 PR로 채운다.
+
+스테이징은 처음에 따로 만든 사이트 `blueward-onboarding-stg-web`을 썼다. 주소에 `web`이 두 번 들어가 2026-11-19에 기본 사이트 `blueward-onboarding-stg`로 옮겼다. 함께 바꾸는 값은 스테이징 GitHub 변수 `WEB_URL`·`ALLOWED_ORIGIN_REGEX`(6)와 스테이징 Supabase Site URL(3)이다. 옛 사이트는 새 주소를 확인한 뒤 `hosting:disable --site blueward-onboarding-stg-web`으로 내린다.
 
 ### 3. Supabase 프로젝트 2개
 
