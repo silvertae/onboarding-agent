@@ -34,6 +34,8 @@ POST /knowledge/draft-answer         team_trainer·ops_staff, 한도 draft. {que
   → 200 {found:false} | {found:true, draft:{question, answer, category, clauses:[{id, document_title, label, heading}]}}
 POST /knowledge/draft-from-document  team_trainer·ops_staff, 한도 draft. {document_id: uuid, count: 1..10 (기본 5)}
   → 200 {drafts:[{question, answer, category, clause_ids:[uuid]}]}    # 초안 API는 DB에 쓰지 않는다. 웹이 저장한다
+POST /knowledge/index                team_trainer·ops_staff, 한도 없음. {} 관리 범위 게시 지식의 빠진 임베딩을 채운다
+  → 200 {embedded:int}    # 웹이 지식 저장 뒤 기다리지 않고 부른다. 실패해도 된다(채팅이 임베딩 없는 지식을 함께 넣는다)
 POST /admin/users     {email, password(8자 이상), full_name, job_title,
                        role:"new_hire"|"team_trainer"|"ops_staff",
                        department?: ops_staff면 필수, team_id?: new_hire·team_trainer면 필수,
@@ -141,3 +143,27 @@ RPC       match_document_clauses(p_embedding, p_count=6)          invoker. 조�
 지우기    1) storage remove(정책이 문서 행으로 범위를 확인하므로 행이 남아 있을 때) 2) 테이블 delete(조항 cascade)
 초기화    reset_demo는 규정 문서를 건드리지 않는다
 ```
+
+## 지식 임베딩 (Leo 승인, 2026-11-19)
+
+설계: `docs/superpowers/specs/2026-11-19-knowledge-vector-search-design.md`. 마이그레이션 `0014`.
+
+```
+테이블    knowledge_embeddings  knowledge_id PK → knowledge_items(cascade), org_id, content_hash, embedding vector(1536), embedded_at
+          content_hash = md5(question || '\n' || answer). 현재 본문의 해시와 다르면 "임베딩 없음"으로 본다
+권한      읽기: 그 지식을 읽을 수 있으면(지식 RLS를 물려받는다). 신입은 게시된 회사 공통 + 내 팀 지식의 임베딩만
+          쓰기: authenticated는 직접 쓸 수 없다. save_knowledge_embeddings만
+RPC       match_knowledge(p_embedding, p_count=20)          invoker. 해시가 맞는 게시 지식 중 가까운 p_count건(1..50)
+                                                            + 임베딩 없거나 낡은 게시 지식 전부. id, category, question, answer,
+                                                            similarity(임베딩 없으면 null, 맨 뒤)
+          knowledge_without_embedding(p_org=null)           invoker. 임베딩 없거나 낡은 게시 지식(id, question, answer), 오래된 순 100건.
+                                                            담당자는 관리 범위만, service_role은 p_org 조직(null이면 모든 조직)
+          save_knowledge_embeddings(p_items jsonb)          definer. [{id, question, answer, embedding}] 1..100개. 해시는 받은 본문으로 계산.
+                                                            없는·다른 조직 지식은 건너뛰고, 관리 범위 밖이면 42501. 저장 개수를 돌려준다
+채팅      질문(직전 사용자 질문 포함)을 한 번 임베딩해 match_knowledge(20)와 match_document_clauses(6)를 함께 부른다.
+          임베딩이 실패하거나 4초를 넘기면 게시 지식 전부 + 조항 없음
+채우기    웹: 지식 저장·게시·미답변 해결이 성공하면 POST /knowledge/index (기다리지 않음, 실패 무시)
+          백필: services/agent/scripts/index_knowledge.py (환경별 1회, 초기화 뒤 선택. docs/deploy.md)
+초기화    reset_demo가 지식을 지우면 임베딩도 cascade로 지워진다. 다시 시드된 지식은 임베딩 없이 채팅에 들어간다
+```
+

@@ -1,4 +1,7 @@
 import os
+import uuid
+from datetime import date
+from types import SimpleNamespace
 
 import pytest
 
@@ -44,3 +47,55 @@ def newhire_token() -> str:
 @pytest.fixture
 def trainer_token() -> str:
     return sign_in("trainer@demo.test", require_env("DEMO_PASSWORD"))
+
+
+@pytest.fixture
+def make_org(service):
+    """공유 로컬 DB의 시드 데이터를 건드리지 않도록 테스트에서 쓰는 임시 조직(팀 A·B). 사람·지식은 모두 가상이고 끝나면 지운다.
+
+    org = make_org(); token = org.add_user("team_trainer", team_id=org.team_a); kid = org.add_knowledge("company", "질문", "답")
+    """
+    orgs: list[str] = []
+    users: list[str] = []
+
+    def make() -> SimpleNamespace:
+        suffix = uuid.uuid4().hex[:10]
+        org_id = service.table("orgs").insert({"name": f"임시 조직 {suffix}"}).execute().data[0]["id"]
+        orgs.append(org_id)
+        team_a, team_b = (
+            service.table("teams")
+            .insert([{"org_id": org_id, "name": f"팀A {suffix}"}, {"org_id": org_id, "name": f"팀B {suffix}"}])
+            .execute()
+            .data
+        )
+
+        def add_user(role: str, team_id: str | None = None, department: str | None = None) -> str:
+            email = f"{role}-{uuid.uuid4().hex[:8]}@temp.test"
+            password = f"pw-{uuid.uuid4().hex}"
+            user_id = service.auth.admin.create_user({"email": email, "password": password, "email_confirm": True}).user.id
+            users.append(user_id)
+            service.table("profiles").insert(
+                {
+                    "id": user_id, "org_id": org_id, "email": email, "full_name": "임시 사용자", "role": role,
+                    "team_id": team_id, "department": department,
+                    "hire_date": date.today().isoformat() if role == "new_hire" else None,
+                }
+            ).execute()
+            return sign_in(email, password)
+
+        def add_knowledge(scope: str, question: str, answer: str, status: str = "published", team_id: str | None = None) -> str:
+            row = {
+                "org_id": org_id, "scope": scope, "team_id": team_id, "question": question, "answer": answer,
+                "category": "테스트", "status": status,
+            }
+            return service.table("knowledge_items").insert(row).execute().data[0]["id"]
+
+        return SimpleNamespace(id=org_id, team_a=team_a["id"], team_b=team_b["id"], add_user=add_user, add_knowledge=add_knowledge)
+
+    yield make
+    for user_id in users:
+        service.auth.admin.delete_user(user_id)
+    for org_id in orgs:
+        service.table("knowledge_items").delete().eq("org_id", org_id).execute()  # 임베딩은 cascade
+        service.table("teams").delete().eq("org_id", org_id).execute()
+        service.table("orgs").delete().eq("id", org_id).execute()

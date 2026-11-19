@@ -1,7 +1,8 @@
 """신입용 온보딩 어시스턴트 (ADK LlmAgent + LiteLLM 경유 OpenAI).
 
 - 모델은 요청마다 한 번만 부른다(응답 시간). 근거 자료는 서버가 모델을 부르기 전에 사용자 토큰으로 조회해
-  지시문에 짧은 키(지식 K1, 과제 T1, 규정 문서 조항 D1)로 넣는다. 조항은 질문을 임베딩해 가까운 것만 가져온다. 모델은 답 끝에 [[출처: K1]]·[[미답변]] 표시를 쓰고, 서버가 그 표시를
+  지시문에 짧은 키(과제 T1, 지식 K1, 규정 문서 조항 D1)로 넣는다. 지식과 조항은 질문을 한 번 임베딩해 가까운 것만 가져온다
+  (임베딩이 없거나 낡은 게시 지식은 함께 넣고, 질문 임베딩이 실패하면 지식은 전부 넣는다). 모델은 답 끝에 [[출처: K1]]·[[미답변]] 표시를 쓰고, 서버가 그 표시를
   화면에 보내지 않고 sources·unanswered 이벤트로 바꾼다. 서버가 이번 요청에서 준 키만 출처로 인정한다.
 - 요청마다 새 에이전트·세션을 만든다. 서비스는 대화 상태를 갖지 않는다(이력은 요청에 담겨 온다).
 - 조회만 한다. DB에 쓰지 않는다(미답변 요청은 신입이 화면에서 직접 보낸다).
@@ -42,8 +43,9 @@ MAX_LLM_CALLS = 1
 MODEL_ERROR = "답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요."
 UNANSWERED_REPLY = "확인되지 않은 내용이에요."
 CLAUSE_COUNT = 6
-# 채팅에서 조항 검색용 임베딩을 기다리는 시간(초). 넘기면 조항 없이 답한다
-CLAUSE_EMBED_TIMEOUT = 4
+KNOWLEDGE_COUNT = 20
+# 질문 임베딩을 기다리는 시간(초). 넘기면 지식은 전부, 조항은 없이 답한다
+QUERY_EMBED_TIMEOUT = 4
 HISTORY_TAG = "이전_대화"
 DATA_TAG = "참고_자료"
 
@@ -52,9 +54,9 @@ Role = Literal["user", "assistant"]
 INSTRUCTION = f"""너는 회사 신입 사원의 온보딩을 돕는 어시스턴트다. 오늘은 {{today}}(한국 시간)이다.
 
 ## 참고 자료
-아래 <{DATA_TAG}>에 이 신입이 볼 수 있는 게시된 사내 지식(K로 시작하는 키), 이 신입의 온보딩 과제(T로 시작하는 키), 질문과 가까운 규정 문서 조항(D로 시작하는 키)이 있다.
+아래 <{DATA_TAG}>에 이 신입의 온보딩 과제(T로 시작하는 키), 질문과 가까운 게시된 사내 지식(K로 시작하는 키), 질문과 가까운 규정 문서 조항(D로 시작하는 키)이 있다.
 과제 필드: code, title, status, due_date, owner(담당 부서), blocked_by(대기 중인 선행 과제), handled_by(처리하는 사람), my_turn(신입이 지금 할 차례인지).
-조항 필드: document_title(문서명), label(조항 번호), heading(조항 제목), body(본문). 질문과 관계없는 조항이 섞여 있을 수 있다.
+조항 필드: document_title(문서명), label(조항 번호), heading(조항 제목), body(본문). 지식과 조항에는 질문과 관계없는 것이 섞여 있을 수 있다.
 
 ## 답 끝의 근거 표시
 답을 다 쓴 뒤 맨 마지막 줄에 아래 표시를 쓴다. 이 표시는 화면에 보이지 않고 출처 칩과 버튼으로 바뀐다. 답 중간에는 쓰지 않는다.
@@ -100,19 +102,21 @@ class Refs:
         )
 
     def block(self) -> str:
-        """한 줄에 JSON 하나. 실제 id는 넣지 않는다(출력할 글자를 줄이고, 모델이 id를 지어내지 못하게)."""
+        """한 줄에 JSON 하나. 실제 id는 넣지 않는다(출력할 글자를 줄이고, 모델이 id를 지어내지 못하게).
+
+        과제는 신입마다 고정이라 앞에, 질문마다 바뀌는 지식·조항은 뒤에 둔다(앞부분이 같아야 프롬프트 캐시가 맞는다).
+        """
         lines = [
+            json.dumps({"key": key, **{f: v for f, v in t.items() if f != "id"}}, ensure_ascii=False)
+            for key, t in self.tasks.items()
+        ]
+        lines += [
             json.dumps(
                 {"key": key, "category": k["category"], "question": k["question"], "answer": k["answer"]},
                 ensure_ascii=False,
             )
             for key, k in self.knowledge.items()
         ]
-        lines += [
-            json.dumps({"key": key, **{f: v for f, v in t.items() if f != "id"}}, ensure_ascii=False)
-            for key, t in self.tasks.items()
-        ]
-        # 조항은 질문마다 바뀌므로 지식·과제 뒤에 둔다(앞부분이 같아야 프롬프트 캐시가 맞는다)
         lines += [
             json.dumps({"key": key, **{f: v for f, v in d.items() if f != "id"}}, ensure_ascii=False)
             for key, d in self.documents.items()
@@ -209,7 +213,7 @@ def _history_block(history: Sequence[tuple[Role, str]]) -> str:
 
 
 def build_instruction(history: Sequence[tuple[Role, str]], refs: Refs) -> str:
-    """매번 같은 부분(규칙·자료)을 앞에, 바뀌는 부분(이전 대화)을 뒤에 둔다. 앞부분이 같아야 프롬프트 캐시가 맞는다."""
+    """매번 같은 부분(규칙·과제)을 앞에, 바뀌는 부분(지식·조항·이전 대화)을 뒤에 둔다. 앞부분이 같아야 프롬프트 캐시가 맞는다."""
     today = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
     return INSTRUCTION.replace("{today}", today) + refs.block() + _history_block(history)
 
@@ -224,23 +228,29 @@ class _ModelError(Exception):
     pass
 
 
-def _clause_query(message: str, history: Sequence[tuple[Role, str]]) -> str:
-    """'그럼 신청은?'처럼 이어지는 질문도 맞는 조항을 찾도록 직전 사용자 질문을 앞에 붙인다."""
+def _search_query(message: str, history: Sequence[tuple[Role, str]]) -> str:
+    """'그럼 신청은?'처럼 이어지는 질문도 맞는 지식·조항을 찾도록 직전 사용자 질문을 앞에 붙인다."""
     previous = next((text for role, text in reversed(history) if role == "user"), None)
     return f"{previous}\n{message}" if previous else message
 
 
-async def _search_clauses(user: CurrentUser, message: str, history: Sequence[tuple[Role, str]]) -> list[dict]:
-    """임베딩이 실패하면 조항 없이 답한다(지식·과제만으로도 답할 수 있다)."""
+async def _search(user: CurrentUser, message: str, history: Sequence[tuple[Role, str]]) -> tuple[list[dict], list[dict]]:
+    """질문을 한 번 임베딩해 가까운 지식과 조항을 함께 찾는다. (지식, 조항).
+
+    임베딩이 실패하거나 늦으면 지식은 전부, 조항은 없이 답한다(error 이벤트를 내지 않는다). 채팅은 임베딩을 오래 기다리지 않는다.
+    """
     try:
-        # 채팅은 조항을 못 찾아도 답할 수 있으므로 임베딩을 오래 기다리지 않는다
         [vector] = await asyncio.wait_for(
-            embeddings.embed([_clause_query(message, history)]), timeout=CLAUSE_EMBED_TIMEOUT
+            embeddings.embed([_search_query(message, history)]), timeout=QUERY_EMBED_TIMEOUT
         )
     except (embeddings.EmbeddingError, TimeoutError) as exc:
-        logger.warning("clause search skipped: %s", type(exc).__name__)
-        return []
-    return await asyncio.to_thread(assistant_tools.search_documents, user, vector, CLAUSE_COUNT)
+        logger.warning("question search skipped: %s", type(exc).__name__)
+        return await asyncio.to_thread(assistant_tools.search_knowledge, user), []
+    knowledge, clauses = await asyncio.gather(
+        asyncio.to_thread(assistant_tools.match_knowledge, user, vector, KNOWLEDGE_COUNT),
+        asyncio.to_thread(assistant_tools.search_documents, user, vector, CLAUSE_COUNT),
+    )
+    return knowledge, clauses
 
 
 async def run_chat(user: CurrentUser, message: str, history: Sequence[tuple[Role, str]]) -> AsyncIterator[dict]:
@@ -250,10 +260,9 @@ async def run_chat(user: CurrentUser, message: str, history: Sequence[tuple[Role
     """
     marks = MarkFilter()
     try:
-        knowledge, tasks, clauses = await asyncio.gather(
-            asyncio.to_thread(assistant_tools.search_knowledge, user),
+        (knowledge, clauses), tasks = await asyncio.gather(
+            _search(user, message, history),
             asyncio.to_thread(assistant_tools.get_my_tasks, user),
-            _search_clauses(user, message, history),
         )
         refs = Refs.from_rows(knowledge, tasks, clauses)
         instruction = build_instruction(history, refs)
