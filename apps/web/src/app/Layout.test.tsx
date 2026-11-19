@@ -24,7 +24,7 @@ describe('Layout 상단 바', () => {
     auth.role = 'new_hire'
   })
 
-  it('교육 담당자 메뉴는 팀 신입 현황 · 시험 출제 · 문제은행 · 온보딩 과제 · 지식 관리 순서다', () => {
+  it('교육 담당자 메뉴는 팀 신입 현황 · 시험 출제 · 문제은행 · 온보딩 과제 · 지식 관리 · 규정 문서 순서다', () => {
     auth.role = 'team_trainer'
     render(
       <MemoryRouter initialEntries={['/team/bank']}>
@@ -37,13 +37,14 @@ describe('Layout 상단 바', () => {
     )
     const nav = screen.getByRole('navigation', { name: '주 메뉴' })
     const links = within(nav).getAllByRole('link')
-    expect(links.map((l) => l.textContent)).toEqual(['팀 신입 현황', '시험 출제', '문제은행', '온보딩 과제', '지식 관리'])
+    expect(links.map((l) => l.textContent)).toEqual(['팀 신입 현황', '시험 출제', '문제은행', '온보딩 과제', '지식 관리', '규정 문서'])
     expect(within(nav).getByRole('link', { name: '온보딩 과제' })).toHaveAttribute('href', '/tasks')
+    expect(within(nav).getByRole('link', { name: '규정 문서' })).toHaveAttribute('href', '/documents')
     expect(within(nav).getByRole('link', { name: '문제은행' })).toHaveAttribute('href', '/team/bank')
     expect(within(nav).getByRole('link', { name: '문제은행' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('경영지원 메뉴는 부서 업무함 · 온보딩 과제 · 지식 관리 순서이고, 온보딩 과제 화면에서 그 메뉴가 선택된다', () => {
+  it('경영지원 메뉴는 부서 업무함 · 온보딩 과제 · 지식 관리 · 규정 문서 순서이고, 온보딩 과제 화면에서 그 메뉴가 선택된다', () => {
     auth.role = 'ops_staff'
     render(
       <MemoryRouter initialEntries={['/tasks?template=HR-01']}>
@@ -55,7 +56,7 @@ describe('Layout 상단 바', () => {
       </MemoryRouter>,
     )
     const nav = screen.getByRole('navigation', { name: '주 메뉴' })
-    expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(['부서 업무함', '온보딩 과제', '지식 관리'])
+    expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(['부서 업무함', '온보딩 과제', '지식 관리', '규정 문서'])
     expect(within(nav).getByRole('link', { name: '온보딩 과제' })).toHaveAttribute('aria-current', 'page')
   })
 
