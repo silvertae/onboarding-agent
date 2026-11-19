@@ -100,12 +100,12 @@ const knowledge: KnowledgeItem[] = [
   },
 ]
 
-function renderPage({ profile = TRAINER, items = knowledge, open = unanswered } = {}) {
+function renderPage({ profile = TRAINER, items = knowledge, open = unanswered, url = '/knowledge' } = {}) {
   state.profile = profile
   state.knowledge = items
   state.unanswered = open
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <KnowledgePage />
     </MemoryRouter>,
   )
@@ -498,6 +498,18 @@ describe('KnowledgePage (S10) AI 작성 지식', () => {
   }
 
   const listRows = () => within(screen.getByRole('table', { name: '지식 목록' })).getAllByRole('row').slice(1)
+
+  it('?tab=knowledge&filter=ai로 열면 지식 목록 탭의 AI 초안 필터가 선택돼 있다', () => {
+    renderPage({ items: aiItems, url: '/knowledge?tab=knowledge&filter=ai' })
+    expect(screen.getByRole('tab', { name: /지식 목록/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: 'AI 초안 1' })).toHaveAttribute('aria-pressed', 'true')
+    expect(listRows()).toHaveLength(1)
+  })
+
+  it('알 수 없는 tab·filter 값은 무시하고 기본(미답변 탭, 전체)으로 연다', () => {
+    renderPage({ items: aiItems, url: '/knowledge?tab=x&filter=y' })
+    expect(screen.getByRole('tab', { name: /미답변/ })).toHaveAttribute('aria-selected', 'true')
+  })
 
   it('필터 칩 "전체 N" / "AI 초안 N"이 있고 AI 초안은 AI 작성이면서 초안인 것만 보인다', async () => {
     const user = await openList()

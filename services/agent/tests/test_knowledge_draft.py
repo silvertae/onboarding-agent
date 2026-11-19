@@ -444,3 +444,46 @@ def test_drafts_from_document_validation(client, fake_call, trainer_token, body)
 
 def test_drafts_from_document_forbidden_for_new_hire(client, fake_call, newhire_token):
     assert post_document(client, newhire_token, str(uuid.uuid4())).status_code == 403
+
+
+def test_drafts_from_document_avoids_unpublished_drafts_too(client, fake_call, trainer_token, documents, service):
+    """게시 전 초안도 피할 질문에 넣는다. 다시 눌러도 같은 질문이 또 저장되지 않게 한다."""
+    from app.auth import _load_user
+
+    trainer = _load_user(trainer_token)
+    question = f"게시 전 초안 질문 {uuid.uuid4().hex[:8]}?"
+    row = (
+        service.table("knowledge_items")
+        .insert(
+            {
+                "org_id": trainer.org_id, "scope": "team", "team_id": trainer.team_id,
+                "question": question, "answer": "a", "category": "근태", "status": "draft",
+            }
+        )
+        .execute()
+        .data[0]
+    )
+    try:
+        post_document(client, trainer_token, documents["team"]["doc"]["id"])
+    finally:
+        service.table("knowledge_items").delete().eq("id", row["id"]).execute()
+
+    [call] = fake_call.calls
+    assert question in call["message"]
+
+
+def test_drafts_from_document_clause_budget_drops_unsent_ids(client, fake_call, trainer_token, documents, monkeypatch):
+    """글자 예산 안에서 ord 순으로 보낸다. 보내지 않은 조항 키는 근거로 인정하지 않는다."""
+    monkeypatch.setattr(knowledge_draft, "DRAFT_CLAUSE_CHAR_BUDGET", 5)
+    team = documents["team"]
+    fake_call.output = drafts_json(
+        {"question": "q1", "answer": "a", "category": "근태", "clause_ids": ["D1"]},
+        {"question": "q2", "answer": "a", "category": "근태", "clause_ids": ["D2"]},
+    )
+
+    res = post_document(client, trainer_token, team["doc"]["id"])
+
+    [call] = fake_call.calls
+    assert "휴가 신청은 3일 전까지" in call["message"] and "출장비는 실비로" not in call["message"]
+    assert [d["question"] for d in res.json()["drafts"]] == ["q1"]
+    assert res.json()["drafts"][0]["clause_ids"] == [team["clauses"][0]["id"]]

@@ -407,6 +407,28 @@ def test_document_search_failure_does_not_break_chat(client, fake_model, newhire
     assert items and not any(i["key"].startswith("D") for i in items)
 
 
+def test_document_search_timeout_does_not_break_chat(client, fake_model, newhire_token, clauses, monkeypatch):
+    """임베딩이 늦으면 기다리지 않고 조항 없이 답한다. 오류 이벤트를 내지 않는다."""
+    import asyncio
+
+    async def slow(_texts):
+        await asyncio.sleep(5)
+        return [VECTOR]
+
+    monkeypatch.setattr(embeddings, "embed", slow)
+    monkeypatch.setattr(assistant, "CLAUSE_EMBED_TIMEOUT", 0.05)
+    clauses.rows = [CLAUSE]
+    fake_model.turns = [text_turn("확인되지 않은 내용이에요.\n[[미답변]]")]
+
+    events = read_events(post_chat(client, newhire_token, {"message": "결혼 경조금 얼마야?", "history": []}))
+
+    assert "error" not in [e["type"] for e in events]
+    assert [e["type"] for e in events][-1] == "done"
+    assert clauses.searched == []
+    items = data_items(fake_model.requests[0])
+    assert items and not any(i["key"].startswith("D") for i in items)
+
+
 def test_uncited_clauses_not_in_sources(client, fake_model, newhire_token, clauses):
     clauses.rows = [CLAUSE]
     fake_model.turns = [text_turn("안녕하세요! 무엇을 도와드릴까요?")]

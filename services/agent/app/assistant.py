@@ -42,6 +42,8 @@ MAX_LLM_CALLS = 1
 MODEL_ERROR = "답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요."
 UNANSWERED_REPLY = "확인되지 않은 내용이에요."
 CLAUSE_COUNT = 6
+# 채팅에서 조항 검색용 임베딩을 기다리는 시간(초). 넘기면 조항 없이 답한다
+CLAUSE_EMBED_TIMEOUT = 4
 HISTORY_TAG = "이전_대화"
 DATA_TAG = "참고_자료"
 
@@ -231,8 +233,11 @@ def _clause_query(message: str, history: Sequence[tuple[Role, str]]) -> str:
 async def _search_clauses(user: CurrentUser, message: str, history: Sequence[tuple[Role, str]]) -> list[dict]:
     """임베딩이 실패하면 조항 없이 답한다(지식·과제만으로도 답할 수 있다)."""
     try:
-        [vector] = await embeddings.embed([_clause_query(message, history)])
-    except embeddings.EmbeddingError as exc:
+        # 채팅은 조항을 못 찾아도 답할 수 있으므로 임베딩을 오래 기다리지 않는다
+        [vector] = await asyncio.wait_for(
+            embeddings.embed([_clause_query(message, history)]), timeout=CLAUSE_EMBED_TIMEOUT
+        )
+    except (embeddings.EmbeddingError, TimeoutError) as exc:
         logger.warning("clause search skipped: %s", type(exc).__name__)
         return []
     return await asyncio.to_thread(assistant_tools.search_documents, user, vector, CLAUSE_COUNT)

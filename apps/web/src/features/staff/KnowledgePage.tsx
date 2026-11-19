@@ -1,5 +1,6 @@
 import { Plus, Search, Sparkles } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
 import { FilterChips } from '@/components/FilterChips'
 import { LoadError } from '@/components/LoadError'
@@ -64,9 +65,11 @@ export function KnowledgePage() {
   const formAction = useGuardedAction()
   const listAction = useGuardedAction()
 
-  const [tab, setTab] = useState<Tab>('unanswered')
+  // 규정 문서 화면의 "지식 관리에서 검토하기" 링크(?tab=knowledge&filter=ai)가 처음 탭과 필터를 정한다. 모르는 값은 무시한다.
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'knowledge' ? 'knowledge' : 'unanswered')
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<ListFilter>('all')
+  const [filter, setFilter] = useState<ListFilter>(params.get('filter') === 'ai' ? 'ai' : 'all')
   // 이 폼에서 받은 AI 초안의 근거 조항. 폼이 바뀌면 지운다(origin도 함께 초기화).
   const [draft, setDraft] = useState<{ clauses: DraftClause[] } | null>(null)
   const documentsQuery = useDocuments()

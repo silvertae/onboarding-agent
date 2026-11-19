@@ -6,6 +6,7 @@ from app.config import get_settings
 
 EMBEDDING_DIM = 1536
 BATCH_SIZE = 100
+EMBED_TIMEOUT = 20  # 초. litellm 기본(600초)이면 색인·초안 요청이 오래 매달린다. 시간 초과는 EmbeddingError가 된다
 
 
 class EmbeddingError(Exception):
@@ -26,6 +27,7 @@ async def embed(texts: list[str]) -> list[list[float]]:
                 model="openai/" + settings.openai_embedding_model,
                 input=batch,
                 api_key=settings.openai_api_key,
+                timeout=EMBED_TIMEOUT,
             )
             batch_vectors = [item["embedding"] for item in response.data]
         except Exception as e:

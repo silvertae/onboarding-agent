@@ -178,7 +178,9 @@ type Draft = { question: string; answer: string; category: string; clause_ids: s
 export async function makeKnowledgeDrafts(documentId: string, count = 5): Promise<number> {
   const res = await agentFetch('/knowledge/draft-from-document', { document_id: documentId, count })
   const body = (await res.json()) as { drafts?: unknown }
-  if (!Array.isArray(body.drafts) || body.drafts.length === 0) throw new Error('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')
+  if (!Array.isArray(body.drafts)) throw new Error('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')
+  // 이미 있는 질문과 겹치는 것만 남았을 때처럼 빈 배열은 정상 결과다
+  if (body.drafts.length === 0) return 0
   const drafts = (body.drafts as Draft[]).slice(0, 10)
   const { data, error, status } = await supabase.rpc('save_knowledge_drafts', { p_items: drafts })
   if (error) await fail(error, status)
