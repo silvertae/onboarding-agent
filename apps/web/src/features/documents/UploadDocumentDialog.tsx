@@ -41,6 +41,8 @@ export function UploadDocumentDialog({ open, onOpenChange, scopeText, onUploaded
   const action = useGuardedAction()
   const id = useId()
   const [title, setTitle] = useState('')
+  // 마지막으로 파일 이름에서 채운 이름. 이름 칸이 이 값 그대로일 때만 다른 파일을 고르면 따라 바뀐다.
+  const [filledTitle, setFilledTitle] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -50,6 +52,7 @@ export function UploadDocumentDialog({ open, onOpenChange, scopeText, onUploaded
     setWasOpen(open)
     if (open) {
       setTitle('')
+      setFilledTitle('')
       setFile(null)
       action.clearError()
     }
@@ -66,7 +69,12 @@ export function UploadDocumentDialog({ open, onOpenChange, scopeText, onUploaded
   function pick(next: File | null) {
     setFile(next)
     action.clearError()
-    if (next) setTitle(baseName(next.name))
+    // 비어 있거나 파일 이름으로 채운 그대로일 때만 새 파일 이름으로 채운다. 직접 입력·수정한 이름은 지킨다.
+    if (next && (title.trim() === '' || title === filledTitle)) {
+      const name = baseName(next.name)
+      setTitle(name)
+      setFilledTitle(name)
+    }
   }
 
   async function submit() {
