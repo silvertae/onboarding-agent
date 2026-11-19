@@ -11,6 +11,7 @@ Claude Code에 이 폴더를 컨텍스트로 주고 구현을 요청할 때 쓰�
 | `png/*.png` | 같은 화면의 스크린샷. 레이아웃 비교용 |
 | `assets/ui.css` | 공통 UI 스타일(토큰 + 컴포넌트 클래스). shadcn 컴포넌트로 옮길 때 참고 |
 | `assets/blueward-*.png` | 회사 CI 로고(전체 / 심볼 / 워드마크) |
+| `assets/mascot/` | 젤리 큐브 마스코트(에이전트의 얼굴). 원본 `jelly-mascot.html`, 포즈·크기 견본 `jelly-mascot-poses.html`. 시안에서는 `ui.css`의 `.mascot`으로 그린다. 규칙은 `.interface-design/system.md` "마스코트" |
 
 ## 화면 ↔ 라우트
 
@@ -73,6 +74,7 @@ Claude Code에 이 폴더를 컨텍스트로 주고 구현을 요청할 때 쓰�
 | 알림 | `--alert-{info,warn,err,ok}-{bg,border,fg}` | 안내 / 한도·AI 검토 안내·미답변 배너 / 오류·보완 사유 / 성공 |
 | 담당 | `--own-team-{bg,border,fg}` | 소속 팀 과제 배지(파란 틴트). 경영지원 부서 배지는 테두리형 |
 | 기타 | `--fill` `#ececf0` · `--avatar` `#e8eef8` · `--destructive` `#b3261e` · `--demo` `#b26a00` | 탭 바탕, 이니셜 원, 삭제 동작, 데모 표시 점 |
+| 마스코트 | `--mascot-{edge,fill,glow-1,glow-2,glow-3,shadow,highlight,highlight-2,eye}` | 마스코트 안에서만. "새 색 금지"의 유일한 예외 |
 
 ### shadcn `globals.css` 매핑 예시
 

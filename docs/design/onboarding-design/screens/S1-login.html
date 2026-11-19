@@ -19,6 +19,8 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
     <section style="flex: 1 1 480px; min-width: 0; padding: 64px clamp(24px, 6vw, 96px); display: flex; flex-direction: column; justify-content: space-between; gap: 48px; background: #ffffff; border-right: 1px solid var(--border)">
       <img src="../assets/blueward-logo.png" alt="Blueward" style="height: 32px; width: auto; align-self: flex-start">
       <div style="display: flex; flex-direction: column; gap: 20px; max-width: 520px">
+        <!-- 넓은 화면(lg 이상): wave 160, 움직임 켬, 누르면 튄다. 장식이라 aria-hidden, 버튼으로 만들지 않는다 -->
+        <span class="mascot s-160 is-wave is-idle js-press" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span>
         <span class="demo-chip" style="align-self: flex-start"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
         <h1 style="font-size: 48px; line-height: 54px; letter-spacing: -0.6px">입사 첫날부터 첫 달까지,<br>할 일과 답을 한곳에서.</h1>
         <p style="font-size: 17px; line-height: 25px; color: var(--secondary)">온보딩 에이전트는 신입의 과제 타임라인을 안내하고, 회사·팀 지식으로 질문에 답하며, 담당자 확인까지 이어 줍니다.</p>
@@ -74,5 +76,53 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   </footer>
 </div>
 
+<!-- 좁은 화면(lg 미만, 소개가 로그인 카드 위로 쌓인다): 마스코트를 숨긴다(Leo 결정 2026-11-20) -->
+<div style="padding: 32px; background: var(--canvas); border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start">
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <b style="font-size: 13px; color: var(--secondary)">좁은 화면(lg 미만) · 마스코트 숨김 (로그인 카드가 덜 밀린다)</b>
+    <div style="width: 390px; height: 844px; overflow: hidden; background: var(--canvas); border: 1px solid var(--border)">
+      <section style="padding: 64px 24px; display: flex; flex-direction: column; gap: 48px; background: #ffffff; border-bottom: 1px solid var(--border)">
+        <img src="../assets/blueward-logo.png" alt="Blueward" style="height: 32px; width: auto; align-self: flex-start">
+        <div style="display: flex; flex-direction: column; gap: 20px">
+          <span class="demo-chip" style="align-self: flex-start"><span class="demo-dot"></span>데모 환경 · 가상 데이터</span>
+          <h1 style="font-size: 36px; line-height: 45px; letter-spacing: -0.6px">입사 첫날부터 첫 달까지,<br>할 일과 답을 한곳에서.</h1>
+          <p style="font-size: 17px; line-height: 25px; color: var(--secondary)">온보딩 에이전트는 신입의 과제 타임라인을 안내하고, 회사·팀 지식으로 질문에 답하며, 담당자 확인까지 이어 줍니다.</p>
+        </div>
+        <div class="grid-3" style="gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 6px"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary)"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg><b style="font-size: 14px">단계별 타임라인</b><span class="caption">입사일 · 첫 주 · 첫 달</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><b style="font-size: 14px">근거 있는 답변</b><span class="caption">모르면 담당자에게 전달</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary)"><path d="M20 6 9 17l-5-5"></path></svg><b style="font-size: 14px">담당자 확인</b><span class="caption">인사 · 총무 · 회계 · AI팀</span></div>
+        </div>
+      </section>
+      <section style="padding: 64px 24px"><div class="card" style="padding: 40px"><h2 style="font-size: 22px; line-height: 28px">로그인</h2></div></section>
+    </div>
+  </div>
+  <div style="flex: 1 1 320px; max-width: 420px; display: flex; flex-direction: column; gap: 12px">
+    <b style="font-size: 13px; color: var(--secondary)">누르면 말랑하게 튀기</b>
+    <p class="secondary">위 넓은 화면의 마스코트를 눌러 보세요. 원본(jelly-mascot.html)의 click 동작(0.82초, 눌림 → 튀어 오름 → 출렁임)이다. 장식이라 버튼으로 만들지 않고(aria-hidden, 키보드 초점 없음), 이어서 누르면 앞 동작을 끊고 새로 시작하고, 동작 줄이기 설정이면 움직이지 않는다. 로그인 160에만 붙인다.</p>
+  </div>
+</div>
+
+<script>
+// 누르면 튀기: 원본 jelly-mascot.html의 click 애니메이션. 동작 줄이기 설정이면 하지 않는다
+document.querySelectorAll('.js-press').forEach((el) => {
+  el.style.cursor = 'pointer'
+  el.addEventListener('click', () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timing = { duration: 820, easing: 'ease-in-out' }
+    const lift = (el.offsetWidth / 235) * -27 // 원본 235px에서 27px 튀어 오른다
+    el.querySelector('.cube').animate([
+      { transform: 'scale(1.12,.81)' },
+      { transform: `translateY(${lift}px) scale(.92,1.12)`, offset: 0.3 },
+      { transform: 'scale(1.06,.94)', offset: 0.62 },
+      { transform: 'scale(.98,1.03)', offset: 0.83 },
+      { transform: 'none' },
+    ], timing)
+    el.querySelectorAll('.arm').forEach((arm, i) => {
+      arm.animate([{ transform: 'none' }, { transform: `rotate(${i ? -26 : 26}deg)`, offset: 0.32 }, { transform: 'none' }], timing)
+    })
+  })
+})
+</script>
 </body>
 </html>

@@ -138,7 +138,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       <aside class="split-side" aria-label="온보딩 에이전트 채팅">
         <div class="chat" style="height: 1060px">
           <div class="chat-hd">
-            <span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span>
+            <span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span>
             <div style="display: flex; flex-direction: column; flex: 1; line-height: 1.25"><b>온보딩 에이전트</b><span class="caption">회사·AI팀 지식으로 답해요</span></div>
             <button class="icon-btn" type="button" aria-label="새 대화"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
           </div>
@@ -177,6 +177,28 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
       </aside>
     </div>
   </main>
+
+  <!-- 모두 완료 상태: 지금 할 일 카드가 사라지고, 머리 카드의 축하 문구 앞 아이콘 자리에 wave 48(움직임 없음). 문구는 그대로 -->
+  <section class="page" style="padding-top: 0" aria-label="모두 완료 상태">
+    <div class="split">
+      <div class="split-main" style="gap: 10px">
+        <b style="font-size: 13px; color: var(--secondary)">모두 완료 상태 · 축하 문구 앞에 wave 48</b>
+        <section class="card card-pad" style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span class="caption">2026년 12월 16일 수요일 · 입사 30일째</span>
+            <h1>하늘 님, 첫 달을 보내고 있어요</h1>
+            <p class="row" style="gap: 10px; color: var(--st-done-fg)"><span class="mascot s-48 is-wave" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><span>축하해요! 온보딩 과제를 모두 마쳤어요.</span></p>
+          </div>
+          <div style="flex: 0 1 320px; min-width: 240px; display: flex; flex-direction: column; gap: 8px">
+            <div class="between"><b style="font-size: 13px">전체 진행률</b><span style="font-family: var(--font-display); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums">100%</span></div>
+            <div class="bar"><span style="width: 100%"></span></div>
+            <span class="caption">완료 28 + 해당 없음 3 / 전체 31</span>
+          </div>
+        </section>
+      </div>
+      <div class="split-side" aria-hidden="true"></div>
+    </div>
+  </section>
 </div>
 
 </body>

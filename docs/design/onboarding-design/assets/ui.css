@@ -214,8 +214,6 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 /* Chat panel */
 .chat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);display:flex;flex-direction:column;overflow:hidden}
 .chat-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
-.chat-ava{width:32px;height:32px;border-radius:10px;overflow:hidden;flex:none}
-.chat-ava img{width:100%;height:100%;display:block;object-fit:cover}
 .chat-bd{padding:20px;display:flex;flex-direction:column;gap:16px;background:var(--surface-chat)}
 .msg-u{align-self:flex-end;max-width:85%;background:var(--primary);color:#fff;padding:10px 14px;border-radius:18px 18px 4px 18px;font-size:14px}
 .msg-a{align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:8px}
@@ -224,7 +222,7 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .src a{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 8px;border-radius:6px;background:var(--canvas);color:var(--link)}
 /* 대화 전: 본문 가운데 소개 + 추천 질문 카드. 아래 칩 줄은 첫 메시지 뒤에만 보인다 */
 .chat-empty{margin:auto 0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
-.chat-empty .chat-ava{width:44px;height:44px;border-radius:12px;margin-bottom:8px}
+.chat-empty .mascot{margin-bottom:8px}
 .chat-empty-title{font-family:var(--font-display);font-size:var(--fs-lead);font-weight:600;letter-spacing:-0.3px;margin:0}
 .chat-empty-sub{font-size:var(--fs-body);color:var(--muted);margin:0}
 .suggest-list{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:16px}
@@ -238,6 +236,70 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 .send{width:36px;height:36px;border-radius:50%;border:0;background:var(--primary);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
 .typing{display:inline-flex;gap:4px;padding:4px 0}
 .typing i{width:6px;height:6px;border-radius:50%;background:var(--tertiary)}
+
+/* Mascot — 젤리 큐브(assets/mascot/jelly-mascot-poses.html의 CSS를 옮김). 에이전트를 나타내는 자리에만 쓴다.
+   색은 --mascot-* 토큰으로만 쓰고 마스코트 밖에서는 쓰지 않는다("새 색 금지"의 유일한 예외).
+   반투명이라 card·canvas·surface-chat·selected 위에만 두고, primary 같은 진한 면 위에는 흰 바탕(.mascot-base)을 깐다. */
+:root{
+  --mascot-edge:#95ecff;
+  --mascot-fill:
+    radial-gradient(ellipse at 86% 3%,#eacfffdf,transparent 24%),
+    radial-gradient(ellipse at 22% 15%,#92efff77,transparent 32%),
+    linear-gradient(145deg,#1779eacd,#1745bfea 44%,#1256dcdd 72%,#08b6ffc9);
+  --mascot-glow-1:#d6ffffa6;--mascot-glow-2:#1edbffb8;--mascot-glow-3:#4b4dd98c;
+  --mascot-shadow:#2396ec55;
+  --mascot-highlight:#ffffffaa;--mascot-highlight-2:#efeaff99;--mascot-eye:#ffffff;
+}
+/* 크기 단계: 20 · 28 · 36 · 48 · 72 · 88 · 160. --k = size/235(원본 크기)로 안쪽 빛·테두리 두께를 맞춘다 */
+.mascot{--size:36px;--k:calc(36 / 235);position:relative;display:block;width:var(--size);height:var(--size);flex:none}
+.mascot.s-20{--size:20px;--k:calc(20 / 235)}
+.mascot.s-28{--size:28px;--k:calc(28 / 235)}
+.mascot.s-36{--size:36px;--k:calc(36 / 235)}
+.mascot.s-48{--size:48px;--k:calc(48 / 235)}
+.mascot.s-72{--size:72px;--k:calc(72 / 235)}
+.mascot.s-88{--size:88px;--k:calc(88 / 235)}
+.mascot.s-160{--size:160px;--k:calc(160 / 235)}
+/* 그림자는 64px 이상에서만. 작은 자리는 마크업에서 .shadow를 빼고, 빠뜨려도 여기서 숨긴다 */
+.mascot .shadow{position:absolute;bottom:1%;left:18%;width:64%;height:8%;border-radius:50%;background:var(--mascot-shadow);filter:blur(calc(var(--k) * 9px))}
+.mascot.s-20 .shadow,.mascot.s-28 .shadow,.mascot.s-36 .shadow,.mascot.s-48 .shadow{display:none}
+.mascot .float,.mascot .cube{position:absolute;inset:0}
+.mascot .cube{transform-origin:50% 94%}
+.mascot .face,.mascot .limb{
+  position:absolute;
+  border:max(1px,calc(var(--k) * 1px)) solid var(--mascot-edge);
+  background:var(--mascot-fill);
+  box-shadow:
+    inset calc(var(--k) * 3px) calc(var(--k) * 3px) calc(var(--k) * 6px) var(--mascot-glow-1),
+    inset calc(var(--k) * -6px) calc(var(--k) * -5px) calc(var(--k) * 9px) var(--mascot-glow-2),
+    inset calc(var(--k) * -12px) calc(var(--k) * 3px) calc(var(--k) * 18px) var(--mascot-glow-3);
+}
+.mascot .face{inset:3% 9% 13%;border-radius:21% 22% 19% 18% / 20% 22% 18% 20%;z-index:1}
+.mascot .face::before{content:"";position:absolute;inset:3% 4%;border-radius:inherit;border-top:max(1px,calc(var(--k) * 2px)) solid var(--mascot-highlight);border-right:max(1px,calc(var(--k) * 1px)) solid var(--mascot-highlight-2)}
+.mascot .eye{position:absolute;top:42%;width:8%;height:16%;border-radius:99px;background:var(--mascot-eye)}
+.mascot .eye.l{left:32%}.mascot .eye.r{right:32%}
+.mascot .limb{border-radius:46%}
+.mascot .arm{top:55%;width:12%;height:23%;transform-origin:50% 15%}
+.mascot .arm.l{left:6%;rotate:23deg}.mascot .arm.r{right:6%;rotate:-23deg}
+/* 시안 공통 .foot(페이지 아래 문구)과 이름이 겹쳐 여백을 지운다 */
+.mascot .foot{bottom:5%;width:15%;height:19%;max-width:none;margin:0;padding:0}
+.mascot .foot.l{left:25%}.mascot .foot.r{right:25%}
+/* 포즈: wave 오른팔을 들어 흔듦(환영·완료) · sit 몸을 내리고 발을 앞으로 모음(버튼 아이콘·기다림) · 기본 stand(에이전트 정체) */
+.mascot.is-wave .arm.r{right:2%;rotate:-128deg}
+.mascot.is-sit .face{inset:8% 9% 9%}
+.mascot.is-sit .arm{top:60%}
+.mascot.is-sit .foot{bottom:2%;width:19%;height:17%;z-index:2}
+.mascot.is-sit .foot.l{left:22%}.mascot.is-sit .foot.r{right:22%}
+/* 움직임: 88px 이상 자리에서만(is-idle). transform·scale·rotate만 움직이고 동작 줄이기 설정이면 모두 끈다 */
+.mascot.is-idle.s-88 .float,.mascot.is-idle.s-160 .float{animation:mascot-float 3.3s ease-in-out infinite}
+.mascot.is-idle.s-88 .eye,.mascot.is-idle.s-160 .eye{animation:mascot-blink 4.6s infinite}
+.mascot.is-idle.is-wave.s-88 .arm.r,.mascot.is-idle.is-wave.s-160 .arm.r{animation:mascot-wave 1.2s ease-in-out infinite}
+@keyframes mascot-float{50%{transform:translateY(calc(var(--k) * -10px)) rotate(-1.5deg)}}
+@keyframes mascot-blink{0%,44%,48%,100%{scale:1 1}46%{scale:1 .12}}
+@keyframes mascot-wave{50%{rotate:-146deg}}
+@media (prefers-reduced-motion:reduce){.mascot *,.mascot *::before{animation:none!important;transition:none!important}}
+/* 진한 면(primary 버튼) 위에서는 흰 원을 깔고 그 안에 둔다. 모바일 "에이전트에게 묻기" 버튼 */
+.mascot-base{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--surface);flex:none}
+.btn-ask{padding:4px 21px 4px 4px;gap:10px}
 
 /* Stat */
 .stat{display:flex;flex-direction:column;gap:6px;padding:20px 24px}

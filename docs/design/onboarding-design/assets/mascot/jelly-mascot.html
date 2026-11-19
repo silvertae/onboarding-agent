@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blueward 젤리 마스코트</title>
+<style>
+* { box-sizing: border-box }
+body { margin:0; color:#193866; font-family:Inter,system-ui,sans-serif }
+main {
+  min-height:100svh; display:grid; place-content:center; justify-items:center;
+  gap:30px; overflow:hidden;
+  background:radial-gradient(ellipse at 66% 36%,#f3efff 0,transparent 42%),
+             radial-gradient(ellipse at 30% 66%,#cdf5ff 0,transparent 50%),#edf4ff;
+}
+.stage { position:relative; padding:42px 20px 16px }
+.shadow {
+  position:absolute; bottom:3%; left:18%; width:64%; height:8%;
+  border-radius:50%; background:#2396ec55; filter:blur(9px);
+}
+button {
+  display:block; position:relative; width:min(61vw,235px); aspect-ratio:1;
+  border:0; background:none; padding:0; cursor:pointer; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+button:focus-visible { outline:2px dashed #445bc0; outline-offset:12px; border-radius:18% }
+.float,.cube { position:absolute; inset:0 }
+.float { animation:float 3.3s ease-in-out infinite }
+.cube { transform-origin:50% 94%; transition:transform .15s ease-out }
+button:active .cube { transform:scale(1.12,.81) }
+.face,.limb {
+  position:absolute; border:1px solid #95ecff;
+  background:
+    radial-gradient(ellipse at 86% 3%,#eacfffdf,transparent 24%),
+    radial-gradient(ellipse at 22% 15%,#92efff77,transparent 32%),
+    linear-gradient(145deg,#1779eacd,#1745bfea 44%,#1256dcdd 72%,#08b6ffc9);
+  box-shadow:inset 3px 3px 6px #d6ffffa6,inset -6px -5px 9px #1edbffb8,
+             inset -12px 3px 18px #4b4dd98c;
+}
+.face { inset:3% 9% 13%; border-radius:21% 22% 19% 18% / 20% 22% 18% 20% }
+.face::before {
+  content:""; position:absolute; inset:3% 4%; border-radius:inherit;
+  border-top:2px solid #ffffffaa; border-right:1px solid #efeaff99;
+}
+.eye {
+  position:absolute; top:42%; width:8%; height:16%; border-radius:99px;
+  background:#fff; animation:blink 4.6s infinite;
+}
+.eye:first-child { left:32% } .eye:last-child { right:32% }
+.limb { border-radius:46% }
+.arm { top:55%; width:12%; height:23%; transform-origin:50% 15% }
+.left { left:6%; rotate:23deg } .right { right:6%; rotate:-23deg }
+.foot { bottom:5%; width:15%; height:19% }
+.one { left:25% } .two { right:25% }
+p { margin:0; font-size:14px; color:#425b7a }
+@keyframes float {
+  50% { transform:translateY(-10px) rotate(-1.5deg) }
+}
+@keyframes blink { 0%,44%,48%,100% {scale:1 1} 46% {scale:1 .12} }
+@media(prefers-reduced-motion:reduce) {
+  *,*::before { animation:none!important; transition:none!important }
+}
+</style>
+<main>
+  <div class="stage">
+    <div class="shadow"></div>
+    <button aria-label="젤리 큐브 눌렀다 놓기">
+      <span class="float"><span class="cube">
+        <i class="limb foot one"></i><i class="limb foot two"></i>
+        <i class="limb arm left"></i><i class="limb arm right"></i>
+        <span class="face"><i class="eye"></i><i class="eye"></i></span>
+      </span></span>
+    </button>
+  </div>
+  <p>큐브를 꾹 눌렀다가 놓아보세요</p>
+</main>
+<script>
+const button = document.querySelector("button");
+const cube = document.querySelector(".cube");
+const arms = document.querySelectorAll(".arm");
+button.addEventListener("pointerdown", event => {
+  button.setPointerCapture(event.pointerId);
+  cube.getAnimations().forEach(animation => animation.cancel());
+});
+button.addEventListener("click", () => {
+  if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const timing = {duration:820, easing:"ease-in-out"};
+  cube.animate([
+    {transform:"scale(1.12,.81)"},
+    {transform:"translateY(-27px) scale(.92,1.12)", offset:.3},
+    {transform:"scale(1.06,.94)", offset:.62},
+    {transform:"scale(.98,1.03)", offset:.83},
+    {transform:"none"}
+  ],timing);
+  arms.forEach((arm,index) => {
+    arm.animate([{transform:"none"},
+      {transform:`rotate(${index ? -26 : 26}deg)`,offset:.32},
+      {transform:"none"}],timing);
+  });
+});
+</script>
+</html>
