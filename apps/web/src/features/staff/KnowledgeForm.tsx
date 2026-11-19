@@ -1,5 +1,5 @@
 import { FileText, Loader2, Sparkles } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ type Props = {
   busy?: boolean
   error?: string | null
   // resolve 모드에서만: 현재 질문으로 규정 조항에서 답 초안을 찾는다. 근거가 없으면 null, 실패하면 던진다.
-  onDraft?: (question: string) => Promise<{ answer: string; category: string } | null>
+  onDraft?: (question: string, stillCurrent: () => boolean) => Promise<{ answer: string; category: string } | null>
   // 근거 조항(AI 초안에서 받았거나 저장된 것)
   clauses?: DraftClause[]
   // 이 폼에서 AI 초안을 받았다(고쳐도 유지). 검토 안내를 보인다.
@@ -43,19 +43,27 @@ export function KnowledgeForm({ mode, initial, scopeLabel, busy, error, onDraft,
   // 질문과 답변이 공백뿐이면 저장할 수 없다(서버 resolve_unanswered도 같은 규칙).
   const ready = values.question.trim() !== '' && values.answer.trim() !== ''
   const drafting = useGuardedAction()
+  const questionRef = useRef(values.question)
   const [notFound, setNotFound] = useState(false)
   const disabled = !ready || busy || drafting.busy
 
-  const set = (key: keyof KnowledgeValues) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [key]: e.target.value }))
+  const set = (key: keyof KnowledgeValues) => (e: { target: { value: string } }) => {
+    if (key === 'question') questionRef.current = e.target.value
+    setValues((v) => ({ ...v, [key]: e.target.value }))
+  }
 
   async function findDraft() {
     if (!onDraft) return
     setNotFound(false)
     let found = false
     const ok = await drafting.run(async () => {
-      const draft = await onDraft(values.question.trim())
+      const sent = values.question.trim()
+      const stillCurrent = () => questionRef.current.trim() === sent
+      const draft = await onDraft(sent, stillCurrent)
       if (!draft) return
-      found = true
+      found = true // 초안이 왔다(버려도 "근거 없음" 안내는 아니다)
+      // 질문이 바뀌었으면 이 초안은 다른 질문의 것이다. 버린다.
+      if (!stillCurrent()) return
       setValues((v) => ({ ...v, answer: draft.answer, category: draft.category.trim() || v.category }))
     })
     if (ok && !found) setNotFound(true)
@@ -73,7 +81,7 @@ export function KnowledgeForm({ mode, initial, scopeLabel, busy, error, onDraft,
           <label htmlFor={`${id}-q`} className="text-sm font-semibold">
             질문
           </label>
-          <Input id={`${id}-q`} value={values.question} onChange={set('question')} maxLength={300} disabled={busy} />
+          <Input id={`${id}-q`} value={values.question} onChange={set('question')} maxLength={300} disabled={busy || drafting.busy} />
         </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-2">

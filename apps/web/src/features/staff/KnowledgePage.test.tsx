@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
@@ -417,6 +417,32 @@ describe('KnowledgePage (S10) 규정에서 답 초안 찾기', () => {
     expect(within(form()).getByRole('note')).toBeInTheDocument()
     await user.click(within(form()).getByRole('button', { name: '게시' }))
     expect(actions.resolve).toHaveBeenCalledWith('u2', expect.anything(), { clauseIds: ['c1'], origin: 'ai_draft' })
+  })
+
+  it('찾는 중에는 질문 칸이 잠긴다', async () => {
+    draftAnswer.mockReturnValue(new Promise(() => {}))
+    const user = await openResolve()
+    await user.click(findButton())
+    expect(within(form()).getByLabelText('질문')).toBeDisabled()
+  })
+
+  it('응답이 올 때 질문이 바뀌어 있으면 초안을 버리고 출처도 남기지 않는다', async () => {
+    draftAnswer.mockImplementation(async () => {
+      fireEvent.change(within(form()).getByLabelText('질문'), { target: { value: '다른 질문' } })
+      return DRAFT
+    })
+    const user = await openResolve()
+    await user.click(findButton())
+    await waitFor(() => expect(within(form()).queryByRole('status')).not.toBeInTheDocument())
+
+    expect(draftAnswer).toHaveBeenCalledTimes(1)
+    expect(within(form()).getByLabelText('답변')).toHaveValue('')
+    expect(within(form()).queryByRole('note')).not.toBeInTheDocument()
+    expect(within(form()).queryByText('근거 조항')).not.toBeInTheDocument()
+    expect(within(form()).queryByRole('status')).not.toBeInTheDocument()
+    await user.type(within(form()).getByLabelText('답변'), '직접')
+    await user.click(within(form()).getByRole('button', { name: '게시' }))
+    expect(actions.resolve).toHaveBeenCalledWith('u2', { question: '다른 질문', answer: '직접', category: '' })
   })
 
   it('근거가 없으면 안내만 보이고 칸은 그대로다', async () => {

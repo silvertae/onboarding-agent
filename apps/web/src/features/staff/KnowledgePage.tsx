@@ -102,11 +102,11 @@ export function KnowledgePage() {
   // 문서 목록을 불러오는 중이거나 실패했을 때는 막지 않는다(서버가 근거 없음으로 답한다).
   const noDocuments = documentsQuery.data !== undefined && !documentsQuery.data.some((d) => d.status === 'ready')
 
-  async function onDraft(question: string) {
+  async function onDraft(question: string, stillCurrent: () => boolean) {
     const seq = formSeq.current
     try {
       const found = await draftAnswer(question)
-      if (found && seq === formSeq.current) setDraft({ clauses: found.clauses })
+      if (found && seq === formSeq.current && stillCurrent()) setDraft({ clauses: found.clauses })
       return found
     } catch (err) {
       throw new Error(agentMessage(err))
