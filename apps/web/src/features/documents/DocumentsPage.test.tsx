@@ -89,8 +89,10 @@ const FAILED = doc({
   file_type: 'pdf',
   status: 'failed',
   clause_count: 0,
-  error: '글자를 읽을 수 없는 파일이에요. 스캔한 PDF는 읽지 못해요. 글자가 들어 있는 docx나 pdf로 다시 올려 주세요.',
+  // 서버가 저장하는 짧은 문구(services/agent UNREADABLE). 화면은 S14의 긴 문구로 바꿔 보여 준다.
+  error: '글자를 읽을 수 없는 파일이에요',
 })
+const UNREADABLE_LONG = '글자를 읽을 수 없는 파일이에요. 스캔한 PDF는 읽지 못해요. 글자가 들어 있는 docx나 pdf로 다시 올려 주세요.'
 const TEAM_DOC = doc({ id: 'd4', title: '팀 온보딩 가이드(가상)', scope: 'team', team_id: 'team-ai', uploaded_by: 'u-tr' })
 
 const CLAUSES: DocumentClause[] = [
@@ -252,7 +254,7 @@ describe('S14 상세 패널', () => {
     const panel = screen.getByRole('complementary', { name: '출장 규정 스캔본' })
     const note = within(panel).getByRole('note')
     expect(note).toHaveAttribute('data-slot', 'alert')
-    expect(note).toHaveTextContent(FAILED.error!)
+    expect(note).toHaveTextContent(UNREADABLE_LONG)
     expect(within(panel).getByRole('button', { name: '지우기' })).toBeInTheDocument()
 
     let finish: () => void = () => {}
@@ -368,8 +370,19 @@ describe('S14 지식 초안 만들기', () => {
     await userEvent.click(screen.getByRole('button', { name: '지식 초안 만들기' }))
     const ok = await screen.findByText('지식 초안 5개를 만들었어요. 검토하고 게시해야 신입에게 보여요.')
     expect(ok.closest('[role="status"]')).not.toBeNull()
-    expect(screen.getByRole('link', { name: '지식 관리에서 검토하기' })).toHaveAttribute('href', '/knowledge')
+    expect(screen.getByRole('link', { name: '지식 관리에서 검토하기' })).toHaveAttribute('href', '/knowledge?tab=knowledge&filter=ai')
     expect(screen.getByRole('button', { name: '지식 초안 만들기' })).toBeEnabled()
+  })
+
+  it('새로 만들 초안이 없으면(0개) 오류가 아닌 안내와 같은 링크를 보여 준다', async () => {
+    mocks.makeKnowledgeDrafts.mockResolvedValueOnce(0)
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: '지식 초안 만들기' }))
+    const info = await screen.findByText('새로 만들 초안이 없어요. 만든 초안은 지식 관리에서 검토해 주세요.')
+    expect(info.closest('[role="status"]')).not.toBeNull()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText(/개를 만들었어요/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '지식 관리에서 검토하기' })).toHaveAttribute('href', '/knowledge?tab=knowledge&filter=ai')
   })
 
   it('실패하면 실패 문구가 보인다', async () => {

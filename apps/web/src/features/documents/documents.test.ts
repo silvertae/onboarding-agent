@@ -222,7 +222,13 @@ describe('makeKnowledgeDrafts', () => {
     expect(calls[1]).toEqual({ table: 'rpc:save_knowledge_drafts', op: 'rpc', args: [{ p_items: drafts }] })
   })
 
-  it.each([{}, { drafts: [] }, { drafts: 'x' }])('drafts가 없거나 비면 저장하지 않고 던진다 %j', async (body) => {
+  it('drafts가 빈 배열이면 저장하지 않고 0을 돌려준다', async () => {
+    agentFetch.mockResolvedValue(new Response(JSON.stringify({ drafts: [] })))
+    await expect(makeKnowledgeDrafts('d1')).resolves.toBe(0)
+    expect(calls.some((c) => c.table.startsWith('rpc:'))).toBe(false)
+  })
+
+  it.each([{}, { drafts: 'x' }])('drafts가 없거나 배열이 아니면 저장하지 않고 던진다 %j', async (body) => {
     agentFetch.mockResolvedValue(new Response(JSON.stringify(body)))
     await expect(makeKnowledgeDrafts('d1')).rejects.toThrow('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')
     expect(calls.some((c) => c.table.startsWith('rpc:'))).toBe(false)

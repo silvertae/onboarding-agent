@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Loader2, Sparkles, Trash2, Upload } from 'lucide-react'
+import { AlertCircle, Check, Info, Loader2, Sparkles, Trash2, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth, type Profile } from '@/app/AuthProvider'
@@ -39,6 +39,11 @@ const STATUS: Record<DocStatus, { variant: 'submitted' | 'done' | 'rework'; text
 
 const FAILED_FALLBACK = '문서를 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const STALE_FAILED = FAILED_FALLBACK
+// 서버는 짧은 문구를 저장한다. S14는 스캔 PDF 안내까지 담은 긴 문구를 보여 준다.
+const UNREADABLE_SHORT = '글자를 읽을 수 없는 파일이에요'
+const UNREADABLE_LONG = '글자를 읽을 수 없는 파일이에요. 스캔한 PDF는 읽지 못해요. 글자가 들어 있는 docx나 pdf로 다시 올려 주세요.'
+const DRAFTS_NONE = '새로 만들 초안이 없어요. 만든 초안은 지식 관리에서 검토해 주세요.'
+const REVIEW_LINK = '/knowledge?tab=knowledge&filter=ai'
 const DRAFT_FAILED = '초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.'
 const DELETE_FAILED = '지우지 못했어요. 잠시 후 다시 시도해 주세요.'
 
@@ -297,7 +302,7 @@ function DocumentPanel({
     const timer = setTimeout(() => setTick((n) => n + 1), Math.max(left, 0))
     return () => clearTimeout(timer)
   }, [doc.status, doc.created_at, stale])
-  const notice = ready ? null : (indexError ?? (failed ? (doc.error ?? FAILED_FALLBACK) : stale ? STALE_FAILED : null))
+  const notice = ready ? null : (indexError ?? (failed ? (doc.error === UNREADABLE_SHORT ? UNREADABLE_LONG : (doc.error ?? FAILED_FALLBACK)) : stale ? STALE_FAILED : null))
 
   return (
     <aside aria-labelledby={titleId} className="rounded-[18px] border border-border bg-card">
@@ -379,11 +384,11 @@ function DocumentPanel({
                 신입이 물을 만한 질문과 답을 조항 근거와 함께 5개까지 만들어요. 초안은 지식 관리에 저장되고, 검토한 뒤 게시해야 신입에게 보여요.
               </p>
               {draft?.kind === 'ok' && (
-                <Alert variant="success" role="status">
-                  <Check aria-hidden />
+                <Alert variant={draft.count > 0 ? 'success' : 'info'} role="status">
+                  {draft.count > 0 ? <Check aria-hidden /> : <Info aria-hidden />}
                   <AlertDescription className="flex flex-col gap-1">
-                    <span>지식 초안 {draft.count}개를 만들었어요. 검토하고 게시해야 신입에게 보여요.</span>
-                    <Link to="/knowledge" className="font-semibold">
+                    <span>{draft.count > 0 ? `지식 초안 ${draft.count}개를 만들었어요. 검토하고 게시해야 신입에게 보여요.` : DRAFTS_NONE}</span>
+                    <Link to={REVIEW_LINK} className="font-semibold">
                       지식 관리에서 검토하기
                     </Link>
                   </AlertDescription>
