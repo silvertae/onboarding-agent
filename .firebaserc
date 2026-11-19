@@ -1,7 +1,7 @@
 {
   "projects": {
     "staging": "blueward-onboarding-stg",
-    "prod": "REPLACE_ME_PROD_GCP_PROJECT_ID"
+    "prod": "blueward-onboarding-prod"
   },
   "targets": {
     "blueward-onboarding-stg": {
@@ -9,9 +9,9 @@
         "staging": ["blueward-onboarding-stg-web"]
       }
     },
-    "REPLACE_ME_PROD_GCP_PROJECT_ID": {
+    "blueward-onboarding-prod": {
       "hosting": {
-        "prod": ["REPLACE_ME_PROD_SITE_ID"]
+        "prod": ["blueward-onboarding"]
       }
     }
   }
