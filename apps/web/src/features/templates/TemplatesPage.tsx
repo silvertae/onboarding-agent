@@ -198,7 +198,7 @@ export function TemplatesPage() {
         </Alert>
       )}
 
-      <div className="grid items-start gap-6 md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
         <section aria-label={`${scopeName} 온보딩 과제`} className="overflow-hidden rounded-[18px] border border-border bg-card">
           <div className="border-b border-border px-5 py-4">
             <SegmentedRadio name="template-view" label="과제 보기" options={VIEW_OPTIONS} value={view} onChange={changeView} />

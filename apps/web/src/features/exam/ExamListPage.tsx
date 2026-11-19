@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus } from '@/components/LoadingStatus'
 import { PageHeader } from '@/components/PageHeader'
+import { RowMeta, WIDE_CELL } from '@/components/RowMeta'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,9 +16,9 @@ function ListHeader() {
     <TableHeader>
       <TableRow>
         <TableHead className="pl-6">제목</TableHead>
-        <TableHead>주제</TableHead>
-        <TableHead>난이도</TableHead>
-        <TableHead>문항 수</TableHead>
+        <TableHead className={WIDE_CELL}>주제</TableHead>
+        <TableHead className={WIDE_CELL}>난이도</TableHead>
+        <TableHead className={WIDE_CELL}>문항 수</TableHead>
         <TableHead className="pr-6">상태</TableHead>
       </TableRow>
     </TableHeader>
@@ -38,13 +39,13 @@ function ExamListSkeleton() {
               <TableCell className="pl-6">
                 <Skeleton className={`h-4 ${w}`} />
               </TableCell>
-              <TableCell>
+              <TableCell className={WIDE_CELL}>
                 <Skeleton className="h-4 w-32" />
               </TableCell>
-              <TableCell>
+              <TableCell className={WIDE_CELL}>
                 <Skeleton className="h-4 w-10" />
               </TableCell>
-              <TableCell>
+              <TableCell className={WIDE_CELL}>
                 <Skeleton className="h-4 w-6" />
               </TableCell>
               <TableCell className="pr-6">
@@ -62,7 +63,7 @@ export function ExamListPage() {
   const exams = useExams()
 
   return (
-    <main className="mx-auto grid max-w-[1376px] gap-6 p-6 lg:p-8">
+    <main className="mx-auto grid max-w-[1376px] grid-cols-1 gap-6 p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="시험 출제"
         description="주제와 난이도를 넣으면 문제·모범 답안·채점 기준 초안을 만들어 드려요."
@@ -91,12 +92,13 @@ export function ExamListPage() {
             <TableBody>
               {exams.data.map((exam) => (
                 <TableRow key={exam.id}>
-                  <TableCell className="pl-6 font-medium">
+                  <TableCell className="pl-6 font-medium whitespace-normal">
                     <Link to={`/team/exams/${exam.id}`}>{exam.title}</Link>
+                    <RowMeta items={[exam.topic, DIFFICULTY_LABEL[exam.difficulty], `${exam.question_count}문항`]} />
                   </TableCell>
-                  <TableCell>{exam.topic}</TableCell>
-                  <TableCell>{DIFFICULTY_LABEL[exam.difficulty]}</TableCell>
-                  <TableCell>{exam.question_count}</TableCell>
+                  <TableCell className={WIDE_CELL}>{exam.topic}</TableCell>
+                  <TableCell className={WIDE_CELL}>{DIFFICULTY_LABEL[exam.difficulty]}</TableCell>
+                  <TableCell className={WIDE_CELL}>{exam.question_count}</TableCell>
                   <TableCell className="pr-6">
                     <Badge variant={exam.status === 'final' ? 'done' : 'todo'}>{EXAM_STATUS_LABEL[exam.status]}</Badge>
                   </TableCell>

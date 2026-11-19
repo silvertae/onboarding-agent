@@ -161,6 +161,16 @@ describe('S14 규정 문서 표', () => {
     expect(failed.getByText('—')).toBeInTheDocument()
   })
 
+  it('좁은 화면: 범위 칸은 숨고 문서 이름 아래 정보 줄 앞에 붙는다. 긴 이름도 줄을 바꾼다', () => {
+    renderPage()
+    const table = screen.getByRole('table', { name: '규정 문서 목록' })
+    expect(within(table).getByRole('columnheader', { name: '범위' })).toHaveClass('hidden', 'sm:table-cell')
+    const first = within(table).getAllByRole('row')[1]
+    expect(within(first).getByText('회사 공통 ·')).toHaveClass('sm:hidden')
+    // 띄어쓰기 없는 긴 이름도 표 칸을 넓히지 않고 줄을 바꾼다
+    expect(within(first).getByRole('button', { name: '복리후생 규정(가상)' })).toHaveClass('wrap-anywhere')
+  })
+
   it('머리글에 문서 수가 보이고, 경영지원 설명과 "문서 올리기"(outline)가 있다', () => {
     renderPage()
     expect(screen.getByRole('heading', { name: '규정 문서', level: 1 })).toBeInTheDocument()

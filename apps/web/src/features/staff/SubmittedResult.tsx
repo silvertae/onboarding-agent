@@ -42,7 +42,7 @@ export function SubmittedResult({ task, hire }: { task: TaskView; hire?: Hire })
 
   return (
     <div>
-      <dl className="grid grid-cols-[minmax(96px,max-content)_1fr] gap-x-4 gap-y-1.5 text-sm">
+      <dl className="grid grid-cols-[minmax(96px,max-content)_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
         {rows.map((row) => (
           <div key={row.key} className="contents">
             <dt className="break-keep text-muted-foreground">{row.label}</dt>

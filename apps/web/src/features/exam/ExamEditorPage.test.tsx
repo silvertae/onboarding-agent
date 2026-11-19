@@ -121,6 +121,12 @@ beforeEach(() => {
 })
 
 describe('ExamEditorPage', () => {
+  it('문항이 없을 때 안내는 좁은 화면에서 "위에서", 넓은 화면(lg)에서 "왼쪽에서"다(출제 조건 위치)', () => {
+    renderAt('/team/exams/new')
+    expect(screen.getByText('위에서')).toHaveClass('lg:hidden')
+    expect(screen.getByText('왼쪽에서')).toHaveClass('hidden', 'lg:inline')
+  })
+
   it('주제가 비어 있거나 공백이면 "초안 만들기"가 비활성이다', async () => {
     renderAt('/team/exams/new')
     const button = screen.getByRole('button', { name: '초안 만들기' })

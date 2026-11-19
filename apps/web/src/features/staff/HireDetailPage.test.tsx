@@ -130,6 +130,19 @@ describe('HireDetailPage (S6)', () => {
     expect(screen.getByRole('table', { name: '팀 과제' })).toHaveTextContent('BTP 개발 초기 세팅')
   })
 
+  it('좁은 화면: 단계·상태·기한 칸은 숨고, 그 값을 과제 칸 아래 한 줄로 보여 준다', () => {
+    renderPage([survey('todo'), btp, codingTest, jsTest, opsTask])
+    const table = screen.getByRole('table', { name: '팀 과제' })
+    for (const name of ['단계', '상태', '기한·제출']) {
+      expect(within(table).getByRole('columnheader', { name })).toHaveClass('hidden', 'sm:table-cell')
+    }
+    const row = within(table).getAllByRole('row').find((r) => r.textContent?.includes('BTP 개발 초기 세팅'))!
+    const meta = within(within(row).getAllByRole('cell')[1]).getByTestId('row-meta')
+    expect(meta).toHaveClass('sm:hidden')
+    expect(meta).toHaveTextContent('첫 주')
+    expect(meta).toHaveTextContent('기한')
+  })
+
   it('AI-04 제출 결과의 stacks·experience·career를 보여 준다', () => {
     renderPage([
       survey('done', { stacks: 'JavaScript, React', experience: '학부 연구실 웹 프론트엔드', career: '신입' }),

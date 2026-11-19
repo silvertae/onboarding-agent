@@ -239,6 +239,28 @@ describe('OpsInboxPage (S9)', () => {
   })
 
   // 선택 행 배경을 tr에 칠하면 칸 경계(소수점 너비)에 흰 세로줄이 생긴다. 칸(td)에 칠하고 1px 그림자로 이음새를 덮는다.
+  it('좁은 화면: 입사자·상태·제출 시각·기한 칸은 숨고, 그 값을 과제 칸 아래 한 줄로 보여 준다', () => {
+    renderPage()
+    const table = screen.getByRole('table', { name: '업무 목록' })
+    for (const name of ['입사자', '상태', '제출 시각', '기한']) {
+      expect(within(table).getByRole('columnheader', { name })).toHaveClass('hidden', 'sm:table-cell')
+    }
+    const row = bodyRows().find((r) => r.textContent?.includes('명함 신청'))!
+    const taskCell = within(row).getAllByRole('cell')[1]
+    expect(taskCell).toHaveTextContent('명함 신청')
+    const meta = within(taskCell).getByTestId('row-meta')
+    expect(meta).toHaveClass('sm:hidden')
+    expect(meta).toHaveTextContent('확인 대기')
+    expect(meta).toHaveTextContent('김하늘')
+    expect(meta).toHaveTextContent('제출')
+  })
+
+  it('좁은 화면 메타 줄에서도 기한 지남은 빨간 굵은 글자다', () => {
+    renderPage([makeTask({ id: 'late', new_hire_id: 'h1', status: 'submitted', due_date: '2020-01-02', template: { title: '늦은 과제' } })])
+    const meta = within(bodyRows()[0]).getByTestId('row-meta')
+    expect(within(meta).getByText('기한 1/2 지남')).toHaveClass('font-semibold', 'text-destructive')
+  })
+
   it('선택한 행은 aria-selected이고 배경을 칸(td)에 칠한다', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -333,13 +355,27 @@ describe('OpsInboxPage (S9) 입사자별 탭', () => {
     await openHiresTab([...ALL, otherDeptOnly, naTask])
 
     const rows = hireRows()
-    expect(rows.map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['이도윤AI팀', '김하늘AI팀', '정민서AI팀'])
+    expect(rows.map((r) => within(r).getAllByRole('cell')[0].querySelector('b')?.textContent)).toEqual(['이도윤', '김하늘', '정민서'])
     // 이도윤: 해당 없음 1개 → 1 / 1, 김하늘: 완료 1 / 총무 과제 3(인사·팀 과제 제외), 확인 대기 1
     expect(rows[0]).toHaveTextContent('1 / 1')
     expect(within(rows[1]).getByText('1 / 3')).toBeInTheDocument()
     expect(within(rows[1]).getAllByRole('cell')[3]).toHaveTextContent('1')
     expect(within(rows[0]).getAllByRole('cell')[3]).toHaveTextContent('0')
     expect(screen.getByRole('table', { name: '입사자 목록' })).not.toHaveTextContent('최유나')
+  })
+
+  it('좁은 화면: 입사일·확인 대기 칸과 진행 막대는 숨고, 입사일·확인 대기는 이름 아래 한 줄로 보여 준다', async () => {
+    await openHiresTab()
+    const table = screen.getByRole('table', { name: '입사자 목록' })
+    for (const name of ['입사일', '확인 대기']) {
+      expect(within(table).getByRole('columnheader', { name })).toHaveClass('hidden', 'sm:table-cell')
+    }
+    const row = hireRows().find((r) => r.textContent?.includes('김하늘'))!
+    const meta = within(within(row).getAllByRole('cell')[0]).getByTestId('row-meta')
+    expect(meta).toHaveClass('sm:hidden')
+    expect(meta).toHaveTextContent('11월 14일 입사')
+    expect(meta).toHaveTextContent('확인 대기 1')
+    expect(within(row).getByRole('progressbar').parentElement).toHaveClass('hidden', 'sm:block')
   })
 
   it('입사자별 탭에는 입사자 드롭다운이 없다', async () => {

@@ -6,6 +6,7 @@ import type { Enums } from '@/lib/database.types'
 import { FilterChips } from '@/components/FilterChips'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
+import { RowMeta, WIDE_CELL } from '@/components/RowMeta'
 import { PageHeader } from '@/components/PageHeader'
 import { ROW_SELECTED } from '@/components/tableRow'
 import { Alert } from '@/components/ui/alert'
@@ -101,7 +102,7 @@ export function UsersPage() {
 
       {notice && <NoticeBanner notice={notice} />}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="overflow-hidden rounded-[18px] border border-border bg-card">
           <FilterChips
             label="역할 필터"
@@ -118,11 +119,11 @@ export function UsersPage() {
                 rows={6}
                 columns={[
                   { label: '이름', className: 'font-medium' },
-                  { label: '메일', className: 'font-medium' },
+                  { label: '메일', className: cn('font-medium', WIDE_CELL) },
                   { label: '역할', className: 'font-medium' },
-                  { label: '부서·팀', className: 'font-medium' },
-                  { label: '입사일', className: 'font-medium' },
-                  { label: '기본 계정', className: 'font-medium' },
+                  { label: '부서·팀', className: cn('font-medium', WIDE_CELL) },
+                  { label: '입사일', className: cn('font-medium', WIDE_CELL) },
+                  { label: '기본 계정', className: cn('font-medium', WIDE_CELL) },
                 ]}
               />
             </LoadingStatus>
@@ -138,11 +139,11 @@ export function UsersPage() {
                 <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                   <tr>
                     <th className="px-4 py-3 font-medium">이름</th>
-                    <th className="px-4 py-3 font-medium">메일</th>
+                    <th className={cn('px-4 py-3 font-medium', WIDE_CELL)}>메일</th>
                     <th className="px-4 py-3 font-medium">역할</th>
-                    <th className="px-4 py-3 font-medium">부서·팀</th>
-                    <th className="px-4 py-3 font-medium">입사일</th>
-                    <th className="px-4 py-3 font-medium">기본 계정</th>
+                    <th className={cn('px-4 py-3 font-medium', WIDE_CELL)}>부서·팀</th>
+                    <th className={cn('px-4 py-3 font-medium', WIDE_CELL)}>입사일</th>
+                    <th className={cn('px-4 py-3 font-medium', WIDE_CELL)}>기본 계정</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -157,12 +158,13 @@ export function UsersPage() {
                               새로 만듦
                             </span>
                           )}
+                          <RowMeta className="wrap-anywhere" items={[u.email, placement(u, teamNames)]} />
                         </td>
-                        <td className="px-4 py-3 font-mono text-label">{u.email}</td>
-                        <td className="px-4 py-3">{ROLE_LABEL[u.role]}</td>
-                        <td className="px-4 py-3">{placement(u, teamNames)}</td>
-                        <td className="px-4 py-3">{shortDate(u.hire_date)}</td>
-                        <td className={cn('px-4 py-3', !u.is_seed && 'text-muted-foreground')}>
+                        <td className={cn('px-4 py-3 font-mono text-label', WIDE_CELL)}>{u.email}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{ROLE_LABEL[u.role]}</td>
+                        <td className={cn('px-4 py-3', WIDE_CELL)}>{placement(u, teamNames)}</td>
+                        <td className={cn('px-4 py-3', WIDE_CELL)}>{shortDate(u.hire_date)}</td>
+                        <td className={cn('px-4 py-3', WIDE_CELL, !u.is_seed && 'text-muted-foreground')}>
                           {u.is_seed ? '예' : '아니요'}
                         </td>
                       </tr>

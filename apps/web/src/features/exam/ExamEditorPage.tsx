@@ -71,7 +71,7 @@ function generateError(error: unknown): { text: string; retry: boolean } {
   return { text: GENERATE_RETRY_MESSAGE, retry: true }
 }
 
-const PAGE = 'mx-auto grid max-w-[1376px] gap-6 p-6 lg:p-8'
+const PAGE = 'mx-auto grid max-w-[1376px] grid-cols-1 gap-6 p-4 sm:p-6 lg:p-8'
 
 function BackLink() {
   return (
@@ -101,7 +101,7 @@ function ExamEditorSkeleton() {
           </LoadingStatus>
         </div>
       </div>
-      <div aria-hidden="true" className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
+      <div aria-hidden="true" className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="grid gap-4 rounded-[18px] border border-border bg-card p-5">
           <Skeleton className="h-5 w-20" />
           {Array.from({ length: 4 }, (_, i) => (
@@ -450,7 +450,7 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
         </Alert>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="grid gap-4">
           <section aria-labelledby="exam-conditions" className="grid gap-4 rounded-[18px] border border-border bg-card p-5">
             <h2 id="exam-conditions" className="font-semibold">출제 조건</h2>
@@ -562,7 +562,8 @@ function ExamEditor({ initial }: { initial?: ExamWithQuestions }) {
           </div>
           {empty && (
             <p className={cn('rounded-[18px] border border-dashed border-border px-6 py-16 text-center text-sm text-muted-foreground')}>
-              왼쪽에서 출제 조건을 넣고 "문제은행에서 채우기"나 "초안 만들기"를 누르면 문항이 여기에 나타나요.
+              <span className="lg:hidden">위에서</span>
+              <span className="hidden lg:inline">왼쪽에서</span> 출제 조건을 넣고 "문제은행에서 채우기"나 "초안 만들기"를 누르면 문항이 여기에 나타나요.
             </p>
           )}
           {items.map((q, index) => (

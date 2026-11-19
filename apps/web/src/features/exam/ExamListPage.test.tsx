@@ -47,6 +47,17 @@ describe('ExamListPage', () => {
     expect(within(screen.getByRole('row', { name: /JS 기본기/ })).getByText('초안')).toBeInTheDocument()
   })
 
+  it('좁은 화면: 주제·난이도·문항 수 칸은 숨고, 그 값을 제목 아래 한 줄로 보여 준다', () => {
+    state.exams = [exam({ id: 'e2', title: 'UI5 바인딩', topic: 'UI5', difficulty: 'intermediate', status: 'final', question_count: 6 })]
+    renderList()
+    for (const name of ['주제', '난이도', '문항 수']) {
+      expect(screen.getByRole('columnheader', { name })).toHaveClass('hidden', 'sm:table-cell')
+    }
+    const meta = within(screen.getByRole('row', { name: /UI5 바인딩/ })).getByTestId('row-meta')
+    expect(meta).toHaveClass('sm:hidden')
+    expect(meta).toHaveTextContent('UI5 · 중급 · 6문항')
+  })
+
   it('시험이 없으면 빈 상태 안내를 보인다', () => {
     state.exams = []
     renderList()

@@ -172,7 +172,7 @@ export function TaskDetailPage() {
             <MessageSquare aria-hidden />이 과제에 대해 물어보기
           </Button>
           {actionable ? (
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
               {t.completion_mode === 'confirm' && (
                 <span className="text-xs text-muted-foreground">제출하면 {ownerName}이 확인해요</span>
               )}

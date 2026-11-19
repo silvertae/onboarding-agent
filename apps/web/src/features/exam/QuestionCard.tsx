@@ -54,7 +54,7 @@ function BankQuestionFields({ idPrefix, question, disabled, onChange, metaFields
         <Label htmlFor={field('prompt')} className="mb-1">문제</Label>
         <Textarea id={field('prompt')} disabled={disabled} value={question.prompt} rows={4} onChange={(e) => onChange({ ...question, prompt: e.target.value })} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor={field('model_answer')} className="mb-1">모범 답안</Label>
           <Textarea id={field('model_answer')} disabled={disabled} value={question.model_answer} rows={3} onChange={(e) => onChange({ ...question, model_answer: e.target.value })} />
