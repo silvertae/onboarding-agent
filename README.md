@@ -27,21 +27,21 @@
 
 ### 신입: 오늘 할 일과 궁금한 것을 한 화면에서
 
-<img src="docs/images/newhire-mobile.png" width="220" align="right" alt="모바일 신입 화면: 진행률, 지금 할 일, 에이전트에게 묻기 버튼">
-
 - **타임라인**: 경영지원 과제 21개와 팀 과제 10개(총 31개)를 입사일·첫 주·첫 달로 나눠 보여 줍니다. 선행 과제가 끝나면 다음 과제가 열리고, 담당자 처리 결과는 새로고침 없이 반영됩니다.
 - **과제 제출과 서식**: 과제 상세에서 담당자가 올린 서식(Word·Excel·PDF)을 내려받고, 다 하면 제출합니다. 서류 원본은 받지 않고 제출 여부만 확인합니다.
 - **AI 채팅**: 게시된 사내 지식, 규정 문서 조항, 본인 과제만 근거로 답하고 출처를 붙입니다. 근거가 없으면 지어내지 않고 "확인되지 않은 내용이에요."라고 답하며, 신입이 원할 때만 "담당자에게 등록 요청"으로 질문을 넘깁니다.
-- **모바일**: 신입 화면은 휴대폰 폭에서도 쓸 수 있습니다.
+- **모바일**: 신입 화면은 휴대폰 폭에서도 쓸 수 있고, 채팅은 "에이전트에게 묻기" 버튼으로 엽니다.
 
-<br clear="right">
-
-<p>
-  <img src="docs/images/newhire-task-forms.png" width="58%" alt="과제 상세: 작성할 서식을 내려받고 제출">
-  <img src="docs/images/newhire-clause.png" width="38%" alt="규정 원문 창: 답의 근거가 된 조항 원문">
-</p>
-
-<sub>왼쪽: 과제 상세에서 작성할 서식을 내려받습니다. 오른쪽: 채팅 답변 아래 "규정 원문"을 누르면 근거 조항의 원문이 열립니다.</sub>
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/newhire-task-forms.png" alt="과제 상세: 작성할 서식을 내려받고 제출"><br><sub>과제 상세: 담당자가 붙인 서식을 내려받고 제출</sub></td>
+    <td width="50%"><img src="docs/images/newhire-clause.png" alt="규정 원문 창: 답의 근거가 된 조항 원문"><br><sub>답변 아래 "규정 원문"을 누르면 근거 조항 원문이 열림</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/newhire-unanswered.png" alt="근거가 없는 질문에 확인되지 않은 내용이라고 답하고 담당자에게 등록 요청 버튼을 보여 줌"><br><sub>근거가 없으면 지어내지 않고, 신입이 원하면 담당자에게 등록 요청</sub></td>
+    <td width="50%"><img src="docs/images/newhire-mobile.png" alt="모바일 신입 화면과 모바일 채팅: 취업규칙 조항을 근거로 연차를 답함"><br><sub>모바일: 지금 할 일과 채팅(취업규칙 제21조 근거)</sub></td>
+  </tr>
+</table>
 
 ### 경영지원(인사·총무·회계): 우리 부서 일만, 정해진 규칙대로
 
@@ -49,16 +49,16 @@
 - **규정 문서**: 회사 공통 규정 문서(docx·pdf)를 올리면 조항으로 나눠 두고, 신입 채팅이 그 조항을 근거로 답합니다. "지식 초안 만들기"를 누르면 조항을 근거로 한 질문·답 초안을 5개까지 만들고, 담당자가 지식 관리에서 "AI 작성" 표시를 확인한 뒤 게시합니다.
 - **온보딩 과제**: 부서 과제를 추가·수정·보관하고 서식을 붙입니다. 진행 중인 신입이 있는 과제는 제목과 안내문만 고칠 수 있고, 새 과제는 이후 온보딩을 시작하는 신입부터 들어갑니다. 특정 신입 한 명에게만 과제를 더할 수도 있습니다.
 
-<p>
-  <img src="docs/images/ops-inbox.png" width="49%" alt="총무팀 업무함: 신입이 제출한 명함 신청을 확인하거나 보완 요청">
-  <img src="docs/images/ops-documents.png" width="49%" alt="규정 문서: 복리후생 규정(가상)을 조항 16개로 나눠 둔 화면">
-</p>
-<p>
-  <img src="docs/images/ops-knowledge-drafts.png" width="49%" alt="지식 관리: 규정 조항을 근거로 만든 AI 작성 초안 목록">
-  <img src="docs/images/staff-tasks.png" width="49%" alt="온보딩 과제: 진행 중인 신입이 있어 제목·안내문만 고칠 수 있는 과제와 기본 서식">
-</p>
-
-<sub>위 왼쪽부터 부서 업무함(제출 내용 확인·보완 요청), 규정 문서(조항 목록과 지식 초안 만들기), 지식 관리의 AI 초안(근거 조항 표시, 게시 전), 온보딩 과제(사용 중 잠금과 서식).</sub>
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/ops-inbox.png" alt="총무팀 업무함: 신입이 제출한 명함 신청을 확인하거나 보완 요청"><br><sub>부서 업무함: 제출 내용을 보고 확인(완료 처리) 또는 보완 요청</sub></td>
+    <td width="50%"><img src="docs/images/ops-documents.png" alt="규정 문서: 복리후생 규정(가상)을 조항 16개로 나눠 둔 화면"><br><sub>규정 문서: 올린 문서를 조항으로 나누고 "지식 초안 만들기"</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/ops-knowledge-drafts.png" alt="지식 관리: 규정 조항을 근거로 만든 AI 작성 초안 목록"><br><sub>지식 관리: 근거 조항이 붙은 "AI 작성" 초안을 검토하고 게시</sub></td>
+    <td width="50%"><img src="docs/images/staff-tasks.png" alt="온보딩 과제: 진행 중인 신입이 있어 제목·안내문만 고칠 수 있는 과제"><br><sub>온보딩 과제: 진행 중인 신입이 있으면 제목·안내문만 수정</sub></td>
+  </tr>
+</table>
 
 ### 교육 담당자: 팀 신입 관리와 AI 출제 도우미
 
@@ -66,23 +66,28 @@
 - **시험 출제**: 주제·난이도·문항 수를 넣으면 팀 문제은행에서 먼저 채우고, 모자란 만큼만 AI가 문제·모범 답안·채점 기준 초안을 만듭니다. 신입의 기술스택 조사 결과를 참고할 수 있고, 확정한 문항은 문제은행에 쌓입니다. 시험지와 답안지는 따로 인쇄하며, 평가 과제에 연결한 시험의 문항은 그 신입의 다음 시험에서 빠집니다.
 - **미답변 질문에 답하기**: 신입이 등록을 요청한 질문을 열고 "규정에서 답 초안 찾기"를 누르면 규정 조항을 근거로 한 답 초안이 채워집니다. 확인 후 게시하면 다음부터 채팅이 바로 답합니다.
 
-<p>
-  <img src="docs/images/trainer-hire.png" width="49%" alt="신입 상세: 팀 과제 진행, 평가 기록, 이 신입에게 과제 추가">
-  <img src="docs/images/trainer-exam.png" width="49%" alt="시험 편집: 문제은행 문항과 AI 초안 문항, 모범 답안과 채점 기준">
-</p>
-<p>
-  <img src="docs/images/trainer-bank.png" width="49%" alt="문제은행: 팀 시험 문항 목록">
-  <img src="docs/images/trainer-draft-answer.png" width="49%" alt="미답변 질문에 규정 근거 답 초안: 복리후생 규정(가상) 제14조 야근 식대">
-</p>
-
-<sub>위 왼쪽부터 신입 상세, 시험 편집(문제은행 8문항 + AI 부족분), 문제은행, 미답변 질문의 규정 근거 답 초안.</sub>
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/trainer-hire.png" alt="신입 상세: 팀 과제 진행, 평가 기록, 이 신입에게 과제 추가"><br><sub>신입 상세: 팀 과제 진행, 평가 기록, 이 신입에게 과제 추가</sub></td>
+    <td width="50%"><img src="docs/images/trainer-exam.png" alt="시험 편집: 문제은행 문항과 AI 초안 문항, 모범 답안과 채점 기준"><br><sub>시험 편집: 문제은행 8문항을 먼저 채우고 부족분만 AI 초안</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/trainer-bank.png" alt="문제은행: 팀 시험 문항 목록"><br><sub>문제은행: 확정한 문항이 쌓이고, 고치거나 숨기거나 직접 추가</sub></td>
+    <td width="50%"><img src="docs/images/trainer-draft-answer.png" alt="미답변 질문에 규정 근거 답 초안: 복리후생 규정(가상) 제14조 야근 식대"><br><sub>미답변 질문: "규정에서 답 초안 찾기"로 조항 근거 답 초안</sub></td>
+  </tr>
+</table>
 
 ### 관리자: 계정과 시연 환경
 
 - **계정 등록**: 역할·팀·입사일·초기 비밀번호를 정해 계정을 만듭니다. 신입은 등록하는 즉시 온보딩 과제가 준비됩니다. 공개 가입은 없고, 관리자 계정은 화면에서 만들 수 없습니다.
 - **데모 데이터 초기화**: 기본 계정의 진행 상황·지식·미답변·시험·문제은행·온보딩 과제를 처음 상태로 되돌립니다. 관리자가 만든 계정은 그대로 남습니다.
 
-<img src="docs/images/admin-users.png" width="70%" alt="사용자 관리: 계정 목록, 계정 등록, 데모 데이터 초기화">
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/admin-users.png" alt="사용자 관리: 계정 목록과 계정 등록"><br><sub>사용자 관리: 계정 목록과 계정 등록(신입은 입사일 기준 과제 생성)</sub></td>
+    <td width="50%"><img src="docs/images/admin-reset.png" alt="데모 데이터 초기화 확인 창: 초기화를 입력해야 실행"><br><sub>데모 데이터 초기화: "초기화"를 입력해야 실행</sub></td>
+  </tr>
+</table>
 
 ## AI가 하는 일과 사람이 하는 일
 
