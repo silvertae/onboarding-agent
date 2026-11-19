@@ -297,7 +297,7 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 @keyframes mascot-blink{0%,44%,48%,100%{scale:1 1}46%{scale:1 .12}}
 @keyframes mascot-wave{50%{rotate:-146deg}}
 @media (prefers-reduced-motion:reduce){.mascot *,.mascot *::before{animation:none!important;transition:none!important}}
-/* 진한 면(primary 버튼) 위에서는 흰 원을 깔고 그 안에 둔다. 모바일 "에이전트에게 묻기" 안 A */
+/* 진한 면(primary 버튼) 위에서는 흰 원을 깔고 그 안에 둔다. 모바일 "에이전트에게 묻기" 버튼 */
 .mascot-base{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--surface);flex:none}
 .btn-ask{padding:4px 21px 4px 4px;gap:10px}
 
