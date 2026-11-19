@@ -38,7 +38,7 @@ PR 설명이 가리키는 계획·설계 문서가 있으면 그 인터페이스
 - `SECURITY.md`의 "반드시 막을 것"에 해당하는 모든 것. 공개 저장소이므로 비밀값·실명이 커밋에 들어가는 것도 포함한다.
 - 과제 상태(`task_instances.status`)를 RPC 함수 밖에서 바꾸는 코드. 웹에서 `task_instances`에 직접 `update`/`insert`/`delete`.
 - 웹에서 `task_templates`·`exam_sittings`·`knowledge_embeddings`에 직접 쓴다(각각 템플릿 RPC `save_task_template`·`archive_task_template`·`restore_task_template`·`add_task_for_hire`, `assign_exam`, `save_knowledge_embeddings`로만).
-- 에이전트 도구나 경로가 과제 상태를 바꾼다. 에이전트가 지식 본문·상태나 미답변을 쓴다(사용자 토큰으로 쓰는 것은 색인 RPC `replace_document_clauses`·`save_knowledge_embeddings`뿐).
+- 에이전트 도구나 경로가 과제 상태를 바꾼다. 에이전트가 지식 본문·상태나 미답변을 쓴다(사용자 토큰으로 쓰는 것은 한도 RPC `consume_quota`와 색인 RPC `replace_document_clauses`·`save_knowledge_embeddings`뿐).
 - 새 테이블에 `org_id`나 RLS가 없거나, `anon` 역할에 권한을 준다.
 - 마이그레이션이 컬럼·테이블을 삭제하거나 이름을 바꾼다(추가만 허용). 이미 머지된 마이그레이션 파일을 수정한다.
 - 역할 확인 누락: `/chat`은 `new_hire`, `/exams/*`는 `team_trainer`, `/documents/*`·`/knowledge/*`는 `team_trainer`·`ops_staff`, `/admin/*`는 `admin`만. 문서 경로는 관리 범위(`can_manage_document`)도 확인한다.
