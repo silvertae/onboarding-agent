@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { Badge } from './badge'
 import { Button } from './button'
 import { Checkbox } from './checkbox'
+import { AlertDialogFooter } from './alert-dialog'
+import { DialogFooter } from './dialog'
 import { Input } from './input'
 import { NativeSelect } from './native-select'
 import { Textarea } from './textarea'
@@ -88,5 +90,21 @@ describe('모션', () => {
     const badge = screen.getByText('할 일')
     expect(badge.className).not.toMatch(/\btransition-all\b/)
     expect(badge).toHaveClass('duration-150', 'ease-out-ui', 'motion-reduce:transition-none')
+  })
+})
+
+// system.md "대화 상자 버튼 줄": 회색 띠는 위아래 12(36 버튼 → 60)로 낮게 둔다.
+describe('대화 상자 버튼 줄', () => {
+  it('Dialog·AlertDialog footer는 좌우 16, 위아래 12', () => {
+    render(
+      <>
+        <DialogFooter data-testid="dialog" />
+        <AlertDialogFooter data-testid="alert" />
+      </>,
+    )
+    for (const id of ['dialog', 'alert']) {
+      expect(screen.getByTestId(id)).toHaveClass('px-4', 'py-3', '-mb-4', 'bg-muted/50')
+      expect(screen.getByTestId(id)).not.toHaveClass('p-4')
+    }
   })
 })

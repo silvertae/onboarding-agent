@@ -1,8 +1,19 @@
-import { ArrowUp, BookOpen, Check, ChevronRight, CircleAlert, Clock, FileText, ListChecks, MessageSquare, RotateCw, Send, X } from 'lucide-react'
+import { ArrowUp, BookOpen, Check, ChevronRight, CircleAlert, Clock, FileText, ListChecks, MessageSquare, MessageSquarePlus, RotateCw, Send, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -48,7 +59,7 @@ export function ChatPanel({ children }: { children: ReactNode }) {
 }
 
 function ChatAside() {
-  const { messages, sending, send } = useChatStream()
+  const { messages, sending, send, reset } = useChatStream()
   const [input, setInput] = useState('')
   const [open, setOpen] = useState(false) // 모바일 전체 화면 열림
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -109,6 +120,9 @@ function ChatAside() {
             <b className="text-row">온보딩 에이전트</b>
             <span className="text-xs text-muted-foreground">회사·팀 지식으로 답해요</span>
           </div>
+          {!empty && (
+            <NewChatButton disabled={sending} onConfirm={reset} onStarted={() => inputRef.current?.focus()} />
+          )}
           <Button variant="ghost" size="icon" aria-label="채팅 닫기" className="lg:hidden" onClick={() => setOpen(false)}>
             <X />
           </Button>
@@ -457,5 +471,52 @@ function KnowledgeRequest({ question }: { question: string }) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// 새 대화(S4): 대화는 어디에도 저장하지 않으므로, 비우기 전에 다시 볼 수 없다고 확인받는다.
+// 시작하면 이 버튼이 사라지므로(대화가 없을 때는 그리지 않는다) 포커스를 트리거 대신 입력창으로 보낸다.
+function NewChatButton({ disabled, onConfirm, onStarted }: { disabled: boolean; onConfirm(): void; onStarted(): void }) {
+  const started = useRef(false)
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        {/* 보이는 크기는 닫기 버튼과 같은 36, 누르는 영역은 44(신입 화면 기준) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="새 대화"
+          title="새 대화"
+          disabled={disabled}
+          className="relative after:absolute after:-inset-1"
+        >
+          <MessageSquarePlus />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (!started.current) return
+          started.current = false
+          event.preventDefault()
+          onStarted()
+        }}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-lead font-semibold">새 대화를 시작할까요?</AlertDialogTitle>
+          <AlertDialogDescription>지금 대화는 저장되지 않아 다시 볼 수 없어요.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel variant="ghost">취소</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              started.current = true
+              onConfirm()
+            }}
+          >
+            새 대화 시작
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

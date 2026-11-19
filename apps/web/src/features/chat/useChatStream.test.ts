@@ -213,4 +213,17 @@ describe('useChatStream', () => {
     })
     expect(result.current.sending).toBe(false)
   })
+
+  it('reset은 대화를 비우고, 다음 질문은 이력 없이 보낸다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(answer('첫 답'))
+    agent.agentFetch.mockResolvedValueOnce(answer('새 답'))
+    const { result } = renderHook(() => useChatStream())
+
+    await act(() => result.current.send('첫 질문'))
+    act(() => result.current.reset())
+
+    expect(result.current.messages).toEqual([])
+    await act(() => result.current.send('새 질문'))
+    expect(requestBody(1)).toEqual({ message: '새 질문', history: [] })
+  })
 })

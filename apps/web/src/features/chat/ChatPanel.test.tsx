@@ -505,4 +505,58 @@ describe('ChatPanel', () => {
     const page = screen.getByText('페이지 본문').parentElement
     expect(page).toHaveClass('pb-16', 'lg:pb-0')
   })
+
+  it('대화 전에는 "새 대화" 버튼이 없다', () => {
+    renderPanel()
+    expect(chat().queryByRole('button', { name: '새 대화' })).not.toBeInTheDocument()
+  })
+
+  it('새 대화: 저장되지 않는다고 확인한 뒤 대화를 비우고, 다음 질문은 이력 없이 보낸다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(streamResponse([{ type: 'token', text: '첫 답' }, { type: 'done' }]))
+    agent.agentFetch.mockResolvedValueOnce(streamResponse([{ type: 'token', text: '새 답' }, { type: 'done' }]))
+    renderPanel()
+    await ask('첫 질문')
+    expect(await chat().findByText('첫 답')).toBeInTheDocument()
+
+    await userEvent.click(chat().getByRole('button', { name: '새 대화' }))
+    const dialog = await screen.findByRole('alertdialog', { name: '새 대화를 시작할까요?' })
+    expect(dialog).toHaveTextContent('지금 대화는 저장되지 않아 다시 볼 수 없어요.')
+    await userEvent.click(within(dialog).getByRole('button', { name: '새 대화 시작' }))
+
+    expect(chat().queryByText('첫 답')).not.toBeInTheDocument()
+    expect(chat().getByRole('group', { name: '추천 질문' })).toBeInTheDocument()
+    expect(chat().queryByRole('button', { name: '새 대화' })).not.toBeInTheDocument()
+    // 버튼이 사라지므로 포커스는 입력창으로 간다
+    await waitFor(() => expect(chat().getByLabelText('질문 입력')).toHaveFocus())
+
+    await ask('새 질문')
+    expect(agent.agentFetch).toHaveBeenLastCalledWith('/chat', { message: '새 질문', history: [] })
+  })
+
+  it('새 대화: 취소하면 대화가 그대로 남는다', async () => {
+    agent.agentFetch.mockResolvedValueOnce(streamResponse([{ type: 'token', text: '첫 답' }, { type: 'done' }]))
+    renderPanel()
+    await ask('첫 질문')
+    expect(await chat().findByText('첫 답')).toBeInTheDocument()
+
+    await userEvent.click(chat().getByRole('button', { name: '새 대화' }))
+    const dialog = await screen.findByRole('alertdialog', { name: '새 대화를 시작할까요?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: '취소' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(chat().getByText('첫 답')).toBeInTheDocument()
+  })
+
+  it('새 대화: 답변을 받는 중에는 누를 수 없다', async () => {
+    const pending = pendingResponse([])
+    agent.agentFetch.mockResolvedValueOnce(pending.response)
+    renderPanel()
+    await ask('오늘 뭐 해야 해?')
+
+    expect(await chat().findByRole('button', { name: '새 대화' })).toBeDisabled()
+
+    await act(async () => pending.finish([{ type: 'token', text: '끝' }, { type: 'done' }]))
+    expect(await chat().findByText('끝')).toBeInTheDocument()
+    expect(chat().getByRole('button', { name: '새 대화' })).toBeEnabled()
+  })
 })
