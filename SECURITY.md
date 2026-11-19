@@ -52,6 +52,7 @@
   - 다른 조직 사용자가 과제 서식 목록을 보거나 파일을 내려받는다.
   - 신입이 규정 문서 원본 파일, 처리 중·실패한 문서의 조항, 다른 팀 문서의 조항, 지식의 근거 연결(`knowledge_sources`)을 본다.
   - 관리 범위 밖 사용자(신입, 다른 팀 교육 담당자, 팀 문서에 대한 경영지원)가 규정 문서를 올리거나 지우거나 색인한다.
+  - 신입이 초안·다른 팀 지식의 임베딩(`knowledge_embeddings`)을 보거나 채팅 검색(`match_knowledge`)으로 받는다. 관리 범위 밖 사용자가 지식 임베딩을 쓴다. authenticated가 `knowledge_embeddings`에 직접 쓴다(저장은 `save_knowledge_embeddings` RPC로만).
 
 ### 파일 (과제 서식·규정 문서)
 
