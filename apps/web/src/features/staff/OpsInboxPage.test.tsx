@@ -16,6 +16,8 @@ const { actions, templateActions, state } = vi.hoisted(() => ({
   },
   state: {
     tasks: [] as unknown[],
+    hires: null as unknown[] | null,
+    hiresLoading: false,
     query: { isLoading: false, isError: false, isFetching: false } as Record<string, boolean>,
     refetch: vi.fn(),
   },
@@ -34,7 +36,7 @@ vi.mock('@/lib/tasks', async (importOriginal) => ({
   useVisibleTasks: () => ({ data: state.query.isLoading || state.query.isError ? undefined : state.tasks, ...state.query, refetch: state.refetch }),
   useTaskActions: () => actions,
 }))
-vi.mock('./hires', () => ({ useHires: () => ({ data: HIRES, isLoading: false, isError: false }) }))
+vi.mock('./hires', () => ({ useHires: () => ({ data: state.hiresLoading ? undefined : (state.hires ?? HIRES), isLoading: state.hiresLoading, isError: false }) }))
 // "이 신입에게 과제 추가" 대화 상자의 동작은 AddTaskDialog.test.tsx에서 본다.
 vi.mock('@/features/templates/templates', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/templates/templates')>()),
@@ -98,6 +100,8 @@ beforeEach(() => {
   Object.values(actions).forEach((fn) => fn.mockClear())
   Object.values(templateActions).forEach((fn) => fn.mockReset())
   state.query = { isLoading: false, isError: false, isFetching: false }
+  state.hires = null
+  state.hiresLoading = false
   state.refetch.mockClear()
 })
 
@@ -289,6 +293,101 @@ describe('OpsInboxPage (S9) 이 신입에게 과제 추가', () => {
     await user.click(screen.getByRole('row', { name: /김하늘.*명함 신청/ }))
     const panel = screen.getByRole('complementary', { name: '과제 상세' })
     expect(within(panel).queryByRole('button', { name: '해당 없음' })).not.toBeInTheDocument()
+  })
+})
+
+describe('OpsInboxPage (S9) 입사자별 탭', () => {
+  // h3: 다른 부서 과제만 있어 빠진다. h4: 입사일이 가장 늦고 해당 없음 과제 하나(완료로 센다).
+  const LATER_HIRES = [
+    ...HIRES,
+    { id: 'h3', full_name: '최유나', job_title: '사원', email: 'hire3@demo.test', team_id: TEAM_ID, hire_date: '2026-11-20', team: { name: 'AI팀' } },
+    { id: 'h4', full_name: '이도윤', job_title: '사원', email: 'hire4@demo.test', team_id: TEAM_ID, hire_date: '2026-11-17', team: { name: 'AI팀' } },
+  ]
+  const otherDeptOnly = makeTask({ id: 'hr-03', new_hire_id: 'h3', status: 'todo', template: { department: 'hr', title: '인사 서류 제출' } })
+  const naTask = makeTask({ id: 'ga-09', new_hire_id: 'h4', status: 'na', na_reason: '본사 출입 대상 아님', template: { title: '지문 등록·출입 확인' } })
+
+  function hireRows() {
+    const table = screen.getByRole('table', { name: '입사자 목록' })
+    return within(table).getAllByRole('row').slice(1)
+  }
+
+  async function openHiresTab(tasks: TaskView[] = ALL) {
+    const user = userEvent.setup()
+    renderPage(tasks)
+    await user.click(screen.getByRole('tab', { name: '입사자별' }))
+    return user
+  }
+
+  it('우리 부서 과제가 있는 신입만 입사일 최신순으로, 진행·확인 대기는 우리 부서 과제만 센다', async () => {
+    state.hires = LATER_HIRES
+    await openHiresTab([...ALL, otherDeptOnly, naTask])
+
+    const rows = hireRows()
+    expect(rows.map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['이도윤AI팀', '김하늘AI팀', '정민서AI팀'])
+    // 이도윤: 해당 없음 1개 → 1 / 1, 김하늘: 완료 1 / 총무 과제 3(인사·팀 과제 제외), 확인 대기 1
+    expect(rows[0]).toHaveTextContent('1 / 1')
+    expect(within(rows[1]).getByText('1 / 3')).toBeInTheDocument()
+    expect(within(rows[1]).getAllByRole('cell')[3]).toHaveTextContent('1')
+    expect(within(rows[0]).getAllByRole('cell')[3]).toHaveTextContent('0')
+    expect(screen.getByRole('table', { name: '입사자 목록' })).not.toHaveTextContent('최유나')
+  })
+
+  it('입사자별 탭에는 입사자 드롭다운이 없다', async () => {
+    await openHiresTab()
+    expect(screen.queryByLabelText('입사자')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '이 신입에게 과제 추가' })).not.toBeInTheDocument()
+  })
+
+  it('줄을 누르면 "전체" 탭이 그 입사자로 걸러진다', async () => {
+    const user = await openHiresTab()
+    await user.click(screen.getByRole('row', { name: /정민서/ }))
+
+    expect(screen.getByRole('tab', { name: '전체' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('입사자')).toHaveValue('h2')
+    const rows = bodyRows()
+    expect(rows).toHaveLength(2)
+    rows.forEach((row) => expect(row).toHaveTextContent('정민서'))
+  })
+
+  it('줄에서 Enter를 눌러도 같다', async () => {
+    const user = await openHiresTab()
+    screen.getByRole('row', { name: /김하늘/ }).focus()
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('tab', { name: '전체' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('입사자')).toHaveValue('h1')
+  })
+
+  it('"과제 추가"는 그 신입의 대화 상자를 열고, 대화 상자 안을 눌러도 탭이 바뀌지 않는다', async () => {
+    templateActions.addForHire.mockResolvedValueOnce(undefined)
+    const user = await openHiresTab()
+    await user.click(screen.getByRole('button', { name: "'정민서'님에게 과제 추가" }))
+
+    const dialog = screen.getByRole('dialog', { name: "'정민서'님에게 과제 추가" })
+    expect(within(dialog).queryByRole('radio', { name: '평가' })).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('radio', { name: '읽기' }))
+    await user.type(within(dialog).getByLabelText('제목'), '가상 주차 등록')
+    await user.click(within(dialog).getByRole('button', { name: '추가' }))
+
+    expect(templateActions.addForHire).toHaveBeenCalledWith('h2', expect.objectContaining({ title: '가상 주차 등록' }))
+    expect(screen.getByRole('tab', { name: '입사자별' })).toHaveAttribute('aria-selected', 'true')
+    expect(await within(screen.getByRole('row', { name: /정민서/ })).findByRole('status')).toHaveTextContent('추가했어요')
+  })
+
+  // 과제는 왔는데 신입 목록이 아직이면 "입사자가 없어요"가 아니라 불러오는 중이다. 스켈레톤도 입사자 표 열이다.
+  it('신입 목록을 불러오는 동안은 빈 상태 대신 입사자 표 모양의 "불러오는 중…"', async () => {
+    state.hiresLoading = true
+    await openHiresTab()
+    expect(screen.getByRole('status')).toHaveTextContent('불러오는 중…')
+    expect(screen.queryByText('업무함에 입사자가 없어요')).not.toBeInTheDocument()
+    // 스켈레톤 표는 aria-hidden이라 역할로 찾지 않고 글자로 본다
+    expect(document.body).toHaveTextContent('입사일')
+    expect(document.body).not.toHaveTextContent('제출 시각')
+  })
+
+  it('입사자가 없으면 빈 상태 문구', async () => {
+    await openHiresTab([hrTask])
+    expect(screen.getByText('업무함에 입사자가 없어요')).toBeInTheDocument()
   })
 })
 

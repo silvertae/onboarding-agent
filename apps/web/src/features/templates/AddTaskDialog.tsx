@@ -103,8 +103,9 @@ export function AddTaskDialog({ hire, open, onOpenChange, allowAssessment, onAdd
   )
 }
 
-// S6 "팀 과제" 머리·S9 입사자 필터 옆의 버튼. 추가하면 대화 상자가 닫히고 버튼 왼쪽에 "추가했어요"가 남는다.
-export function AddTaskButton({ hire, allowAssessment }: { hire: Hire; allowAssessment: boolean }) {
+// S6 "팀 과제" 머리·S9 입사자 필터 옆·S9 입사자별 줄의 버튼. 추가하면 대화 상자가 닫히고 버튼 왼쪽에 "추가했어요"가 남는다.
+// compact(입사자별 줄): 표 행 안의 동작 크기(sm)에 글자는 "과제 추가", 접근 이름에 신입 이름을 넣어 줄마다 구별되게 한다.
+export function AddTaskButton({ hire, allowAssessment, compact = false }: { hire: Hire; allowAssessment: boolean; compact?: boolean }) {
   const [open, setOpen] = useState(false)
   const [added, setAdded] = useState(false)
 
@@ -122,8 +123,15 @@ export function AddTaskButton({ hire, allowAssessment }: { hire: Hire; allowAsse
         allowAssessment={allowAssessment}
         onAdded={() => setAdded(true)}
         trigger={
-          <Button type="button" variant="secondary" onClick={() => setAdded(false)}>
-            <Plus aria-hidden />이 신입에게 과제 추가
+          <Button
+            type="button"
+            variant="secondary"
+            size={compact ? 'sm' : 'default'}
+            aria-label={compact ? `'${hire.full_name}'님에게 과제 추가` : undefined}
+            onClick={() => setAdded(false)}
+          >
+            <Plus aria-hidden />
+            {compact ? '과제 추가' : '이 신입에게 과제 추가'}
           </Button>
         }
       />

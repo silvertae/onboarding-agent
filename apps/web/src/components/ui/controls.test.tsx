@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Badge } from './badge'
@@ -34,6 +34,44 @@ describe('폼 컨트롤 크기', () => {
     expect(select).toHaveClass('h-10', 'bg-card', 'appearance-none')
     expect(select.parentElement).toHaveClass('w-40')
     expect(container.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument()
+  })
+
+  // system.md "표 머리의 거르기 select": 탭 묶음과 같은 회색 상자·높이 38, 라벨을 안에 두고 테두리 없음
+  it('NativeSelect variant="filter"는 회색 상자 안에 라벨을 두고, 그 라벨이 접근 이름이다', () => {
+    render(
+      <NativeSelect variant="filter" label="입사자">
+        <option value="">전체</option>
+      </NativeSelect>,
+    )
+    const select = screen.getByRole('combobox', { name: '입사자' })
+    const box = select.closest('[data-slot="native-select"]')
+    expect(box).toHaveClass('bg-secondary', 'rounded-[10px]', 'h-9.5')
+    expect(box).toHaveTextContent('입사자')
+    expect(select).toHaveClass('font-semibold', 'appearance-none')
+    expect(select).not.toHaveClass('h-10', 'bg-card')
+  })
+
+  // Chrome은 select를 마우스로 눌러도 :focus-visible로 본다. 고른 뒤 링이 남지 않게 마우스로 누른 동안은 링 클래스를 뗀다.
+  it('NativeSelect variant="filter"의 포커스 링은 마우스로 누른 뒤에는 없고, 키를 누르면 다시 생긴다', () => {
+    render(
+      <NativeSelect variant="filter" label="입사자">
+        <option value="">전체</option>
+        <option value="h1">김하늘</option>
+      </NativeSelect>,
+    )
+    const select = screen.getByRole('combobox', { name: '입사자' })
+    const box = select.closest('[data-slot="native-select"]')
+    expect(box).toHaveClass('has-[select:focus-visible]:ring-2')
+
+    fireEvent.pointerDown(select)
+    expect(box).not.toHaveClass('has-[select:focus-visible]:ring-2')
+
+    fireEvent.keyDown(select, { key: 'ArrowDown' })
+    expect(box).toHaveClass('has-[select:focus-visible]:ring-2')
+
+    fireEvent.pointerDown(select)
+    fireEvent.blur(select)
+    expect(box).toHaveClass('has-[select:focus-visible]:ring-2')
   })
 
   it('NativeSelect size="lg"는 44px', () => {
