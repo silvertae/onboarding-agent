@@ -65,13 +65,13 @@ def _parse(data: bytes, file_type: str) -> list:
 
 @router.post("/{document_id}/index", response_model=IndexResult)
 async def index_document(document_id: str, user: CurrentUser = Depends(staff_only)) -> IndexResult:
-    if not await run_in_threadpool(_can_manage, user.token, document_id):
-        raise HTTPException(status_code=404, detail=NOT_FOUND)
-    await run_in_threadpool(enforce_quota, user, "document")
-    doc = await run_in_threadpool(_load_row, user.token, document_id)
-    if doc is None:
-        raise HTTPException(status_code=404, detail=NOT_FOUND)
     try:
+        if not await run_in_threadpool(_can_manage, user.token, document_id):
+            raise HTTPException(status_code=404, detail=NOT_FOUND)
+        await run_in_threadpool(enforce_quota, user, "document")
+        doc = await run_in_threadpool(_load_row, user.token, document_id)
+        if doc is None:
+            raise HTTPException(status_code=404, detail=NOT_FOUND)
         try:
             data = await run_in_threadpool(_download, user.token, doc["file_path"])
             clauses = await run_in_threadpool(_parse, data, doc["file_type"])

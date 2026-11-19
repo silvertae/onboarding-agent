@@ -303,3 +303,46 @@ def test_quota_exceeded_returns_429_before_download(client, service, trainer_id,
         assert downloads == []
     finally:
         get_settings.cache_clear()
+
+
+def _api_error() -> APIError:
+    return APIError({"message": "x", "code": "XX000", "hint": None, "details": None})
+
+
+def test_can_manage_error_returns_502(client, trainer_token, fake_embed, downloads, monkeypatch):
+    def boom(token, document_id):
+        raise _api_error()
+
+    monkeypatch.setattr(document_routes, "_can_manage", boom)
+    res = client.post(f"/documents/{uuid.uuid4()}/index", headers=bearer(trainer_token))
+    assert res.status_code == 502
+    assert res.json()["detail"] == EMBED_FAILED
+    assert downloads == [] and fake_embed == []
+
+
+def test_quota_rpc_error_returns_502_without_download(client, service, trainer_token, make_doc, fake_embed, downloads, monkeypatch):
+    def boom(user, kind):
+        raise _api_error()
+
+    monkeypatch.setattr(document_routes, "enforce_quota", boom)
+    doc_id = make_doc(make_docx())
+    res = client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token))
+    assert res.status_code == 502
+    assert res.json()["detail"] == EMBED_FAILED
+    assert downloads == []
+    assert row(service, doc_id)["status"] == "processing"
+
+
+def test_row_select_http_error_returns_502(client, service, trainer_token, make_doc, fake_embed, downloads, monkeypatch):
+    import httpx
+
+    def boom(token, document_id):
+        raise httpx.ConnectError("x")
+
+    monkeypatch.setattr(document_routes, "_load_row", boom)
+    doc_id = make_doc(make_docx())
+    res = client.post(f"/documents/{doc_id}/index", headers=bearer(trainer_token))
+    assert res.status_code == 502
+    assert res.json()["detail"] == EMBED_FAILED
+    assert downloads == []
+    assert row(service, doc_id)["status"] == "processing"
