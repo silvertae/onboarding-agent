@@ -2,6 +2,7 @@ import { CalendarDays, Check, Info, MessageSquare, TriangleAlert } from 'lucide-
 import { useState, type FormEvent } from 'react'
 import logoUrl from '@/assets/blueward-logo.png'
 import { Navigate } from 'react-router'
+import { Mascot } from '@/components/Mascot'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -54,6 +55,8 @@ export function LoginPage() {
         <section className="flex min-w-0 flex-[1_1_480px] flex-col justify-between gap-12 border-r border-border bg-card px-6 py-16 sm:px-[clamp(24px,6vw,96px)]">
           <img src={logoUrl} alt="Blueward" className="h-8 w-auto self-start" />
           <div className="flex max-w-[520px] flex-col gap-5">
+            {/* 넓은 화면에서만. 좁은 화면은 소개가 로그인 카드 위로 쌓여 카드를 덜 밀도록 숨긴다 */}
+            <Mascot size={160} pose="wave" idle bounce className="hidden lg:block" />
             <DemoChip className="self-start" />
             <h1 className="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl sm:leading-[54px]">
               입사 첫날부터 첫 달까지,

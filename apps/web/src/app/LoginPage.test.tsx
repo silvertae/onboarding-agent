@@ -45,6 +45,15 @@ describe('LoginPage', () => {
     expect(screen.getByTestId('demo-accounts').querySelectorAll('button')).toHaveLength(5)
   })
 
+  it('넓은 화면 소개에 손 흔드는 마스코트를 두고(좁은 화면은 숨김), 눌러 튀게 할 수 있지만 버튼은 아니다', () => {
+    vi.stubEnv('DEV', false)
+    const { container } = renderLogin()
+    const mascot = container.querySelector('.mascot.is-wave')
+    expect(mascot).toHaveAttribute('aria-hidden', 'true')
+    expect(mascot).toHaveClass('hidden', 'lg:block', 'is-idle', 'cursor-pointer')
+    expect(mascot!.closest('button')).toBeNull()
+  })
+
   it('회사 로고와 푸터 회사명을 보여 준다', () => {
     vi.stubEnv('DEV', false)
     renderLogin()

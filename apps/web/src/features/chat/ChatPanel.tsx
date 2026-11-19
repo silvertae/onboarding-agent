@@ -1,7 +1,8 @@
-import { ArrowUp, BookOpen, Check, ChevronRight, CircleAlert, Clock, FileText, ListChecks, MessageSquare, MessageSquarePlus, RotateCw, Send, X } from 'lucide-react'
+import { ArrowUp, BookOpen, Check, ChevronRight, CircleAlert, Clock, FileText, ListChecks, MessageSquarePlus, RotateCw, Send, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/app/AuthProvider'
+import { Mascot } from '@/components/Mascot'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -29,7 +30,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ErrorText } from '@/features/staff/ui'
 import { cn } from '@/lib/utils'
-import symbolUrl from './blueward-symbol.png'
 import { ClauseDialog } from './ClauseDialog'
 import { requestKnowledge } from './knowledgeRequest'
 import { MAX_MESSAGE_LENGTH, clauseTitle, useChatStream, type ChatMessage, type ClauseSource } from './useChatStream'
@@ -115,7 +115,7 @@ function ChatAside() {
         )}
       >
         <header className="flex items-center gap-2.5 border-b border-border px-4 py-3 lg:px-5 lg:py-4">
-          <img src={symbolUrl} alt="" className="size-8 shrink-0 rounded-[10px]" />
+          <Mascot size={36} />
           <div className="flex flex-1 flex-col leading-tight">
             <b className="text-row">온보딩 에이전트</b>
             <span className="text-xs text-muted-foreground">회사·팀 지식으로 답해요</span>
@@ -132,7 +132,9 @@ function ChatAside() {
           {empty && (
             // 대화 전(시안 S4 ①): 가운데 소개와 추천 질문 카드. 아래 칩 줄은 첫 메시지 뒤에만 보인다.
             <section aria-labelledby={introId} className="my-auto flex w-full flex-col items-center gap-1 text-center">
-              <img src={symbolUrl} alt="" className="mb-2 size-11 rounded-[12px]" />
+              {/* 모바일 전체 화면은 72(움직임 없음), 데스크톱 패널은 88(움직임) */}
+              <Mascot size={72} pose="wave" className="mb-2 lg:hidden" />
+              <Mascot size={88} pose="wave" idle className="mb-2 hidden lg:block" />
               <p id={introId} className="text-lead font-semibold">
                 온보딩에 대해 물어보세요
               </p>
@@ -231,10 +233,14 @@ function ChatAside() {
       {!open && (
         <Button
           size="lg"
-          className="fixed right-4 bottom-6 z-30 shadow-[0_8px_24px_rgba(6,71,154,0.35)] lg:hidden"
+          // 왼쪽 여백 4: 흰 원(36)이 버튼(44) 끝과 같은 중심으로 둥글게 맞는다(시안 S2-me-mobile)
+          className="fixed right-4 bottom-6 z-30 pl-1 shadow-[0_8px_24px_rgba(6,71,154,0.35)] lg:hidden"
           onClick={() => setOpen(true)}
         >
-          <MessageSquare aria-hidden />
+          {/* 반투명 마스코트가 파란 면에 묻히지 않게 흰 원을 깐다 */}
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-card">
+            <Mascot size={28} pose="sit" />
+          </span>
           에이전트에게 묻기
         </Button>
       )}
@@ -255,6 +261,7 @@ function WaitingBubble() {
       role="status"
       className="flex max-w-[92%] items-center gap-2.5 self-start rounded-[18px_18px_18px_4px] border border-border bg-card px-3.5 py-3 text-sm text-muted-foreground"
     >
+      <Mascot size={20} pose="sit" />
       <span aria-hidden className="inline-flex shrink-0 gap-1">
         <i className="size-1.5 animate-pulse rounded-full bg-tertiary" />
         <i className="size-1.5 animate-pulse rounded-full bg-tertiary/70 [animation-delay:150ms]" />

@@ -161,6 +161,19 @@
     --own-team-bg: #f2f6fc;
     --own-team-border: #c6d6ec;
     --own-team-fg: #06479a;
+    /* 마스코트(system.md "마스코트"): 새 색 금지의 유일한 예외. components/mascot.css에서만 쓴다. 값은 시안 견본 그대로 */
+    --mascot-edge: #95ecff;
+    --mascot-fill:
+        radial-gradient(ellipse at 86% 3%, #eacfffdf, transparent 24%),
+        radial-gradient(ellipse at 22% 15%, #92efff77, transparent 32%),
+        linear-gradient(145deg, #1779eacd, #1745bfea 44%, #1256dcdd 72%, #08b6ffc9);
+    --mascot-glow-1: #d6ffffa6;
+    --mascot-glow-2: #1edbffb8;
+    --mascot-glow-3: #4b4dd98c;
+    --mascot-shadow: #2396ec55;
+    --mascot-highlight: #ffffffaa;
+    --mascot-highlight-2: #efeaff99;
+    --mascot-eye: #ffffff;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);

@@ -151,6 +151,14 @@ describe('신입 홈 타임라인', () => {
     renderHome([ai02, ga08, ac04])
     expect(screen.getByText(/온보딩 과제를 모두 마쳤어요/)).toBeInTheDocument()
   })
+
+  it('모두 완료 → 축하 문구 앞에 손 흔드는 마스코트(48)가 함께 나온다', () => {
+    renderHome([ai02, ga08, ac04])
+    const message = screen.getByText('축하해요! 온보딩 과제를 모두 마쳤어요.')
+    const mascot = message.closest('p')!.querySelector('.mascot.is-wave')
+    expect(mascot).toHaveAttribute('aria-hidden', 'true')
+    expect(mascot).not.toHaveClass('is-idle')
+  })
 })
 
 describe('신입 홈 — 지금 할 일 초점', () => {
