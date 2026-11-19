@@ -155,6 +155,16 @@ export function useTeamName(teamId: string | null | undefined): string | null {
   return data ?? null
 }
 
+// 게시 지식의 빠진 임베딩을 에이전트가 채운다(관리 범위, 빠진 것만). 기다리지 않고 실패도 무시한다:
+// 채팅은 임베딩이 없는 게시 지식도 함께 넣으므로 답에서 빠지지 않는다. agentFetch는 401이면 로그아웃한다.
+async function indexKnowledge() {
+  try {
+    await agentFetch('/knowledge/index', {})
+  } catch {
+    // 다음 저장 때 다시 채운다
+  }
+}
+
 export function useKnowledgeActions() {
   const { profile } = useAuth()
   const queryClient = useQueryClient()
@@ -166,6 +176,7 @@ export function useKnowledgeActions() {
       if (isAuthError(err)) await supabase.auth.signOut()
       throw err
     }
+    void indexKnowledge()
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: KNOWLEDGE_KEY }),
       queryClient.invalidateQueries({ queryKey: UNANSWERED_KEY }),

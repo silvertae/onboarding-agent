@@ -17,6 +17,8 @@ vi.mock('@/lib/supabase', () => ({
     from: () => {
       const b: Record<string, unknown> = {}
       b.select = () => b
+      b.update = () => b
+      b.insert = () => b
       b.eq = () => b
       b.in = inFn.mockImplementation(() => b)
       b.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve(selectResult.value).then(resolve, reject)
@@ -87,6 +89,54 @@ describe('useKnowledgeActions().resolve', () => {
     })
     const keys = spy.mock.calls.map((c) => (c[0] as { queryKey: unknown[] }).queryKey[0])
     expect(keys).toEqual(expect.arrayContaining(['knowledge', 'unanswered', 'knowledge-sources']))
+  })
+})
+
+describe('useKnowledgeActions: 저장 뒤 임베딩 채우기', () => {
+  beforeEach(() => {
+    selectResult.value = { data: [], error: null, status: 200 }
+  })
+
+  it('지식을 추가·수정하면 /knowledge/index를 부른다', async () => {
+    const { Wrapper } = wrapper()
+    const { result } = renderHook(() => useKnowledgeActions(), { wrapper: Wrapper })
+
+    await result.current.save({ ...VALUES, status: 'published' })
+    await result.current.save({ id: 'k1', ...VALUES, status: 'published' })
+
+    expect(agentFetch).toHaveBeenCalledTimes(2)
+    expect(agentFetch).toHaveBeenCalledWith('/knowledge/index', {})
+  })
+
+  it('게시·게시 취소와 미답변 해결 뒤에도 부른다', async () => {
+    const { Wrapper } = wrapper()
+    const { result } = renderHook(() => useKnowledgeActions(), { wrapper: Wrapper })
+
+    await result.current.setStatus('k1', 'published')
+    await result.current.resolve('u1', VALUES)
+
+    expect(agentFetch.mock.calls).toEqual([
+      ['/knowledge/index', {}],
+      ['/knowledge/index', {}],
+    ])
+  })
+
+  it('임베딩 호출이 실패해도 저장은 성공으로 끝난다', async () => {
+    agentFetch.mockRejectedValue(new Error('에이전트 연결 실패'))
+    const { Wrapper } = wrapper()
+    const { result } = renderHook(() => useKnowledgeActions(), { wrapper: Wrapper })
+
+    await expect(result.current.save({ ...VALUES, status: 'published' })).resolves.toBeUndefined()
+    expect(agentFetch).toHaveBeenCalledWith('/knowledge/index', {})
+  })
+
+  it('저장이 실패하면 부르지 않는다', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: '권한 없음', code: '42501' }, status: 403 })
+    const { Wrapper } = wrapper()
+    const { result } = renderHook(() => useKnowledgeActions(), { wrapper: Wrapper })
+
+    await expect(result.current.resolve('u1', VALUES)).rejects.toThrow()
+    expect(agentFetch).not.toHaveBeenCalled()
   })
 })
 
