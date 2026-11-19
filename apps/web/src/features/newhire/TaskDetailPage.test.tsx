@@ -72,6 +72,11 @@ describe('과제 상세', () => {
     expect(screen.getByText('제출하면 총무팀이 확인해요')).toBeInTheDocument()
   })
 
+  it('제출 묶음은 줄이 바뀌어도 오른쪽에 붙는다(시안 S3 모바일 margin-left: auto)', () => {
+    renderDetail(makeTask({ code: 'GA-08', title: '웰컴키트 수령', kind: 'ops', completion_mode: 'confirm', department: 'ga' }))
+    expect(screen.getByRole('button', { name: '제출' }).parentElement).toHaveClass('ml-auto')
+  })
+
   it('staff_only 과제: 버튼 없음, "담당자가 처리하면 완료됩니다"', () => {
     renderDetail(makeTask({ code: 'GA-04', title: '복지포인트 등록', completion_mode: 'staff_only', department: 'ga' }))
     expect(screen.getByText('담당자가 처리하면 완료됩니다')).toBeInTheDocument()

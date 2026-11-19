@@ -79,7 +79,7 @@ function HireCard({ hire, tasks }: { hire: Hire; tasks: TaskView[] }) {
   )
 }
 
-const CARD_GRID = 'grid gap-5 md:grid-cols-2 xl:grid-cols-3'
+const CARD_GRID = 'grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3'
 
 // 로딩: HireCard와 같은 자리(이니셜·이름·메타 / 진행률 막대) 3장
 function HireCardsSkeleton() {

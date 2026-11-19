@@ -3,6 +3,7 @@ import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
 import { ProgressBar } from '@/components/ProgressBar'
+import { RowMeta, WIDE_CELL } from '@/components/RowMeta'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ROW_FOCUS, ROW_HOVER, ROW_SELECTED } from '@/components/tableRow'
 import { Badge } from '@/components/ui/badge'
@@ -64,9 +65,9 @@ function HireTable({ hires, tasks, deptLabel, onOpen }: { hires: Hire[]; tasks: 
       <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
         <tr>
           <th className="px-4 py-3 font-semibold">입사자</th>
-          <th className="px-4 py-3 font-semibold">입사일</th>
-          <th className="w-60 px-4 py-3 font-semibold">{progressLabel}</th>
-          <th className="px-4 py-3 font-semibold">확인 대기</th>
+          <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>입사일</th>
+          <th className="px-4 py-3 font-semibold whitespace-nowrap sm:w-60">{progressLabel}</th>
+          <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>확인 대기</th>
           <th className="px-4 py-3">
             <span className="sr-only">동작</span>
           </th>
@@ -100,20 +101,28 @@ function HireTable({ hires, tasks, deptLabel, onOpen }: { hires: Hire[]; tasks: 
               <td className="px-4 py-3">
                 <b className="block">{hire.full_name}</b>
                 <span className="text-xs text-muted-foreground">{hire.team?.name ?? ''}</span>
+                <RowMeta
+                  items={[
+                    `${formatKoreanDate(hire.hire_date)} 입사${isBeforeHire(hire.hire_date) ? ' 전' : ''}`,
+                    pending > 0 && `확인 대기 ${pending}`,
+                  ]}
+                />
               </td>
-              <td className="px-4 py-3">
+              <td className={cn('px-4 py-3', WIDE_CELL)}>
                 {formatKoreanDate(hire.hire_date)}
                 {isBeforeHire(hire.hire_date) && <span className="ml-1 text-xs text-muted-foreground">입사 전</span>}
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                  <ProgressBar label={`${hire.full_name} ${progressLabel} 진행률`} value={finished} max={total} className="flex-1" />
-                  <b className="text-label tabular-nums">
+                  <div className="hidden flex-1 sm:block">
+                    <ProgressBar label={`${hire.full_name} ${progressLabel} 진행률`} value={finished} max={total} />
+                  </div>
+                  <b className="text-label whitespace-nowrap tabular-nums">
                     {finished} / {total}
                   </b>
                 </div>
               </td>
-              <td className="px-4 py-3">
+              <td className={cn('px-4 py-3', WIDE_CELL)}>
                 {pending > 0 ? <Badge variant="submitted">{pending}</Badge> : <span className="text-muted-foreground">0</span>}
               </td>
               {/* 대화 상자는 포털이지만 React 이벤트는 포털을 거쳐 이 줄까지 올라온다. 여기서 막아야 대화 상자 안을 눌러도 탭이 바뀌지 않는다 */}
@@ -192,13 +201,13 @@ export function OpsInboxPage() {
         description={`${deptLabel} 담당 온보딩 과제만 보여요. 서류는 받지 않고 제출 여부만 확인합니다.`}
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <SummaryCard label="확인 대기" value={counts.submitted} caption="신입이 제출하고 확인을 기다려요" />
         <SummaryCard label="보완 요청 중" value={counts.rework} caption="신입의 재제출을 기다려요" />
         <SummaryCard label="진행 중 입사자" value={counts.activeHires} caption="우리 부서 과제가 남은 입사자" />
       </div>
 
-      <div className={cn('grid items-start gap-6', selected && 'lg:grid-cols-[1fr_380px]')}>
+      <div className={cn('grid grid-cols-1 items-start gap-6', selected && 'lg:grid-cols-[minmax(0,1fr)_380px]')}>
         <Panel className="overflow-hidden">
           <SegmentTabs value={tab} onChange={setTab}>
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
@@ -249,17 +258,17 @@ export function OpsInboxPage() {
                       tab === 'hires'
                         ? [
                             { label: '입사자', cell: 'two-line' },
-                            { label: '입사일' },
+                            { label: '입사일', className: WIDE_CELL },
                             { label: `${deptLabel} 과제` },
-                            { label: '확인 대기', cell: 'badge' },
+                            { label: '확인 대기', cell: 'badge', className: WIDE_CELL },
                             { label: '', cell: 'none' },
                           ]
                         : [
-                            { label: '입사자', cell: 'two-line' },
+                            { label: '입사자', cell: 'two-line', className: WIDE_CELL },
                             { label: '과제' },
-                            { label: '상태', cell: 'badge' },
-                            { label: '제출 시각' },
-                            { label: '기한' },
+                            { label: '상태', cell: 'badge', className: WIDE_CELL },
+                            { label: '제출 시각', className: WIDE_CELL },
+                            { label: '기한', className: WIDE_CELL },
                             { label: '', cell: 'none' },
                           ]
                     }
@@ -283,11 +292,11 @@ export function OpsInboxPage() {
                 <table aria-label="업무 목록" className="w-full text-sm">
                   <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">입사자</th>
+                      <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>입사자</th>
                       <th className="px-4 py-3 font-semibold">과제</th>
-                      <th className="px-4 py-3 font-semibold">상태</th>
-                      <th className="px-4 py-3 font-semibold">제출 시각</th>
-                      <th className="px-4 py-3 font-semibold">기한</th>
+                      <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>상태</th>
+                      <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>제출 시각</th>
+                      <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>기한</th>
                       <th className="px-4 py-3">
                         <span className="sr-only">처리</span>
                       </th>
@@ -322,18 +331,31 @@ export function OpsInboxPage() {
                             task.id === selectedId ? ROW_SELECTED : cn(ROW_HOVER, ROW_FOCUS),
                           )}
                         >
-                          <td className="px-4 py-3">
+                          <td className={cn('px-4 py-3', WIDE_CELL)}>
                             <b className="block">{hire?.full_name ?? '이름 없음'}</b>
                             <span className="text-xs text-muted-foreground">{hire?.team?.name ?? ''}</span>
                           </td>
                           <td className="px-4 py-3">
                             <TaskTitle title={task.template.title} oneOff={isOneOff(task)} />
+                            <RowMeta
+                              badge={<StatusBadge status={task.status} completionMode={task.template.completion_mode} />}
+                              items={[
+                                hire?.full_name ?? '이름 없음',
+                                task.submitted_at && `제출 ${formatDateTime(task.submitted_at)}`,
+                                task.due_date &&
+                                  (overdue ? (
+                                    <span className="font-semibold text-destructive">기한 {formatMonthDay(task.due_date)} 지남</span>
+                                  ) : (
+                                    `기한 ${formatMonthDay(task.due_date)}`
+                                  )),
+                              ]}
+                            />
                           </td>
-                          <td className="px-4 py-3">
+                          <td className={cn('px-4 py-3', WIDE_CELL)}>
                             <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
                           </td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">{formatDateTime(task.submitted_at)}</td>
-                          <td className={cn('px-4 py-3', overdue && 'font-semibold text-destructive')}>
+                          <td className={cn('px-4 py-3 text-[var(--text-secondary)]', WIDE_CELL)}>{formatDateTime(task.submitted_at)}</td>
+                          <td className={cn('px-4 py-3', WIDE_CELL, overdue && 'font-semibold text-destructive')}>
                             {formatMonthDay(task.due_date)}
                             {overdue && ' 지남'}
                           </td>

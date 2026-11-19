@@ -451,7 +451,7 @@ function TemplateFiles({ template, archived }: { template: TaskTemplate; archive
           tabIndex={-1}
           variant="destructive"
           role="alert"
-          className="items-start outline-none has-[>svg]:grid-cols-[auto_1fr_auto]"
+          className="items-start outline-none has-[>svg]:grid-cols-[auto_minmax(0,1fr)_auto]"
         >
           <AlertCircle aria-hidden />
           <div className="flex flex-col gap-0.5">

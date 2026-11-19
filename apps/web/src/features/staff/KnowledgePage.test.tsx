@@ -135,6 +135,17 @@ describe('KnowledgePage (S10) 미답변 탭', () => {
     expect(row).toHaveTextContent('11/17 14:02')
   })
 
+  it('좁은 화면: 물은 시각·팀 칸은 숨고, 그 값을 질문 아래 한 줄로 보여 준다', () => {
+    renderPage()
+    const table = screen.getByRole('table', { name: '미답변 질문' })
+    for (const name of ['물은 시각', '물은 사람의 팀']) {
+      expect(within(table).getByRole('columnheader', { name })).toHaveClass('hidden', 'sm:table-cell')
+    }
+    const meta = within(screen.getByRole('row', { name: /동호회 가입비 얼마야\?/ })).getByTestId('row-meta')
+    expect(meta).toHaveClass('sm:hidden')
+    expect(meta).toHaveTextContent('11/17 14:02 · AI팀')
+  })
+
   it('탭은 ←/→로 옮겨 가고 선택한 탭의 패널만 보인다', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -219,6 +230,17 @@ describe('KnowledgePage (S10) 지식 탭', () => {
     await user.type(screen.getByRole('searchbox', { name: '지식 검색' }), '코드 리뷰')
     expect(listRows()).toHaveLength(1)
     expect(listRows()[0]).toHaveTextContent('팀 코드 리뷰는 어떻게 해?')
+  })
+
+  it('좁은 화면: 답변·분류·범위·상태·수정일 칸은 숨고, 상태 배지와 분류·범위·수정일을 질문 아래 한 줄로 보여 준다', async () => {
+    await openKnowledgeTab()
+    const table = screen.getByRole('table', { name: '지식 목록' })
+    for (const name of ['답변', '분류', '범위', '상태', '수정일']) {
+      expect(within(table).getByRole('columnheader', { name })).toHaveClass('hidden', 'sm:table-cell')
+    }
+    const meta = within(listRows()[0]).getByTestId('row-meta')
+    expect(meta).toHaveClass('sm:hidden')
+    expect(meta.querySelector('[data-slot="badge"]')).not.toBeNull()
   })
 
   it('게시 취소 / 게시 → setStatus', async () => {

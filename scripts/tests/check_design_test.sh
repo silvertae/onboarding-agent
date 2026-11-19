@@ -42,6 +42,9 @@ run_case "네이티브 체크박스" 1 features/a/Page.tsx '<input type="checkbo
 run_case "버튼 높이 덮어쓰기" 1 features/a/Page.tsx '<Button className="h-11 px-5">x</Button>' "size"
 run_case "여러 줄 Button 높이 덮어쓰기" 1 features/a/Page.tsx $'<Button\n  type="button"\n  onClick={() => go()}\n  className="h-11 w-full"\n>\n  x\n</Button>' "features/a/Page.tsx:1"
 run_case "cn() 안의 Button 높이" 1 features/a/Page.tsx $'<Button\n  className={cn(\'h-10 px-4\', on && \'bg-card\')}\n>x</Button>' "size"
+run_case "기본 열 없는 반응형 grid" 1 features/a/Page.tsx '<div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">' "grid-cols-1"
+run_case "따옴표 상수의 반응형 grid" 1 features/a/Page.tsx "const CARD_GRID = 'grid gap-5 md:grid-cols-2'" "grid-cols-1"
+run_case "1fr 열" 1 features/a/Page.tsx '<div className="grid grid-cols-1 lg:grid-cols-[1fr_380px]">' "minmax(0,1fr)"
 run_case "출력에 파일:줄" 1 features/a/Page.tsx '<p className="text-[13px]">x</p>' "features/a/Page.tsx:1"
 
 # 통과: 규칙에 맞는 코드와 허용한 예외
@@ -54,6 +57,8 @@ run_case "테스트 파일은 검사하지 않음" 0 features/a/Page.test.tsx 'e
 run_case "design-allow 주석" 0 features/a/Page.tsx '<p className="text-[13px]">x</p> {/* design-allow: 외부 위젯 크기 */}'
 run_case "여러 줄 Button, 높이 없음" 0 features/a/Page.tsx $'<Button\n  size="lg"\n  onClick={() => go()}\n  className="w-full text-label"\n>x</Button>'
 run_case "여러 줄 Button의 design-allow" 0 features/a/Page.tsx $'<Button\n  className="h-11" // design-allow: 표 머리 높이와 맞춤\n>x</Button>'
+run_case "기본 열이 있는 반응형 grid" 0 features/a/Page.tsx '<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">'
+run_case "반응형 아닌 grid" 0 features/a/Page.tsx '<span className="grid size-8 place-items-center" />'
 run_case "Button 아닌 요소의 h-11" 0 features/a/Page.tsx '<div className="h-11" />'
 
 if [ "$failures" -gt 0 ]; then

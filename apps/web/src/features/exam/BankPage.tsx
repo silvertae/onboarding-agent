@@ -294,7 +294,7 @@ export function BankPage() {
   const rows = items.data ?? []
 
   return (
-    <main className="mx-auto grid max-w-[1376px] gap-6 p-4 sm:p-6 lg:p-8">
+    <main className="mx-auto grid max-w-[1376px] grid-cols-1 gap-6 p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="문제은행"
         description="우리 팀 시험 문항을 모아 둔 곳이에요. 시험을 만들 때 여기서 먼저 채워요."

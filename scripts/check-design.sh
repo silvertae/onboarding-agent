@@ -54,6 +54,24 @@ rule '<select[ >]' \
   '네이티브 <select> 대신 components/ui/native-select의 NativeSelect를 쓴다' '^components/ui/native-select\.tsx$'
 rule 'type="checkbox"' \
   '네이티브 체크박스 대신 components/ui/checkbox의 Checkbox를 쓴다'
+# 좁은 화면: 기본 열이 없는 grid는 auto 칸이라 긴 낱말·표만큼 늘어나 화면이 가로로 밀린다(시안 ui.css @media 760px).
+rule 'grid-cols-\[([^]_ ]*_)*1fr' \
+  'grid 열의 1fr는 긴 내용만큼 늘어난다. minmax(0,1fr)를 쓴다'
+responsive_grid() {
+  local message='sm·md·lg에서만 열을 주는 grid는 좁은 화면 기본 열(grid-cols-1)을 함께 준다'
+  local f rel n
+  for f in "${files[@]}"; do
+    rel="${f#"$src"/}"
+    while IFS= read -r n; do
+      [ -z "$n" ] && continue
+      echo "$rel:$n: $message"
+      violations=$((violations + 1))
+    done < <(perl -ne '
+      next if /design-allow/;
+      print "$.\n" if /(?<![\w:-])grid(?![\w-])/ && /(?<![\w-])(?:sm|md|lg|xl|2xl):grid-cols-/ && !/(?<![\w:-])grid-cols-/;' "$f")
+  done
+}
+responsive_grid
 # Button 높이 덮어쓰기: 여는 태그가 여러 줄에 걸쳐도 잡도록 파일 전체를 읽어 <Button …> 하나씩 본다.
 # 속성 안의 화살표(=>)는 태그 끝으로 보지 않는다. className="…"과 className={cn('…')} 둘 다 본다.
 button_height() {

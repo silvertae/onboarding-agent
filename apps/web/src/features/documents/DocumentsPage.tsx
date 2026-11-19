@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useAuth, type Profile } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
+import { WIDE_CELL } from '@/components/RowMeta'
 import { ROW_HOVER, ROW_SELECTED } from '@/components/tableRow'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -163,7 +164,7 @@ export function DocumentsPage() {
               headClassName="border-b"
               columns={[
                 { label: '문서', cell: 'two-line' },
-                { label: '범위' },
+                { label: '범위', className: WIDE_CELL },
                 { label: '상태', cell: 'badge' },
                 { label: '조항', className: 'text-right' },
               ]}
@@ -181,7 +182,7 @@ export function DocumentsPage() {
           <div className="mt-2">{uploadButton}</div>
         </Panel>
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,460px)]">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,460px)]">
           <Panel className="overflow-hidden" aria-labelledby="documents-title">
             <div className="border-b border-border px-6 py-4">
               <h2 id="documents-title" className="text-lead font-semibold">
@@ -192,7 +193,7 @@ export function DocumentsPage() {
               <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                 <tr>
                   <th className={th}>문서</th>
-                  <th className={th}>범위</th>
+                  <th className={cn(th, WIDE_CELL)}>범위</th>
                   <th className={th}>상태</th>
                   <th className={cn(th, 'text-right')}>조항</th>
                 </tr>
@@ -212,16 +213,17 @@ export function DocumentsPage() {
                           <button
                             type="button"
                             aria-current={active ? 'true' : undefined}
-                            className="w-fit rounded-sm text-left font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                            className="w-fit rounded-sm text-left font-medium wrap-anywhere outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                           >
                             {doc.title}
                           </button>
                           <span className="text-xs text-muted-foreground">
+                            <span className="sm:hidden">{scopeName(doc)} · </span>
                             {doc.file_type} · {uploaderLabel(doc, profile)} · {formatDateTime(doc.created_at)}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">{scopeName(doc)}</td>
+                      <td className={cn('px-4 py-3 whitespace-nowrap', WIDE_CELL)}>{scopeName(doc)}</td>
                       <td className="px-4 py-3">
                         <Badge variant={status.variant}>{status.text}</Badge>
                       </td>

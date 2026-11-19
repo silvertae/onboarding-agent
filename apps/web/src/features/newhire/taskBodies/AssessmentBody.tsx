@@ -15,7 +15,7 @@ export function AssessmentBody({ task, children }: BodyProps) {
     <>
       <div className="flex flex-col gap-3 border-t border-border px-5 py-6 sm:px-7">
         <h3 className="text-row font-semibold">평가 정보</h3>
-        <dl className="grid grid-cols-[3rem_1fr] gap-x-3 gap-y-1.5 text-sm">
+        <dl className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
           {rows.map((row) => (
             <div key={row.label} className="contents">
               <dt className="text-muted-foreground">{row.label}</dt>

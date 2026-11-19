@@ -127,7 +127,7 @@ function AnswerSheet({ exam }: { exam: ExamWithQuestions }) {
 
       <ol className="grid gap-5">
         {exam.questions.map((q, i) => (
-          <li key={q.id} className="exam-question grid grid-cols-[28px_1fr] gap-3 border-b border-[#e3e3e8] pb-4">
+          <li key={q.id} className="exam-question grid grid-cols-[28px_minmax(0,1fr)] gap-3 border-b border-[#e3e3e8] pb-4">
             <span className="grid size-7 place-items-center rounded-full bg-[#e7eef8] text-[10pt] font-bold text-[#06479a]">{i + 1}</span>
             <div className="grid gap-2">
               <div className="flex items-start justify-between gap-3">

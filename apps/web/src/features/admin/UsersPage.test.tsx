@@ -121,6 +121,17 @@ describe('UsersPage 목록', () => {
     expect(screen.getByText(/전체 사용자 5명/)).toBeInTheDocument()
   })
 
+  it('좁은 화면: 메일·부서·팀·입사일·기본 계정 칸은 숨고, 메일과 부서·팀을 이름 아래 한 줄로 보여 준다', async () => {
+    renderPage()
+    const table = await screen.findByRole('table', { name: '사용자 목록' })
+    for (const name of ['메일', '부서·팀', '입사일', '기본 계정']) {
+      expect(within(table).getByRole('columnheader', { name })).toHaveClass('hidden', 'sm:table-cell')
+    }
+    const meta = within(within(table).getByText('김하늘').closest('tr')!).getByTestId('row-meta')
+    expect(meta).toHaveClass('sm:hidden')
+    expect(meta).toHaveTextContent('h1@demo.test · AI팀')
+  })
+
   it('역할 필터 "신입"을 고르면 신입만 보인다', async () => {
     const user = userEvent.setup()
     renderPage()

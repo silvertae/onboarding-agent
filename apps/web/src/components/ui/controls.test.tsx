@@ -8,6 +8,7 @@ import { AlertDialogFooter } from './alert-dialog'
 import { DialogFooter } from './dialog'
 import { Input } from './input'
 import { NativeSelect } from './native-select'
+import { Tabs, TabsList, TabsTrigger } from './tabs'
 import { Textarea } from './textarea'
 
 // system.md "버튼·입력 크기": 입력 40, 로그인·신입 양식은 44. 모든 입력은 카드 흰 바탕.
@@ -144,5 +145,20 @@ describe('대화 상자 버튼 줄', () => {
       expect(screen.getByTestId(id)).toHaveClass('px-4', 'py-3', '-mb-4', 'bg-muted/50')
       expect(screen.getByTestId(id)).not.toHaveClass('p-4')
     }
+  })
+})
+
+describe('좁은 화면', () => {
+  it('세그먼트 탭 목록은 패널보다 넓으면 줄이지 않고 가로로 넘겨 본다(스크롤바 숨김)', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="보기">
+          <TabsTrigger value="a">확인 대기</TabsTrigger>
+          <TabsTrigger value="b">전체</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    )
+    expect(screen.getByRole('tablist')).toHaveClass('max-w-full', 'overflow-x-auto', '[scrollbar-width:none]')
+    expect(screen.getByRole('tab', { name: '확인 대기' })).toHaveClass('shrink-0', 'whitespace-nowrap')
   })
 })

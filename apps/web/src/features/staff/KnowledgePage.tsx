@@ -5,6 +5,7 @@ import { useAuth } from '@/app/AuthProvider'
 import { FilterChips } from '@/components/FilterChips'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
+import { RowMeta, WIDE_CELL } from '@/components/RowMeta'
 import { ROW_SELECTED } from '@/components/tableRow'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -136,7 +137,7 @@ export function KnowledgePage() {
     <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
       <PageHeader title="지식 관리" description={description} />
 
-      <div className={cn('grid items-start gap-6', editing && 'lg:grid-cols-[1fr_380px]')}>
+      <div className={cn('grid grid-cols-1 items-start gap-6', editing && 'lg:grid-cols-[minmax(0,1fr)_380px]')}>
         <Panel className="overflow-hidden">
           <SegmentTabs value={tab} onChange={setTab}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
@@ -175,8 +176,8 @@ export function KnowledgePage() {
                     rows={4}
                     columns={[
                       { label: '질문' },
-                      { label: '물은 시각' },
-                      { label: '물은 사람의 팀' },
+                      { label: '물은 시각', className: WIDE_CELL },
+                      { label: '물은 사람의 팀', className: WIDE_CELL },
                       { label: '', cell: 'button' },
                     ]}
                   />
@@ -194,8 +195,8 @@ export function KnowledgePage() {
                   <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                     <tr>
                       <th className={th}>질문</th>
-                      <th className={th}>물은 시각</th>
-                      <th className={th}>물은 사람의 팀</th>
+                      <th className={cn(th, WIDE_CELL)}>물은 시각</th>
+                      <th className={cn(th, WIDE_CELL)}>물은 사람의 팀</th>
                       <th className="px-4 py-3">
                         <span className="sr-only">처리</span>
                       </th>
@@ -206,9 +207,12 @@ export function KnowledgePage() {
                       const active = editing?.mode === 'resolve' && editing.unanswered.id === q.id
                       return (
                         <tr key={q.id} className={cn('border-b border-border last:border-b-0', active && ROW_SELECTED)}>
-                          <td className="px-4 py-3 font-semibold">{q.question}</td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">{formatDateTime(q.created_at)}</td>
-                          <td className="px-4 py-3">{q.team?.name ?? '—'}</td>
+                          <td className="px-4 py-3 font-semibold wrap-anywhere">
+                            {q.question}
+                            <RowMeta items={[formatDateTime(q.created_at), q.team?.name ?? '—']} />
+                          </td>
+                          <td className={cn('px-4 py-3 text-[var(--text-secondary)]', WIDE_CELL)}>{formatDateTime(q.created_at)}</td>
+                          <td className={cn('px-4 py-3', WIDE_CELL)}>{q.team?.name ?? '—'}</td>
                           <td className="px-4 py-3 text-right">
                             <Button
                               type="button"
@@ -239,11 +243,11 @@ export function KnowledgePage() {
                     headClassName="border-b"
                     columns={[
                       { label: '질문' },
-                      { label: '답변' },
-                      { label: '분류' },
-                      { label: '범위' },
-                      { label: '상태', cell: 'badge' },
-                      { label: '수정일' },
+                      { label: '답변', className: WIDE_CELL },
+                      { label: '분류', className: WIDE_CELL },
+                      { label: '범위', className: WIDE_CELL },
+                      { label: '상태', cell: 'badge', className: WIDE_CELL },
+                      { label: '수정일', className: WIDE_CELL },
                       { label: '', cell: 'button' },
                     ]}
                   />
@@ -271,11 +275,11 @@ export function KnowledgePage() {
                     <thead className="border-b border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                       <tr>
                         <th className={th}>질문</th>
-                        <th className={th}>답변</th>
-                        <th className={th}>분류</th>
-                        <th className={th}>범위</th>
-                        <th className={th}>상태</th>
-                        <th className={th}>수정일</th>
+                        <th className={cn(th, WIDE_CELL)}>답변</th>
+                        <th className={cn(th, WIDE_CELL)}>분류</th>
+                        <th className={cn(th, WIDE_CELL)}>범위</th>
+                        <th className={cn(th, WIDE_CELL)}>상태</th>
+                        <th className={cn(th, WIDE_CELL)}>수정일</th>
                         <th className="px-4 py-3">
                           <span className="sr-only">처리</span>
                         </th>
@@ -291,8 +295,12 @@ export function KnowledgePage() {
                       )}
                       {items.map((k) => (
                         <tr key={k.id} className="border-b border-border align-top last:border-b-0">
-                          <td className="max-w-56 px-4 py-3 font-medium">
+                          <td className="px-4 py-3 font-medium wrap-anywhere sm:max-w-56">
                             {k.question}
+                            <RowMeta
+                              badge={<Badge variant={k.status === 'published' ? 'done' : 'blocked'}>{STATUS_TEXT[k.status]}</Badge>}
+                              items={[k.category, k.scope === 'company' ? '회사 공통' : scopeLabel, formatMonthDay(k.updated_at.slice(0, 10))]}
+                            />
                             {k.origin === 'ai_draft' && (
                               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <Badge variant="secondary">
@@ -305,15 +313,15 @@ export function KnowledgePage() {
                               </div>
                             )}
                           </td>
-                          <td className="max-w-80 px-4 py-3 text-[var(--text-secondary)]">
+                          <td className={cn('max-w-80 px-4 py-3 text-[var(--text-secondary)]', WIDE_CELL)}>
                             <p className="line-clamp-2">{k.answer}</p>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap">{k.category || '—'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">{k.scope === 'company' ? '회사 공통' : scopeLabel}</td>
-                          <td className="px-4 py-3">
+                          <td className={cn('px-4 py-3 whitespace-nowrap', WIDE_CELL)}>{k.category || '—'}</td>
+                          <td className={cn('px-4 py-3 whitespace-nowrap', WIDE_CELL)}>{k.scope === 'company' ? '회사 공통' : scopeLabel}</td>
+                          <td className={cn('px-4 py-3', WIDE_CELL)}>
                             <Badge variant={k.status === 'published' ? 'done' : 'blocked'}>{STATUS_TEXT[k.status]}</Badge>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-[var(--text-secondary)]">{formatMonthDay(k.updated_at.slice(0, 10))}</td>
+                          <td className={cn('px-4 py-3 whitespace-nowrap text-[var(--text-secondary)]', WIDE_CELL)}>{formatMonthDay(k.updated_at.slice(0, 10))}</td>
                           <td className="px-4 py-3">
                             <div className="flex justify-end gap-1.5">
                               <Button

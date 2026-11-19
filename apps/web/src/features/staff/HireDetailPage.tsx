@@ -5,6 +5,7 @@ import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
 import { LoadingStatus, TableSkeleton } from '@/components/LoadingStatus'
 import { ProgressBar } from '@/components/ProgressBar'
+import { RowMeta, WIDE_CELL } from '@/components/RowMeta'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ROW_SELECTED } from '@/components/tableRow'
 import { Badge } from '@/components/ui/badge'
@@ -92,7 +93,7 @@ function HireDetailSkeleton() {
         </div>
         <Skeleton className="h-11 w-60 rounded-full" />
       </div>
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Panel className="overflow-hidden">
           <div className="px-6 py-4">
             <Skeleton className="h-6 w-20" />
@@ -100,10 +101,10 @@ function HireDetailSkeleton() {
           <TableSkeleton
             rows={6}
             columns={[
-              { label: '단계' },
+              { label: '단계', className: WIDE_CELL },
               { label: '과제' },
-              { label: '상태', cell: 'badge' },
-              { label: '기한·제출' },
+              { label: '상태', cell: 'badge', className: WIDE_CELL },
+              { label: '기한·제출', className: WIDE_CELL },
               { label: '처리', cell: 'none', className: 'text-right' },
             ]}
           />
@@ -205,7 +206,7 @@ export function HireDetailPage() {
         </Button>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-6">
           <Panel className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
@@ -218,10 +219,10 @@ export function HireDetailPage() {
             <table aria-label="팀 과제" className="w-full text-sm">
               <thead className="border-y border-border bg-surface-subtle text-left text-xs text-[var(--text-secondary)]">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">단계</th>
+                  <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>단계</th>
                   <th className="px-4 py-3 font-semibold">과제</th>
-                  <th className="px-4 py-3 font-semibold">상태</th>
-                  <th className="px-4 py-3 font-semibold">기한·제출</th>
+                  <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>상태</th>
+                  <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>기한·제출</th>
                   <th className="px-4 py-3 text-right font-semibold">처리</th>
                 </tr>
               </thead>
@@ -238,14 +239,18 @@ export function HireDetailPage() {
                   const muted = task.status === 'blocked'
                   return (
                     <tr key={task.id} className={cn('border-b border-border last:border-b-0', task.id === selectedId && ROW_SELECTED)}>
-                      <td className="px-4 py-3 text-[var(--text-secondary)]">{STAGE_LABEL[task.template.stage]}</td>
+                      <td className={cn('px-4 py-3 text-[var(--text-secondary)]', WIDE_CELL)}>{STAGE_LABEL[task.template.stage]}</td>
                       <td className={cn('px-4 py-3', muted ? 'text-[var(--text-secondary)]' : 'font-medium')}>
                         <TaskTitle title={task.template.title} oneOff={isOneOff(task)} />
+                        <RowMeta
+                          badge={<StatusBadge status={task.status} completionMode={task.template.completion_mode} />}
+                          items={[STAGE_LABEL[task.template.stage], dueText(task, teamTasks)]}
+                        />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={cn('px-4 py-3', WIDE_CELL)}>
                         <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
                       </td>
-                      <td className="px-4 py-3 text-[var(--text-secondary)]">{dueText(task, teamTasks)}</td>
+                      <td className={cn('px-4 py-3 text-[var(--text-secondary)]', WIDE_CELL)}>{dueText(task, teamTasks)}</td>
                       <td className="px-4 py-3 text-right">
                         {(canConfirm || canComplete || canNa) && (
                           <Button
