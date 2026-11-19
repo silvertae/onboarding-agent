@@ -77,6 +77,8 @@ export function KnowledgePage() {
 
   // 다른 항목을 열면 이전 저장 실패 문구를 지운다.
   function setEditing(next: Editing | null) {
+    // 이미 열린 폼을 다시 고르면 입력과 AI 출처를 그대로 둔다.
+    if (next && editing && next.key === editing.key) return
     clearError()
     setDraft(null)
     formSeq.current += 1

@@ -405,6 +405,20 @@ describe('KnowledgePage (S10) 규정에서 답 초안 찾기', () => {
     expect(actions.resolve).toHaveBeenCalledWith('u1', { question: '동호회 가입비 얼마야?', answer: '직접', category: '' })
   })
 
+  it('열려 있는 같은 질문의 "답 등록"을 다시 눌러도 입력과 AI 출처가 유지된다', async () => {
+    draftAnswer.mockResolvedValue(DRAFT)
+    const user = await openResolve()
+    await user.click(findButton())
+    await within(form()).findByDisplayValue(DRAFT.answer)
+
+    await user.click(within(screen.getByRole('row', { name: /야근 식대는/ })).getByRole('button', { name: '답 등록' }))
+
+    expect(within(form()).getByLabelText('답변')).toHaveValue(DRAFT.answer)
+    expect(within(form()).getByRole('note')).toBeInTheDocument()
+    await user.click(within(form()).getByRole('button', { name: '게시' }))
+    expect(actions.resolve).toHaveBeenCalledWith('u2', expect.anything(), { clauseIds: ['c1'], origin: 'ai_draft' })
+  })
+
   it('근거가 없으면 안내만 보이고 칸은 그대로다', async () => {
     draftAnswer.mockResolvedValue(null)
     const user = await openResolve()
