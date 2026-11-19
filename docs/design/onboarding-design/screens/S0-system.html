@@ -18,6 +18,22 @@
 .spec dd{margin:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .ramp span{font-size:15px}
 .spec.plain dd{display:block;line-height:20px}
+.m-fig{margin:0;display:flex;flex-direction:column;gap:6px}
+.m-fig .m-stage{display:grid;place-items:center;height:136px;border:1px solid var(--border);border-radius:12px}
+.m-fig b,.m-size b,.m-fab b{font-size:13px;font-weight:600}
+.m-sizes{display:flex;flex-wrap:wrap;align-items:flex-end;gap:28px;padding:20px 24px;border:1px solid var(--border);border-radius:12px}
+.m-size{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;max-width:120px}
+.m-fab-row{display:flex;flex-wrap:wrap;gap:16px}
+.m-fab{margin:0;flex:1 1 220px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--surface-chat)}
+.m-fab .btn{margin-bottom:6px}
+.col>.m-fab{flex:none}
+.m-dont b{color:var(--st-rework-fg)}
+.m-bgs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.m-bgs>div{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px 10px;border:1px solid var(--border);border-radius:12px}
+.m-bgs code,.m-tokens code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;color:var(--muted)}
+.m-tokens{display:flex;flex-wrap:wrap;gap:8px 16px}
+.m-tokens span{display:inline-flex;align-items:center;gap:6px}
+.m-tokens i{width:20px;height:20px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -187,6 +203,59 @@
           <dt>동작 오류</dt><dd class="secondary">저장·처리 실패는 지금처럼 버튼 옆 인라인 문구</dd>
         </dl>
       </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-hd"><h2>마스코트</h2><span class="caption">에이전트를 나타내는 자리에만 둔다 · 이미지가 아니라 CSS로 그린다(assets/mascot) · 장식이라 aria-hidden, 옆 글자가 이름을 맡는다</span></div>
+    <div class="card-bd col" style="gap: 28px">
+      <div class="grid-3" style="gap: 16px">
+        <figure class="m-fig"><div class="m-stage" style="background: var(--surface)"><span class="mascot s-88" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span></div><b>stand · 에이전트 정체</b><span class="caption">채팅 머리(36). 지금 말하는 상대가 에이전트임을 알린다</span></figure>
+        <figure class="m-fig"><div class="m-stage" style="background: var(--selected)"><span class="mascot s-88 is-wave is-idle" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span></div><b>wave · 환영·완료</b><span class="caption">대화 전 소개(88·72), 로그인(160), 모두 완료(48)</span></figure>
+        <figure class="m-fig"><div class="m-stage" style="background: var(--surface-chat)"><span class="mascot s-88 is-sit" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span></div><b>sit · 버튼 아이콘·기다림</b><span class="caption">모바일 묻기 버튼(28), 답변 기다림 안 B(20)</span></figure>
+      </div>
+
+      <div class="col" style="gap: 12px">
+        <span class="label">크기 단계 · 이 일곱 값만 쓴다</span>
+        <div class="m-sizes"><figure class="m-size"><span class="mascot s-20 is-sit" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>20</b><span class="caption">sit · S4 기다림(안 B)</span></figure><figure class="m-size"><span class="mascot s-28 is-sit" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>28</b><span class="caption">sit · 모바일 묻기 버튼</span></figure><figure class="m-size"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>36</b><span class="caption">stand · 채팅 머리</span></figure><figure class="m-size"><span class="mascot s-48 is-wave" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>48</b><span class="caption">wave · S2 모두 완료</span></figure><figure class="m-size"><span class="mascot s-72 is-wave" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>72</b><span class="caption">wave · 모바일 대화 전 · 로그인 좁은 화면(안 B)</span></figure><figure class="m-size"><span class="mascot s-88 is-wave is-idle" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>88</b><span class="caption">wave · 데스크톱 대화 전 · 움직임</span></figure><figure class="m-size"><span class="mascot s-160 is-wave is-idle" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>160</b><span class="caption">wave · 로그인 넓은 화면 · 움직임</span></figure></div>
+        <span class="caption">그림자는 64px 이상(72·88·160)에서만. 둥실 뜨기·깜빡임·손 흔들기 반복은 88px 이상에서만 켜고, 동작 줄이기 설정이면 모두 멈춘다.</span>
+      </div>
+
+      <div class="grid-2" style="align-items: start">
+        <div class="col" style="gap: 12px">
+          <span class="label">모바일 "에이전트에게 묻기" 버튼 · 두 안 (Leo가 고른다)</span>
+          <div class="m-fab-row">
+            <figure class="m-fab"><a class="btn btn-primary btn-ask" style="box-shadow: 0 8px 24px rgba(6, 71, 154, 0.35)"><span class="mascot-base"><span class="mascot s-28 is-sit" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span></span>에이전트에게 묻기</a><b>안 A · 흰 원(36) 안에 sit 28</b><span class="caption">파란 면 위에 흰 바탕을 깔아 반투명이 묻히지 않는다. 버튼 높이 44 그대로</span></figure>
+            <figure class="m-fab"><a class="btn btn-primary" style="box-shadow: 0 8px 24px rgba(6, 71, 154, 0.35)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>에이전트에게 묻기</a><b>안 B · 지금 아이콘 그대로</b><span class="caption">마스코트는 패널을 연 뒤 머리·소개에서 만난다</span></figure>
+          </div>
+          <figure class="m-fab m-dont"><a class="btn btn-primary" style="box-shadow: 0 8px 24px rgba(6, 71, 154, 0.35)"><span class="mascot s-28 is-sit" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span>에이전트에게 묻기</a><b>쓰지 않음 · 파란 면 위에 바로</b><span class="caption">테두리·빛이 파랑에 묻혀 얼룩처럼 보인다</span></figure>
+        </div>
+        <div class="col" style="gap: 12px">
+          <span class="label">배경 · 반투명이라 밝은 면 위에만</span>
+          <div class="m-bgs">
+            <div style="background: var(--surface)"><span class="mascot s-48" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><code>card</code></div>
+            <div style="background: var(--canvas)"><span class="mascot s-48" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><code>background</code></div>
+            <div style="background: var(--surface-chat)"><span class="mascot s-48" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><code>surface-chat</code></div>
+            <div style="background: var(--selected)"><span class="mascot s-48" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><code>accent</code></div>
+            <div class="m-dont" style="background: var(--primary)"><span class="mascot s-48" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><code style="color: #ffffff">primary ✕</code></div>
+          </div>
+          <span class="label" style="margin-top: 8px">색 · --mascot-* 토큰으로만, 마스코트 밖에서는 쓰지 않는다</span>
+          <div class="m-tokens">
+            <span><i style="background: var(--mascot-fill)"></i><code>--mascot-fill</code></span>
+            <span><i style="background: var(--mascot-edge)"></i><code>--mascot-edge</code></span>
+            <span><i style="background: var(--mascot-glow-1)"></i><code>--mascot-glow-1</code></span>
+            <span><i style="background: var(--mascot-glow-2)"></i><code>--mascot-glow-2</code></span>
+            <span><i style="background: var(--mascot-glow-3)"></i><code>--mascot-glow-3</code></span>
+            <span><i style="background: var(--mascot-shadow)"></i><code>--mascot-shadow</code></span>
+            <span><i style="background: var(--mascot-highlight); box-shadow: inset 0 0 0 1px var(--border)"></i><code>--mascot-highlight · -2 · eye</code></span>
+          </div>
+        </div>
+      </div>
+
+      <dl class="spec plain" style="grid-template-columns: 96px 1fr">
+        <dt>쓰는 자리</dt><dd class="secondary">S4 채팅 머리(stand 36) · S4 대화 전 소개(wave 88, 모바일 72) · 모바일 묻기 버튼(sit 28, 안 A일 때) · S2 모두 완료(wave 48) · S1 로그인 소개(wave 160) · S4 답변 기다림(sit 20, 안 B일 때)</dd>
+        <dt>쓰지 않는 자리</dt><dd class="secondary">상단 바 Blueward 로고 · 역할 배지 · 표·상태 배지·버튼 안(모바일 묻기 버튼 제외) · 인쇄 화면(S8)·명함 미리보기 · 오류 안내(LoadError) · 빈 목록(EmptyState) · 담당자·관리자 화면. 역할별로 색을 바꾸거나 이름·말투를 붙이지 않는다</dd>
+      </dl>
     </div>
   </section>
 </main>

@@ -14,15 +14,15 @@ body{margin:0}
 a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
 </style>
 
-<div style="width: 2292px; height: 760px; box-sizing: border-box; padding: 24px; background: var(--canvas); display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 24px">
+<div style="width: 2616px; height: 760px; box-sizing: border-box; padding: 24px; background: var(--canvas); display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 24px">
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
     <b style="font-size: 13px; color: var(--secondary)">① 대화 전 · 아래 칩 줄 없음</b>
     <div class="chat" style="flex: 1; min-height: 0">
-      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="chat-empty">
-          <span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span>
+          <span class="mascot s-88 is-wave is-idle" aria-hidden="true"><span class="shadow"></span><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span>
           <p class="chat-empty-title">온보딩에 대해 물어보세요</p>
           <p class="chat-empty-sub">등록된 사내 지식과 내 과제로 답해요</p>
           <div class="suggest-list" role="group" aria-label="추천 질문">
@@ -39,9 +39,9 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
-    <b style="font-size: 13px; color: var(--secondary)">② 답변 기다리는 중 · 보낸 직후</b>
+    <b style="font-size: 13px; color: var(--secondary)">② 답변 기다리는 중 · 보낸 직후 (안 A · 지금)</b>
     <div class="chat" style="flex: 1; min-height: 0">
-      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="msg-u">오늘 뭐 해야 해?</div>
         <div class="msg-a"><span class="bubble" role="status" style="display: flex; align-items: center; gap: 10px; color: var(--muted)"><span class="typing" aria-hidden="true"><i></i><i style="opacity: .7"></i><i style="opacity: .45"></i></span><span>사내 지식과 내 과제를 확인하고 있어요</span></span></div>
@@ -53,9 +53,23 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
+    <b style="font-size: 13px; color: var(--secondary)">② 안 B · 말풍선 안 왼쪽에 sit 20</b>
+    <div class="chat" style="flex: 1; min-height: 0">
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
+      <div class="chat-bd" style="flex: 1">
+        <div class="msg-u">오늘 뭐 해야 해?</div>
+        <div class="msg-a"><span class="bubble" role="status" style="display: flex; align-items: center; gap: 10px; color: var(--muted)"><span class="mascot s-20 is-sit" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><span class="typing" aria-hidden="true"><i></i><i style="opacity: .7"></i><i style="opacity: .45"></i></span><span>사내 지식과 내 과제를 확인하고 있어요</span></span></div>
+      </div>
+      <div class="chat-ft">
+        <div class="composer"><label for="w0b" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label><textarea id="w0b" rows="1" placeholder="답변이 끝나면 보낼 수 있어요" disabled></textarea><button class="send" type="button" aria-label="보내기" disabled style="background: var(--track); color: var(--disabled-fg)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
     <b style="font-size: 13px; color: var(--secondary)">③ 8초가 지나도 첫 글자가 없을 때</b>
     <div class="chat" style="flex: 1; min-height: 0">
-      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="msg-u">오늘 뭐 해야 해?</div>
         <div class="msg-a"><span class="bubble" role="status" style="display: flex; align-items: center; gap: 10px; color: var(--muted)"><span class="typing" aria-hidden="true"><i></i><i style="opacity: .7"></i><i style="opacity: .45"></i></span><span>답변이 조금 늦어지고 있어요. 잠시만 기다려 주세요.</span></span></div>
@@ -69,7 +83,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
     <b style="font-size: 13px; color: var(--secondary)">④ 답변 중 (스트리밍)</b>
     <div class="chat" style="flex: 1; min-height: 0">
-      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="msg-u">cds cli는 어떻게 설치해?</div>
         <div class="msg-a"><span class="bubble">Node.js 20 이상이 설치되어 있다면 터미널에서 <span class="mono">npm i -g @sap/cds-dk</span>를 실행하세요. 설치 후 <span class="mono">cds version</span>으로<span style="display: inline-block; width: 2px; height: 14px; background: var(--primary); margin-left: 2px; vertical-align: -2px"></span></span></div>
@@ -83,7 +97,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
     <b style="font-size: 13px; color: var(--secondary)">⑤ 모르는 질문 · 등록 요청 버튼</b>
     <div class="chat" style="flex: 1; min-height: 0">
-      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="msg-u">동호회 가입비 얼마야?</div>
         <div class="msg-a">
@@ -100,7 +114,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
     <b style="font-size: 13px; color: var(--secondary)">⑥ 서비스 연결 실패</b>
     <div class="chat" style="flex: 1; min-height: 0">
-      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="msg-u">회의실 예약 어떻게 해?</div>
         <div class="alert alert-err" role="alert" style="flex-direction: column; gap: 10px">
@@ -117,7 +131,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
   <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
     <b style="font-size: 13px; color: var(--secondary)">⑦ 하루 사용 한도 초과 · 글자 수 초과</b>
     <div class="chat" style="flex: 1; min-height: 0">
-      <div class="chat-hd"><span class="chat-ava"><img src="../assets/blueward-symbol.png" alt=""></span><b>온보딩 에이전트</b></div>
+      <div class="chat-hd"><span class="mascot s-36" aria-hidden="true"><span class="float"><span class="cube"><i class="limb foot l"></i><i class="limb foot r"></i><i class="limb arm l"></i><i class="limb arm r"></i><span class="face"><i class="eye l"></i><i class="eye r"></i></span></span></span></span><b>온보딩 에이전트</b></div>
       <div class="chat-bd" style="flex: 1">
         <div class="alert alert-warn" role="status">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>

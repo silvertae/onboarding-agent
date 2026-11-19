@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>젤리 마스코트 — 포즈·크기 견본</title>
+<!--
+  원본: jelly-mascot.html (Leo). 이 파일은 원본 CSS를 그대로 두고
+  1) 크기 변수(--size, --k = size/235), 2) 포즈(is-wave, is-sit), 3) 움직임 켜기(is-idle)만 더한 견본이다.
+  apps/web으로 옮길 때 색 값은 index.css의 --mascot-* 토큰으로 옮긴다.
+-->
+<style>
+* { box-sizing: border-box }
+body { margin: 0; font-family: system-ui, sans-serif; color: #1d1d1f; background: #f5f5f7 }
+main { display: grid; gap: 32px; padding: 40px }
+section { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 40px; padding: 32px; border-radius: 18px; background: #fff; border: 1px solid #e3e3e8 }
+section.accent { background: #eef3fa }
+figure { margin: 0; display: grid; justify-items: center; gap: 10px }
+figcaption { font-size: 12px; color: #6e6e73 }
+h2 { margin: 0 0 4px; font-size: 18px }
+
+/* ---------- 마스코트 ---------- */
+.mascot {
+  /* 색: 원본 그대로. 웹에서는 :root의 --mascot-* 토큰으로 옮긴다 */
+  --mascot-edge: #95ecff;
+  --mascot-fill:
+    radial-gradient(ellipse at 86% 3%, #eacfffdf, transparent 24%),
+    radial-gradient(ellipse at 22% 15%, #92efff77, transparent 32%),
+    linear-gradient(145deg, #1779eacd, #1745bfea 44%, #1256dcdd 72%, #08b6ffc9);
+  --mascot-glow-1: #d6ffffa6;
+  --mascot-glow-2: #1edbffb8;
+  --mascot-glow-3: #4b4dd98c;
+  --mascot-shadow: #2396ec55;
+
+  --size: 235px; /* 바깥 정사각형 한 변 */
+  --k: 1;        /* size / 235. 안쪽 빛·테두리 두께를 크기에 맞춘다 */
+  position: relative; display: block; width: var(--size); aspect-ratio: 1; flex: none;
+}
+.mascot .shadow {
+  position: absolute; bottom: 1%; left: 18%; width: 64%; height: 8%;
+  border-radius: 50%; background: var(--mascot-shadow); filter: blur(calc(var(--k) * 9px));
+}
+.mascot .float, .mascot .cube { position: absolute; inset: 0 }
+.mascot .cube { transform-origin: 50% 94% }
+.mascot .face, .mascot .limb {
+  position: absolute;
+  border: max(1px, calc(var(--k) * 1px)) solid var(--mascot-edge);
+  background: var(--mascot-fill);
+  box-shadow:
+    inset calc(var(--k) * 3px) calc(var(--k) * 3px) calc(var(--k) * 6px) var(--mascot-glow-1),
+    inset calc(var(--k) * -6px) calc(var(--k) * -5px) calc(var(--k) * 9px) var(--mascot-glow-2),
+    inset calc(var(--k) * -12px) calc(var(--k) * 3px) calc(var(--k) * 18px) var(--mascot-glow-3);
+}
+.mascot .face { inset: 3% 9% 13%; border-radius: 21% 22% 19% 18% / 20% 22% 18% 20%; z-index: 1 }
+.mascot .face::before {
+  content: ""; position: absolute; inset: 3% 4%; border-radius: inherit;
+  border-top: max(1px, calc(var(--k) * 2px)) solid #ffffffaa;
+  border-right: max(1px, calc(var(--k) * 1px)) solid #efeaff99;
+}
+.mascot .eye { position: absolute; top: 42%; width: 8%; height: 16%; border-radius: 99px; background: #fff }
+.mascot .eye.l { left: 32% } .mascot .eye.r { right: 32% }
+.mascot .limb { border-radius: 46% }
+.mascot .arm { top: 55%; width: 12%; height: 23%; transform-origin: 50% 15% }
+.mascot .arm.l { left: 6%; rotate: 23deg } .mascot .arm.r { right: 6%; rotate: -23deg }
+.mascot .foot { bottom: 5%; width: 15%; height: 19% }
+.mascot .foot.l { left: 25% } .mascot .foot.r { right: 25% }
+
+/* 포즈: 손 흔들기 — 오른팔을 들어 올린다 */
+.mascot.is-wave .arm.r { right: 2%; rotate: -128deg }
+/* 포즈: 앉기 — 몸을 내리고 발을 앞으로 모은다 */
+.mascot.is-sit .face { inset: 8% 9% 9% }
+.mascot.is-sit .arm { top: 60% }
+.mascot.is-sit .foot { bottom: 2%; width: 19%; height: 17%; z-index: 2 }
+.mascot.is-sit .foot.l { left: 22% } .mascot.is-sit .foot.r { right: 22% }
+
+/* 움직임(큰 자리에서만): 둥실 뜨기·깜빡임·손 흔들기 */
+.mascot.is-idle .float { animation: mascot-float 3.3s ease-in-out infinite }
+.mascot.is-idle .eye { animation: mascot-blink 4.6s infinite }
+.mascot.is-idle.is-wave .arm.r { animation: mascot-wave 1.2s ease-in-out infinite }
+@keyframes mascot-float { 50% { transform: translateY(calc(var(--k) * -10px)) rotate(-1.5deg) } }
+@keyframes mascot-blink { 0%, 44%, 48%, 100% { scale: 1 1 } 46% { scale: 1 .12 } }
+@keyframes mascot-wave { 50% { rotate: -146deg } }
+@media (prefers-reduced-motion: reduce) {
+  .mascot *, .mascot *::before { animation: none !important; transition: none !important }
+}
+</style>
+
+<main>
+  <section>
+    <div><h2>포즈 3종 (235px, 움직임 켬)</h2></div>
+  </section>
+  <section class="accent" id="poses"></section>
+  <section id="sizes"></section>
+  <section class="accent" id="small"></section>
+</main>
+
+<template id="tpl">
+  <span class="mascot" aria-hidden="true">
+    <span class="shadow"></span>
+    <span class="float"><span class="cube">
+      <i class="limb foot l"></i><i class="limb foot r"></i>
+      <i class="limb arm l"></i><i class="limb arm r"></i>
+      <span class="face"><i class="eye l"></i><i class="eye r"></i></span>
+    </span></span>
+  </span>
+</template>
+
+<script>
+const tpl = document.getElementById('tpl')
+function mascot(size, pose, idle, label) {
+  const fig = document.createElement('figure')
+  const m = tpl.content.firstElementChild.cloneNode(true)
+  m.style.setProperty('--size', size + 'px')
+  m.style.setProperty('--k', size / 235)
+  if (pose !== 'stand') m.classList.add('is-' + pose)
+  if (idle) m.classList.add('is-idle')
+  if (size < 64) m.querySelector('.shadow').remove()
+  fig.append(m)
+  const cap = document.createElement('figcaption')
+  cap.textContent = label
+  fig.append(cap)
+  return fig
+}
+const poses = document.getElementById('poses')
+for (const p of ['stand', 'wave', 'sit']) poses.append(mascot(235, p, true, `${p} · 235`))
+const sizes = document.getElementById('sizes')
+for (const [s, p] of [[160, 'wave'], [88, 'wave'], [72, 'wave'], [48, 'wave']]) sizes.append(mascot(s, p, s >= 88, `${p} · ${s}${s >= 88 ? ' · 움직임' : ''}`))
+const small = document.getElementById('small')
+for (const [s, p] of [[36, 'stand'], [28, 'sit'], [20, 'sit']]) small.append(mascot(s, p, false, `${p} · ${s}`))
+</script>
+</html>
