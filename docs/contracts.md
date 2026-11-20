@@ -74,9 +74,9 @@ POST /admin/users     {email, password(8자 이상), full_name, job_title,
 지우기    1) 테이블 delete 2) storage remove
 내려받기  createSignedUrl(storage_path, 60, { download: file_name })
 초기화    웹(admin)이 기본 서식이 아닌 객체를 Storage API로 먼저 지운 뒤 reset_demo를 부른다.
-          reset_demo는 기본 서식이 아닌 서식 행을 지운다(Storage 객체는 SQL로 지우지 못한다). 기본 서식 3개는 남는다
-기본 서식  supabase/seed-forms/{과제 코드}/ 의 가상 파일 3개: AC-01 "법인카드 신청서.xlsx"·"법인카드 사용 동의서.docx",
-          HR-08 "소득세 감면 신청서.pdf". 배포의 "기본 서식 부트스트랩"(services/agent/scripts/bootstrap_forms.py)이 올리고
+          reset_demo는 기본 서식이 아닌 서식 행을 지운다(Storage 객체는 SQL로 지우지 못한다). 기본 서식 4개는 남는다
+기본 서식  supabase/seed-forms/{과제 코드}/ 의 가상 파일 4개: AC-01 "법인카드 신청서.xlsx"·"법인카드 사용 동의서.docx",
+          HR-08 "소득세 감면 신청서.pdf", GA-07 "명함 신청서.xlsx"(scripts/make_business_card_form.py로 생성). 배포의 "기본 서식 부트스트랩"(services/agent/scripts/bootstrap_forms.py)이 올리고
           is_seed = true로 등록한다. 객체 경로가 고정이라 다시 실행해도 같은 객체를 덮어쓴다
 ```
 
