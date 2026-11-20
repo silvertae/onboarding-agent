@@ -43,7 +43,44 @@ function renderDetail(task: TaskView, others: TaskView[] = []) {
   )
 }
 
-const ga07Form = { fields: [{ key: 'english_name', label: '영문 이름', type: 'text', required: true, placeholder: 'Haneul Kim' }] }
+// supabase/migrations/0015_business_card_form.sql의 GA-07 칸 정의(직급표·부문은 일부만)
+const ga07Form = {
+  fields: [
+    { key: 'english_name', label: '영문 이름', type: 'text', required: true, placeholder: 'Haneul Kim' },
+    { key: 'job_title', label: '직급', type: 'text', required: true, placeholder: '사원', hint: '첨부 양식의 직급 표기를 따릅니다', english: { 사원: 'Associate', 책임: 'Senior Manager' } },
+    {
+      key: 'division',
+      label: '부문',
+      type: 'select',
+      required: true,
+      options: [
+        { value: '공란', english: '' },
+        { value: 'AI 부문', english: 'Artificial Intelligence Sector' },
+        { value: 'AI 그룹 / AI본부', english: 'Artificial Intelligence Group' },
+        { value: '플랫폼 본부', english: 'Platform Division' },
+        { value: '클라우드 사업부 / 플랫폼본부', english: 'Cloud Business Unit' },
+        { value: '데이터 사업부 / 플랫폼본부', english: 'Data Business Unit' },
+        { value: '산업솔루션 본부', english: 'Industrial Solution Division' },
+        { value: '스마트팩토리 사업부 / 산업솔루션본부', english: 'Smart Factory Business Unit' },
+        { value: '전략컨설팅 본부', english: 'Strategy Consulting Division' },
+        { value: '경영지원 본부', english: 'Corporate Support Division' },
+        { value: '인사총무팀 / 경영지원본부', english: 'HR & General Affairs Team' },
+      ],
+    },
+    { key: 'email_id', label: '이메일 아이디', type: 'text', required: true, placeholder: 'haneul.kim', suffix: '@blueward.co.kr', format: 'email_local' },
+    { key: 'phone', label: '연락처', type: 'text', required: true, placeholder: '010-0000-0000', hint: '공개 데모라 가상 번호를 입력해 주세요', format: 'tel' },
+  ],
+}
+const ga07 = { code: 'GA-07', title: '명함 신청', kind: 'input', completion_mode: 'confirm', department: 'ga', form_schema: ga07Form } as const
+
+async function fillCard(overrides: Partial<Record<'english_name' | 'job_title' | 'email_id' | 'phone', string>> = {}) {
+  const v = { english_name: 'Haneul Kim', job_title: '사원', email_id: 'haneul.kim', phone: '010-0000-0000', ...overrides }
+  await userEvent.type(screen.getByLabelText(/영문 이름/), v.english_name)
+  await userEvent.type(screen.getByLabelText(/직급/), v.job_title)
+  await userEvent.selectOptions(screen.getByLabelText(/부문/), 'AI 그룹 / AI본부')
+  await userEvent.type(screen.getByLabelText(/이메일 아이디/), v.email_id)
+  await userEvent.type(screen.getByLabelText(/연락처/), v.phone)
+}
 
 beforeEach(() => {
   state.files = []
@@ -96,28 +133,76 @@ describe('과제 상세', () => {
     expect(actions.submit).toHaveBeenCalledWith(task.id, { checked: items })
   })
 
-  it('input 과제(GA-07): english_name 비어 있으면 제출 비활성, 입력 후 submit(id,{english_name})', async () => {
-    const task = makeTask({ code: 'GA-07', title: '명함 신청', kind: 'input', completion_mode: 'confirm', department: 'ga', form_schema: ga07Form })
+  it('GA-07: 5칸을 모두 채워야 제출되고 submit(id, 5칸 값)', async () => {
+    const task = makeTask(ga07)
     renderDetail(task)
     const submit = screen.getByRole('button', { name: '제출' })
     expect(submit).toBeDisabled()
-    await userEvent.type(screen.getByLabelText(/영문 이름/), '  ')
+    await userEvent.type(screen.getByLabelText(/영문 이름/), 'Haneul Kim')
     expect(submit).toBeDisabled()
     await userEvent.clear(screen.getByLabelText(/영문 이름/))
-    await userEvent.type(screen.getByLabelText(/영문 이름/), 'Haneul Kim')
+    await fillCard()
     await userEvent.click(submit)
-    expect(actions.submit).toHaveBeenCalledWith(task.id, { english_name: 'Haneul Kim' })
+    expect(actions.submit).toHaveBeenCalledWith(task.id, {
+      english_name: 'Haneul Kim',
+      job_title: '사원',
+      division: 'AI 그룹 / AI본부',
+      email_id: 'haneul.kim',
+      phone: '010-0000-0000',
+    })
   })
 
-  it('GA-07: 프로필의 이름·직급·팀·이메일이 읽기 전용 미리보기로 표시', async () => {
-    renderDetail(makeTask({ code: 'GA-07', title: '명함 신청', kind: 'input', completion_mode: 'confirm', department: 'ga', form_schema: ga07Form }))
+  it('GA-07: 부문 select는 빈 선택지 "골라 주세요"와 11개 선택지', () => {
+    renderDetail(makeTask(ga07))
+    const options = screen.getByLabelText(/부문/).querySelectorAll('option')
+    expect(options).toHaveLength(12)
+    expect(options[0]).toHaveTextContent('골라 주세요')
+  })
+
+  it('GA-07: 이메일 아이디 칸 옆에 @blueward.co.kr가 보인다', () => {
+    renderDetail(makeTask(ga07))
+    expect(screen.getByText('@blueward.co.kr')).toBeInTheDocument()
+  })
+
+  it('GA-07: 연락처에 글자가 섞이면 안내 문구가 보이고 제출 비활성', async () => {
+    renderDetail(makeTask(ga07))
+    await fillCard({ phone: '010 공공' })
+    expect(screen.getByText('숫자와 하이픈(-)만 입력해 주세요')).toBeInTheDocument()
+    expect(screen.getByLabelText(/연락처/)).toHaveAccessibleDescription('숫자와 하이픈(-)만 입력해 주세요')
+    expect(screen.getByRole('button', { name: '제출' })).toBeDisabled()
+  })
+
+  it('GA-07: 연락처를 짧게 입력 중이면 오류 문구 없이 제출만 막는다', async () => {
+    renderDetail(makeTask(ga07))
+    await fillCard({ phone: '010' })
+    expect(screen.queryByText('숫자와 하이픈(-)만 입력해 주세요')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/연락처/)).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByRole('button', { name: '제출' })).toBeDisabled()
+  })
+
+  it('GA-07: 이메일 아이디 칸의 설명으로 도메인을 읽어 준다', () => {
+    renderDetail(makeTask(ga07))
+    expect(screen.getByLabelText(/이메일 아이디/)).toHaveAccessibleDescription('@blueward.co.kr')
+  })
+
+  it('GA-07 옛 기록(english_name만)을 제출한 뒤 열면 미리보기는 프로필 직급·팀·메일', () => {
+    renderDetail(makeTask(ga07, { status: 'submitted', result: { english_name: 'KIM HANEUL' } }))
     const preview = screen.getByRole('figure', { name: '명함 자동 채움 미리보기' })
-    expect(preview).toHaveTextContent('가상하늘')
+    expect(preview).toHaveTextContent('KIM HANEUL')
     expect(preview).toHaveTextContent('사원')
     expect(preview).toHaveTextContent('AI팀')
     expect(preview).toHaveTextContent('newhire@demo.test')
-    await userEvent.type(screen.getByLabelText(/영문 이름/), 'Haneul Kim')
-    expect(preview).toHaveTextContent('Haneul Kim')
+  })
+
+  it('GA-07: 입력값이 미리보기에 반영(한글 이름은 프로필)', async () => {
+    renderDetail(makeTask(ga07))
+    const preview = screen.getByRole('figure', { name: '명함 자동 채움 미리보기' })
+    expect(preview).toHaveTextContent('가상하늘')
+    await fillCard()
+    expect(preview).toHaveTextContent('Associate')
+    expect(preview).toHaveTextContent('Artificial Intelligence Group')
+    expect(preview).toHaveTextContent('haneul.kim@blueward.co.kr')
+    expect(preview).toHaveTextContent('010-0000-0000')
   })
 
   it('input 과제(AI-04): 필수 칸이 모두 채워져야 제출, 선택 칸은 비워도 된다', async () => {
@@ -159,13 +244,25 @@ describe('과제 상세', () => {
   it('rework 상태 → 보완 요청 사유 표시', () => {
     renderDetail(
       makeTask(
-        { code: 'GA-07', title: '명함 신청', kind: 'input', completion_mode: 'confirm', department: 'ga', form_schema: ga07Form },
+        ga07,
         { status: 'rework', rework_reason: '여권 표기와 같게 맞춰 주세요', result: { english_name: 'Haneul Kim' } },
       ),
     )
     expect(screen.getByText('여권 표기와 같게 맞춰 주세요')).toBeInTheDocument()
     expect(screen.getByLabelText(/영문 이름/)).toHaveValue('Haneul Kim')
-    expect(screen.getByRole('button', { name: '다시 제출' })).toBeEnabled()
+  })
+
+  it('GA-07 보완 요청: 옛 결과(english_name만)로 열면 영문 이름만 채워지고 나머지를 채워야 다시 제출', async () => {
+    renderDetail(makeTask(ga07, { status: 'rework', rework_reason: '부문을 골라 주세요', result: { english_name: 'Haneul Kim' } }))
+    expect(screen.getByLabelText(/직급/)).toHaveValue('')
+    expect(screen.getByLabelText(/부문/)).toHaveValue('')
+    const resubmit = screen.getByRole('button', { name: '다시 제출' })
+    expect(resubmit).toBeDisabled()
+    await userEvent.type(screen.getByLabelText(/직급/), '사원')
+    await userEvent.selectOptions(screen.getByLabelText(/부문/), 'AI 그룹 / AI본부')
+    await userEvent.type(screen.getByLabelText(/이메일 아이디/), 'haneul.kim')
+    await userEvent.type(screen.getByLabelText(/연락처/), '010-0000-0000')
+    expect(resubmit).toBeEnabled()
   })
 
   it('assessment → 일정·장소·결과 표시, 버튼 없음', () => {

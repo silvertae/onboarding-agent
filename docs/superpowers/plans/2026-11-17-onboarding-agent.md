@@ -301,7 +301,7 @@ consume_quota('other', 1) → 예외
 | GA-04 | 복지포인트 등록 | week1 | staff_only | | | |
 | GA-05 | 생일 포인트 등록 | week1 | staff_only | | | |
 | GA-06 | 복지카드 수령·앱 확인 | week1 | confirm | | GA-04 | |
-| GA-07 | 명함 신청 | week1 | confirm | | | kind=input, form: english_name |
+| GA-07 | 명함 신청 | week1 | confirm | | | kind=input, form: english_name, job_title, division, email_id, phone (0015) |
 | GA-08 | 웰컴키트 수령 | day1 | confirm | | | |
 | AC-01 | 법인카드 신청서 작성 | week1 | confirm | | | |
 | AC-02 | 카드사 온라인 동의 | week1 | confirm | | | |

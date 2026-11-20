@@ -108,7 +108,7 @@ npx firebase-tools@15.36.0 hosting:sites:create "$PROD_SITE" --project "$PROD_PR
 | 자동 백업이 보장되지 않고 다운로드할 수 없다 | 데모 데이터는 마이그레이션·부트스트랩·데모 초기화로 다시 만들 수 있다. 관리자가 만든 심사위원 계정만 다시 만들어야 한다 |
 | 활성 무료 프로젝트는 계정당 2개 | 스테이징·운영 두 개로 딱 맞다. 다른 무료 프로젝트를 켜지 않는다 |
 | DB 500MB, 월 사용자 5만, 트래픽 5GB | 시연 규모에서는 여유 있다 |
-| Storage 1GB | 서식 버킷 `task-forms`는 파일당 10MB로 제한해 1GB 안에 둔다. 기본 서식 3개는 작은 가상 파일이고, 담당자가 올린 서식은 데모 초기화가 지운다 |
+| Storage 1GB | 서식 버킷 `task-forms`는 파일당 10MB로 제한해 1GB 안에 둔다. 기본 서식 4개는 작은 가상 파일이고, 담당자가 올린 서식은 데모 초기화가 지운다 |
 
 정지되면 Supabase 대시보드에서 프로젝트를 열고 **Restore**를 누른다(데이터·설정·키는 그대로). 정지가 실제로 생기면 **Billing → Upgrade to Pro**로 같은 프로젝트를 바로 Pro로 올릴 수 있다(주소·키 변경 없음).
 
@@ -422,7 +422,7 @@ SUPABASE_SERVICE_ROLE_KEY="$(gcloud secrets versions access latest --secret supa
 
 버전은 실제 도입 전까지 `v0.x.y`를 쓴다(Leo 결정, 2026-11-19). 고친 것만 올리면 끝자리(`v0.1.1`), 기능을 더하면 가운데 자리(`v0.2.0`)를 올리고, 실제 도입이 정해지면 `v1.0.0`으로 한다. 워크플로·환경·태그 보호는 `v*`만 보므로 버전 형식이 배포 동작을 바꾸지 않는다.
 
-"기본 서식 부트스트랩"(`services/agent/scripts/bootstrap_forms.py`, `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`만 필요)은 계정 부트스트랩 다음에 기본 서식 3개(`supabase/seed-forms/`의 가상 파일: AC-01 2개, HR-08 1개)를 `task-forms` 버킷에 올리고 `task_template_files`에 기본 서식(`is_seed`)으로 등록한다. 객체 경로가 고정이고 행은 `(template_id, file_name)` 기준 upsert라 배포마다 다시 실행해도 같은 결과다. 파일이나 템플릿이 없으면 이름을 출력하고 종료 코드 2로 멈춘다. 로컬은 `npm run bootstrap`이 계정과 함께 실행한다.
+"기본 서식 부트스트랩"(`services/agent/scripts/bootstrap_forms.py`, `SUPABASE_URL`·`SUPABASE_SERVICE_ROLE_KEY`만 필요)은 계정 부트스트랩 다음에 기본 서식 4개(`supabase/seed-forms/`의 가상 파일: AC-01 2개, HR-08 1개, GA-07 1개)를 `task-forms` 버킷에 올리고 `task_template_files`에 기본 서식(`is_seed`)으로 등록한다. 객체 경로가 고정이고 행은 `(template_id, file_name)` 기준 upsert라 배포마다 다시 실행해도 같은 결과다. 파일이나 템플릿이 없으면 이름을 출력하고 종료 코드 2로 멈춘다. 로컬은 `npm run bootstrap`이 계정과 함께 실행한다.
 
 각 단계는 실패하면 그 자리에서 멈춘다. DB 마이그레이션은 에이전트·웹보다 먼저 적용되며, 추가만 하므로 앞 버전 코드와도 동작한다.
 
