@@ -1,4 +1,4 @@
-"""기본 서식 3개를 task-forms 버킷에 올리고 task_template_files에 등록한다. 배포 때마다 실행해도 안전하다.
+"""기본 서식 4개를 task-forms 버킷에 올리고 task_template_files에 등록한다. 배포 때마다 실행해도 안전하다.
 
 필요한 환경변수: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
@@ -25,6 +25,7 @@ SEED_FORMS: list[tuple[str, str]] = [
     ("AC-01", "법인카드 신청서.xlsx"),
     ("AC-01", "법인카드 사용 동의서.docx"),
     ("HR-08", "소득세 감면 신청서.pdf"),
+    ("GA-07", "명함 신청서.xlsx"),
 ]
 CONTENT_TYPES = {
     "pdf": "application/pdf",

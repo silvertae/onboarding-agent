@@ -16,6 +16,7 @@ SEED_FORMS = [
     ("AC-01", "법인카드 신청서.xlsx"),
     ("AC-01", "법인카드 사용 동의서.docx"),
     ("HR-08", "소득세 감면 신청서.pdf"),
+    ("GA-07", "명함 신청서.xlsx"),
 ]
 
 
@@ -64,9 +65,9 @@ def test_seed_files_are_small():
         assert path.stat().st_size <= 100 * 1024
 
 
-def test_three_seed_rows_after_two_runs(runs, admin):
+def test_four_seed_rows_after_two_runs(runs, admin):
     rows = _seed_rows(admin)
-    assert len(rows) == 3
+    assert len(rows) == 4
     got = {(r["task_templates"]["code"], r["file_name"]): r for r in rows}
     assert sorted(got) == sorted(SEED_FORMS)
     for (code, name), row in got.items():
