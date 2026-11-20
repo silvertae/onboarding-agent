@@ -1,16 +1,12 @@
-import { BusinessCard } from '@/components/BusinessCard'
+import { BusinessCard, type BusinessCardProps } from '@/components/BusinessCard'
+import { businessCardProps } from '@/components/businessCardProps'
 import type { Json } from '@/lib/database.types'
+import { readFormFields } from '@/lib/formSchema'
 import type { TaskView } from '@/lib/tasks'
 import type { Hire } from './hires'
 import { isRecord } from './json'
 
-type Field = { key: string; label: string }
-
-function fieldsOf(task: TaskView): Field[] {
-  const schema = task.template.form_schema
-  if (!isRecord(schema) || !Array.isArray(schema.fields)) return []
-  return schema.fields.filter(isRecord).map((f) => ({ key: String(f.key), label: String(f.label ?? f.key) }))
-}
+type Row = { key: string; label: string; suffix?: string }
 
 function text(value: Json | undefined): string {
   if (value === undefined || value === null || value === '') return '—'
@@ -18,11 +14,16 @@ function text(value: Json | undefined): string {
   return typeof value === 'object' ? JSON.stringify(value) : String(value)
 }
 
-// 명함(GA-07) 자동 채움 미리보기: 이름·직급·팀·메일은 프로필, 영문 이름은 신입 입력
-function BusinessCardPreview({ englishName, hire }: { englishName: string; hire?: Hire }) {
+// 값이 있을 때만 고정 글자(예: 이메일 도메인)를 붙인다.
+function withSuffix(value: string, suffix?: string): string {
+  return suffix && value !== '—' ? value + suffix : value
+}
+
+// 명함(GA-07) 미리보기: 한글 이름은 프로필, 나머지는 신입 입력(옛 기록은 프로필 직급·팀·메일)
+function BusinessCardPreview({ card }: { card: BusinessCardProps }) {
   return (
     <figure aria-label="명함 미리보기" className="m-0 mt-3 max-w-[360px]">
-      <BusinessCard name={hire?.full_name} jobTitle={hire?.job_title} teamName={hire?.team?.name} englishName={englishName} email={hire?.email} />
+      <BusinessCard {...card} />
     </figure>
   )
 }
@@ -36,9 +37,20 @@ export function SubmittedResult({ task, hire }: { task: TaskView; hire?: Hire })
   }
   if (!isRecord(result)) return <p className="text-sm">{text(result)}</p>
 
-  const fields = fieldsOf(task)
-  const rows: Field[] = fields.length > 0 ? fields : Object.keys(result).map((key) => ({ key, label: key === 'checked' ? '체크한 항목' : key }))
-  const englishName = typeof result.english_name === 'string' ? result.english_name : null
+  const fields = readFormFields(task.template.form_schema)
+  const rows: Row[] =
+    fields.length > 0
+      ? fields.map((f) => ({ key: String(f.key), label: String(f.label ?? f.key), suffix: f.suffix }))
+      : Object.keys(result).map((key) => ({ key, label: key === 'checked' ? '체크한 항목' : key }))
+  const card =
+    typeof result.english_name === 'string'
+      ? businessCardProps(fields, result, {
+          full_name: hire?.full_name,
+          job_title: hire?.job_title,
+          team_name: hire?.team?.name,
+          email: hire?.email,
+        })
+      : null
 
   return (
     <div>
@@ -46,11 +58,11 @@ export function SubmittedResult({ task, hire }: { task: TaskView; hire?: Hire })
         {rows.map((row) => (
           <div key={row.key} className="contents">
             <dt className="break-keep text-muted-foreground">{row.label}</dt>
-            <dd className="whitespace-pre-wrap break-words">{text(result[row.key])}</dd>
+            <dd className="whitespace-pre-wrap break-words">{withSuffix(text(result[row.key]), row.suffix)}</dd>
           </div>
         ))}
       </dl>
-      {englishName && <BusinessCardPreview englishName={englishName} hire={hire} />}
+      {card && <BusinessCardPreview card={card} />}
     </div>
   )
 }
