@@ -27,6 +27,12 @@ describe('BusinessCard', () => {
     expect(screen.getByText('010-0000-0000')).toBeInTheDocument()
   })
 
+  it('좁은 명함에서도 연락처는 숫자 중간에서 줄이 바뀌지 않고, 메일만 어디서든 줄을 바꾼다', () => {
+    render(<BusinessCard name="김하늘" englishName="Haneul Kim" email="haneul.kim.longname@blueward.co.kr" phone="010-0000-0000" />)
+    expect(screen.getByText('010-0000-0000')).toHaveClass('whitespace-nowrap')
+    expect(screen.getByText('haneul.kim.longname@blueward.co.kr')).toHaveClass('break-all')
+  })
+
   it('부문이 없으면 부문 줄을 그리지 않는다', () => {
     render(<BusinessCard name="김하늘" englishName="Haneul Kim" division={null} />)
     expect(screen.queryByTestId('card-division')).not.toBeInTheDocument()
