@@ -1,7 +1,7 @@
 -- 명함 신청(GA-07) 5칸 입력 테스트. 칸 정의·시드 사본·안내문 조건부 갱신·초기화 후 유지를 확인하고 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(14);
 
 create function pg_temp.ga07() returns public.task_templates language sql as $$
   select * from public.task_templates
@@ -39,6 +39,9 @@ update public.task_templates set description = '담당자가 고친 안내' wher
 select private.apply_business_card_form();
 select is((pg_temp.ga07()).description, '담당자가 고친 안내', '다시 적용해도 담당자가 고친 안내문은 남는다');
 select is(jsonb_array_length((pg_temp.ga07()).form_schema -> 'fields'), 5, '다시 적용해도 칸 5개(멱등)');
+
+select ok(not (select prosecdef from pg_proc where oid = 'private.apply_business_card_form()'::regprocedure),
+  '적용 함수는 security definer가 아니다(마이그레이션 소유자만 부른다)');
 
 -- ── 데모 초기화 뒤에도 새 칸 정의 ───────────────────────────────────
 insert into auth.users (id, email) values ('ab000000-0000-0000-0000-000000000401', 'admin@card.test');

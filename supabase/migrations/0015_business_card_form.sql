@@ -4,7 +4,7 @@
 -- 안내문은 담당자가 고치지 않았을 때(옛 시드 문구 그대로일 때)만 바꾼다. 시드 사본은 항상 새 값.
 
 create function private.apply_business_card_form() returns void
-language plpgsql security definer set search_path = ''
+language plpgsql set search_path = ''
 as $$
 declare
   v_org constant uuid := '00000000-0000-0000-0000-000000000001';

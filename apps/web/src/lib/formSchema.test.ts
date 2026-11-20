@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { englishOf, formatError, readFormFields, type FormField } from './formSchema'
+import { englishOf, formatError, formatReady, readFormFields, type FormField } from './formSchema'
 
 const jobTitle: FormField = { key: 'job_title', label: '직급', type: 'text', english: { 책임: 'Senior Manager', 사원: 'Associate' } }
 const division: FormField = {
@@ -42,6 +42,13 @@ describe('englishOf', () => {
     expect(englishOf(division, '없는 부문')).toBe('')
   })
 
+  it('객체 기본 속성 이름(__proto__·constructor·toString)을 입력해도 빈 값(화면이 깨지지 않는다)', () => {
+    for (const v of ['__proto__', 'constructor', 'toString']) {
+      expect(englishOf(jobTitle, v)).toBe('')
+      expect(englishOf(division, v)).toBe('')
+    }
+  })
+
   it('대응표가 없는 칸은 빈 값', () => {
     expect(englishOf(phone, '010-0000-0000')).toBe('')
   })
@@ -55,6 +62,7 @@ describe('formatError', () => {
 
   it('연락처는 숫자와 하이픈만', () => {
     expect(formatError(phone, '010-0000-0000')).toBeNull()
+    expect(formatError(phone, '010')).toBeNull()
     expect(formatError(phone, '010 공공')).toBe('숫자와 하이픈(-)만 입력해 주세요')
   })
 
@@ -65,5 +73,22 @@ describe('formatError', () => {
 
   it('형식이 없는 칸은 검사하지 않는다', () => {
     expect(formatError(jobTitle, '아무 글자')).toBeNull()
+  })
+})
+
+describe('formatReady', () => {
+  it('연락처는 입력 중(짧은 숫자)에는 오류 문구 없이 제출만 막는다', () => {
+    expect(formatReady(phone, '010')).toBe(false)
+    expect(formatReady(phone, '010-0000-0000')).toBe(true)
+  })
+
+  it('형식이 틀린 값은 준비되지 않음', () => {
+    expect(formatReady(emailId, 'a@b')).toBe(false)
+    expect(formatReady(emailId, 'haneul.kim')).toBe(true)
+  })
+
+  it('빈 값과 형식 없는 칸은 막지 않는다(필수 여부는 따로)', () => {
+    expect(formatReady(phone, '')).toBe(true)
+    expect(formatReady(jobTitle, '아무 글자')).toBe(true)
   })
 })

@@ -172,6 +172,28 @@ describe('과제 상세', () => {
     expect(screen.getByRole('button', { name: '제출' })).toBeDisabled()
   })
 
+  it('GA-07: 연락처를 짧게 입력 중이면 오류 문구 없이 제출만 막는다', async () => {
+    renderDetail(makeTask(ga07))
+    await fillCard({ phone: '010' })
+    expect(screen.queryByText('숫자와 하이픈(-)만 입력해 주세요')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/연락처/)).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByRole('button', { name: '제출' })).toBeDisabled()
+  })
+
+  it('GA-07: 이메일 아이디 칸의 설명으로 도메인을 읽어 준다', () => {
+    renderDetail(makeTask(ga07))
+    expect(screen.getByLabelText(/이메일 아이디/)).toHaveAccessibleDescription('@blueward.co.kr')
+  })
+
+  it('GA-07 옛 기록(english_name만)을 제출한 뒤 열면 미리보기는 프로필 직급·팀·메일', () => {
+    renderDetail(makeTask(ga07, { status: 'submitted', result: { english_name: 'KIM HANEUL' } }))
+    const preview = screen.getByRole('figure', { name: '명함 자동 채움 미리보기' })
+    expect(preview).toHaveTextContent('KIM HANEUL')
+    expect(preview).toHaveTextContent('사원')
+    expect(preview).toHaveTextContent('AI팀')
+    expect(preview).toHaveTextContent('newhire@demo.test')
+  })
+
   it('GA-07: 입력값이 미리보기에 반영(한글 이름은 프로필)', async () => {
     renderDetail(makeTask(ga07))
     const preview = screen.getByRole('figure', { name: '명함 자동 채움 미리보기' })

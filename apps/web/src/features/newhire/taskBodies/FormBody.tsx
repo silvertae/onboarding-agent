@@ -6,9 +6,13 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { formatError, readFormFields, type FormField } from '@/lib/formSchema'
+import { formatError, formatReady, readFormFields, type FormField } from '@/lib/formSchema'
 import { useTeamName } from '../useTeamName'
 import type { BodyProps } from './types'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
 function initialValues(fields: FormField[], result: unknown): Record<string, string> {
   const prev = (result ?? {}) as Record<string, unknown>
@@ -40,12 +44,15 @@ function FormFieldInput({ field: f, id, value, disabled, onChange }: FieldProps)
   const error = formatError(f, value)
   const note = error ?? f.hint
   const noteId = `${id}-note`
+  const suffixId = `${id}-suffix`
+  // 화면 낭독기가 고정 글자(도메인)와 안내·오류를 함께 읽게 한다.
+  const describedBy = [f.suffix && suffixId, note && noteId].filter(Boolean).join(' ') || undefined
   const common = {
     id,
     value,
     disabled,
     required: f.required,
-    'aria-describedby': note ? noteId : undefined,
+    'aria-describedby': describedBy,
     'aria-invalid': error ? true : undefined,
   }
   return (
@@ -79,7 +86,11 @@ function FormFieldInput({ field: f, id, value, disabled, onChange }: FieldProps)
             inputMode={f.format === 'tel' ? 'tel' : undefined}
             onChange={(e) => onChange(e.target.value)}
           />
-          {f.suffix && <span className="shrink-0 text-muted-foreground">{f.suffix}</span>}
+          {f.suffix && (
+            <span id={suffixId} className="shrink-0 text-muted-foreground">
+              {f.suffix}
+            </span>
+          )}
         </div>
       )}
       {note && (
@@ -98,9 +109,12 @@ export function FormBody({ task, disabled, children }: BodyProps) {
   const fields = readFormFields(task.template.form_schema)
   const [values, setValues] = useState(() => initialValues(fields, task.result))
   const idPrefix = useId()
-  const ready = fields.every((f) => (!f.required || values[f.key].trim() !== '') && formatError(f, values[f.key]) === null)
+  const ready = fields.every((f) => (!f.required || values[f.key].trim() !== '') && formatReady(f, values[f.key]))
   const result = Object.fromEntries(fields.map((f) => [f.key, values[f.key].trim()]))
-  const card = businessCardProps(fields, values, {
+  // 제출·완료된 과제는 저장된 제출값으로 그린다(옛 기록이면 프로필 직급·팀·메일). 고칠 수 있을 때는 입력값으로.
+  const submitted = task.status === 'submitted' || task.status === 'done'
+  const shown = submitted && isRecord(task.result) ? task.result : values
+  const card = businessCardProps(fields, shown, {
     full_name: profile?.full_name,
     job_title: profile?.job_title,
     team_name: teamName,

@@ -89,7 +89,8 @@ def _reference(ws) -> tuple[str, str]:
         r = div_start + i
         ws.cell(row=r, column=2, value=ko).border = BOX
         ws.cell(row=r, column=3, value=en or None).border = BOX
-        ws.cell(row=r, column=4, value=f'=C{r}&" "&C${unit_row[unit]}' if unit else None).border = BOX
+        # 빈 셀을 VLOOKUP하면 0이 나오므로 공란은 빈 글자 수식으로 둔다.
+        ws.cell(row=r, column=4, value=f'=C{r}&" "&C${unit_row[unit]}' if unit else '=""').border = BOX
     div_end = div_start + len(DIVISIONS) - 1
 
     note_head = div_end + 3
@@ -128,7 +129,8 @@ def build(path: Path) -> None:
     for col in "BCDEFGHIJKL":
         ws[f"{col}4"].border = BOX
 
-    dv = DataValidation(type="list", formula1=f"='명함참고'!{div_values}", allow_blank=True)
+    # Excel이 저장하는 형식처럼 앞의 '=' 없이 범위만 적는다.
+    dv = DataValidation(type="list", formula1=f"'명함참고'!{div_values}", allow_blank=True)
     dv.add("H4:H20")
     ws.add_data_validation(dv)
 

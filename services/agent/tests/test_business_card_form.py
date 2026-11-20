@@ -56,13 +56,25 @@ def test_english_division_matches_schema(wb, schema):
     got = []
     for cell in cells:
         formula = ws.cell(row=cell.row, column=cell.column + 2).value
-        if formula in (None, ""):
+        if formula == '=""':
             got.append("")
             continue
         m = re.fullmatch(r'=C(\d+)&" "&C\$(\d+)', formula)
         assert m, formula
         got.append(f'{ws[f"C{m[1]}"].value} {ws[f"C{m[2]}"].value}')
     assert got == [o["english"] for o in schema["division"]["options"]]
+
+
+def test_blank_division_shows_empty_not_zero(wb):
+    # 빈 셀을 VLOOKUP하면 0이 나온다. "공란" 행의 영문부문은 빈 글자 수식이어야 한다.
+    ws, cells = _division_rows(wb)
+    blank = next(c for c in cells if c.value == "공란")
+    assert ws.cell(row=blank.row, column=blank.column + 2).value == '=""'
+
+
+def test_dropdown_formula_has_no_leading_equals(wb):
+    # Excel이 저장하는 데이터 유효성 수식에는 앞의 '='가 없다.
+    assert not wb["명함신청양식"].data_validations.dataValidation[0].formula1.startswith("=")
 
 
 def test_job_titles_match_schema(wb, schema):
