@@ -37,7 +37,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
         <section class="card">
           <div class="card-bd" style="display: flex; flex-direction: column; gap: 16px; padding: 28px 28px 24px">
             <div class="row" style="gap: 8px; flex-wrap: wrap"><span class="tag">첫 주</span><span class="own">총무팀</span><span class="st st-rework">보완 요청</span></div>
-            <h1>명함 영문 이름 입력</h1>
+            <h1>명함 신청</h1>
             <div class="row" style="gap: 20px; flex-wrap: wrap; font-size: 13px; color: var(--secondary)">
               <span class="row" style="gap: 6px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>기한 11월 18일 (수)</span>
               <span>선행 과제 없음</span>
@@ -45,36 +45,37 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
             </div>
             <div class="alert alert-err">
               <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
-              <div style="display: flex; flex-direction: column; gap: 2px"><b>총무팀 이지은 님이 보완을 요청했어요 · 11월 17일 11:40</b><span>영문 성·이름 순서를 여권과 같게 맞춰 주세요. (현재 "Haneul Kim" → 여권 표기 "KIM HANEUL")</span></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><b>총무팀 이지은 님이 보완을 요청했어요 · 11월 17일 11:40</b><span>부문을 다시 골라 주세요. AI팀은 "AI 그룹 / AI본부"로 신청합니다.</span></div>
             </div>
           </div>
           <hr class="sep">
           <div class="card-bd" style="display: flex; flex-direction: column; gap: 8px; padding: 24px 28px">
             <h3>안내</h3>
-            <p class="secondary" style="font-size: 15px; line-height: 23px">명함은 총무팀이 매주 목요일에 일괄 주문해요. 국문 정보(이름·직급·소속·연락처)는 인사 정보로 자동 채워지고, 영문 이름만 직접 입력하면 돼요. 표기는 여권을 기준으로 합니다.</p>
+            <p class="secondary" style="font-size: 15px; line-height: 23px">명함에 들어갈 영문 이름·직급·부문·이메일 아이디·연락처를 입력해 주세요. 한글 이름은 프로필에서 채워집니다. 실제 신청 양식은 첨부한 엑셀을 참고하세요.</p>
           </div>
           <hr class="sep">
           <form class="card-bd" style="display: flex; flex-wrap: wrap; gap: 28px; padding: 24px 28px">
             <div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 16px">
-              <h3>영문 이름</h3>
-              <div class="grid-2" style="gap: 12px">
-                <div class="field"><label class="label" for="ln">성 (Last name)</label><input class="input input-lg" id="ln" value="KIM"></div>
-                <div class="field"><label class="label" for="fn">이름 (First name)</label><input class="input input-lg" id="fn" value="HANEUL"></div>
+              <h3>입력</h3>
+              <div class="field"><label class="label" for="en">영문 이름<span style="color: var(--st-rework-fg)" aria-hidden="true">*</span></label><input class="input input-lg" id="en" value="Haneul Kim"></div>
+              <div class="field"><label class="label" for="jt">직급<span style="color: var(--st-rework-fg)" aria-hidden="true">*</span></label><input class="input input-lg" id="jt" value="사원"><span class="hint">첨부 양식의 직급 표기를 따릅니다</span></div>
+              <div class="field"><label class="label" for="dv">부문<span style="color: var(--st-rework-fg)" aria-hidden="true">*</span></label>
+                <select class="select input-lg" id="dv"><option>골라 주세요</option><option>공란</option><option>AI 부문</option><option selected>AI 그룹 / AI본부</option><option>플랫폼 본부</option><option>클라우드 사업부 / 플랫폼본부</option><option>데이터 사업부 / 플랫폼본부</option><option>산업솔루션 본부</option><option>스마트팩토리 사업부 / 산업솔루션본부</option><option>전략컨설팅 본부</option><option>경영지원 본부</option><option>인사총무팀 / 경영지원본부</option></select>
               </div>
-              <div class="field">
-                <label class="label" for="order">명함 표기 순서</label>
-                <select class="select" id="order"><option>여권과 같게 — 성 이름 (KIM HANEUL)</option><option>이름 성 (Haneul Kim)</option></select>
-                <span class="hint">대문자·소문자 표기는 명함 디자인 규정에 맞춰 자동 변환돼요.</span>
+              <div class="field"><label class="label" for="em">이메일 아이디<span style="color: var(--st-rework-fg)" aria-hidden="true">*</span></label>
+                <div class="row" style="gap: 8px"><input class="input input-lg" id="em" value="haneul.kim" style="flex: 1; min-width: 0"><span class="secondary" style="font-size: 15px">@blueward.co.kr</span></div>
               </div>
+              <div class="field"><label class="label" for="ph">연락처<span style="color: var(--st-rework-fg)" aria-hidden="true">*</span></label><input class="input input-lg" id="ph" value="010-0000-0000" inputmode="tel"><span class="hint">공개 데모라 가상 번호를 입력해 주세요</span></div>
             </div>
             <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 12px">
-              <div class="between"><h3>자동 채움 미리보기</h3><span class="caption">인사 정보 기준</span></div>
+              <div class="between"><h3>자동 채움 미리보기</h3><span class="caption">입력 내용 기준</span></div>
               <div style="aspect-ratio: 90 / 50; background: #ffffff; border: 1px solid var(--border-strong); border-radius: 10px; padding: 22px 24px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06)">
                 <img src="../assets/blueward-logo.png" alt="Blueward" style="height: 16px; width: auto; align-self: flex-start">
                 <div style="display: flex; flex-direction: column; gap: 2px">
-                  <b style="font-size: 17px">김하늘 <span style="font-weight: 400; font-size: 12px; color: var(--secondary)">사원 · AI팀</span></b>
-                  <span style="font-size: 12px; letter-spacing: 0.4px; color: var(--primary); font-weight: 600">KIM HANEUL</span>
-                  <span style="font-size: 11px; color: var(--muted); margin-top: 6px">haneul.kim@blueward.demo · 010-0000-0000</span>
+                  <b style="font-size: 17px">김하늘 <span style="font-weight: 400; font-size: 12px; color: var(--secondary)">사원</span></b>
+                  <span style="font-size: 12px; letter-spacing: 0.4px; color: var(--primary); font-weight: 600">Haneul Kim <span style="font-weight: 400">· Associate</span></span>
+                  <span style="font-size: 12px; color: var(--secondary); margin-top: 4px">AI 그룹 / AI본부 <span style="color: var(--muted)">· Artificial Intelligence Group</span></span>
+                  <span style="font-size: 11px; color: var(--muted); margin-top: 6px">haneul.kim@blueward.co.kr · 010-0000-0000</span>
                 </div>
               </div>
             </div>
@@ -127,11 +128,11 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
             <div style="display: flex; flex-direction: column; flex: 1; line-height: 1.25"><b>온보딩 에이전트</b><span class="caption">회사·AI팀 지식으로 답해요</span></div>
           </div>
           <div class="chat-bd" style="flex: 1 1 auto; overflow: auto">
-            <div class="msg-u">「명함 영문 이름 입력」 여권에 없는 중간 이름도 넣어야 해?</div>
+            <div class="msg-u">「명함 신청」 여권에 없는 중간 이름도 넣어야 해?</div>
             <div class="msg-a">
-              <span class="bubble">아니요. 명함에는 여권의 <b>성(Surname)과 이름(Given names)</b>만 넣어요. 중간 이름은 생략해도 되고, 여권 순서인 <b>KIM HANEUL</b>로 제출하면 돼요.</span>
+              <span class="bubble">아니요. 명함에는 여권의 <b>성(Surname)과 이름(Given names)</b>만 넣어요. 중간 이름은 생략해도 되고, <b>Haneul Kim</b>처럼 이름 성 순서로 적으면 돼요.</span>
               <div class="src"><span>근거</span><a href="#">명함 신청 안내 (회사 공통)</a></div>
-              <div class="src"><span>관련 과제</span><a href="#">명함 영문 이름 입력</a></div>
+              <div class="src"><span>관련 과제</span><a href="#">명함 신청</a></div>
             </div>
             <div class="msg-u">명함은 언제 받아?</div>
             <div class="msg-a">
@@ -141,7 +142,7 @@ a{color:var(--primary)}a:hover{color:var(--primary-pressed)}
           <div class="chat-ft">
             <div class="composer">
               <label for="q3" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">질문 입력</label>
-              <textarea id="q3" rows="2">「명함 영문 이름 입력」 </textarea>
+              <textarea id="q3" rows="2">「명함 신청」 </textarea>
               <button class="send" type="button" aria-label="보내기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
             </div>
             <span class="caption" style="text-align: right">13 / 1000</span>
