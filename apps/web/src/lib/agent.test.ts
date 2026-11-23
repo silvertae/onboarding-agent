@@ -9,7 +9,7 @@ vi.mock('@/lib/supabase', () => ({
   supabase: { auth: { signOut, getSession } },
 }))
 
-import { AgentError, agentFetch } from './agent'
+import { AgentError, agentFetch, resetWakeForTest, wakeAgent } from './agent'
 
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -84,5 +84,32 @@ describe('agentFetch', () => {
 
     expect(err).toBeInstanceOf(AgentError)
     expect((err as AgentError).status).toBe(0)
+  })
+})
+
+describe('wakeAgent', () => {
+  beforeEach(() => resetWakeForTest())
+
+  it('에이전트 /health를 GET으로 한 번만 부른다(토큰을 보내지 않는다)', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(200, { ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    wakeAgent()
+    wakeAgent()
+    await Promise.resolve()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith('http://agent.test/health', expect.objectContaining({ method: 'GET' }))
+    const init = (fetchMock.mock.calls[0] as unknown[])[1] as RequestInit
+    expect(init.headers).toBeUndefined()
+  })
+
+  it('연결에 실패해도 오류를 던지지 않고 로그아웃하지 않는다', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('network') }))
+
+    expect(() => wakeAgent()).not.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(signOut).not.toHaveBeenCalled()
   })
 })

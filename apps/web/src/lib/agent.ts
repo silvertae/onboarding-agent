@@ -61,3 +61,17 @@ export async function agentFetch(path: string, body: unknown): Promise<Response>
   }
   return res
 }
+
+// 신입 채팅 화면을 열 때 에이전트 인스턴스를 미리 깨운다. 질문을 입력하는 동안 인스턴스가 뜨면 첫 답이 빨라진다.
+// 페이지를 연 동안 한 번만 부른다. 토큰을 보내지 않고, 실패해도 무시한다(질문할 때 agentFetch가 오류를 알린다).
+let woken = false
+
+export function wakeAgent(): void {
+  if (woken) return
+  woken = true
+  fetch(`${import.meta.env.VITE_AGENT_URL}/health`, { method: 'GET', cache: 'no-store' }).catch(() => {})
+}
+
+export function resetWakeForTest(): void {
+  woken = false
+}
