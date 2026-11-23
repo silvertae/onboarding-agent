@@ -41,7 +41,7 @@ run staging abc123
 deploy_line="$(grep '^run deploy' "$work/log" || true)"
 check "staging 배포 성공" test "$code" -eq 0
 check "서비스 이름 agent-staging" grep -q '^run deploy agent-staging ' "$work/log"
-check "staging 최소 인스턴스 0" grep -q -- '--min-instances 0 ' <<<"$deploy_line"
+check "staging 최소 인스턴스 1(콜드 스타트 방지)" grep -q -- '--min-instances 1 ' <<<"$deploy_line"
 check "서울 리전" grep -q -- '--region asia-northeast3 ' <<<"$deploy_line"
 for flag in '--memory 1Gi' '--concurrency 20' '--max-instances 3' '--timeout 300' '--allow-unauthenticated' \
   '--service-account agent-runtime@demo-project.iam.gserviceaccount.com'; do
