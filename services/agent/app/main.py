@@ -1,6 +1,10 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import warmup
 from app.admin_routes import router as admin_router
 from app.chat_routes import router as chat_router
 from app.config import Settings, get_settings
@@ -9,9 +13,16 @@ from app.exam_routes import router as exam_router
 from app.knowledge_routes import router as knowledge_router
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+    # 준비가 끝나야 포트를 연다. Cloud Run 시작 확인(TCP)이 그때 통과하므로 첫 사용자가 준비 비용을 내지 않는다
+    await warmup.warm_up()
+    yield
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
-    app = FastAPI(title="온보딩 에이전트", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="온보딩 에이전트", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.settings = settings
 
     # 웹 출처만 허용한다: ALLOWED_ORIGINS 목록 + ALLOWED_ORIGIN_REGEX(PR 미리보기 주소). 인증은 Bearer 토큰이라 쿠키는 쓰지 않는다.

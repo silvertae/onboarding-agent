@@ -462,6 +462,7 @@ npx firebase-tools@15.36.0 hosting:clone "$PROD_SITE@<이전 버전 ID>" "$PROD_
 | OpenAI 월 한도(환경별) | OpenAI Project → Limits | 확인 필요(Leo) |
 | Supabase 일시 정지 방지 | Actions → `keepalive` 최근 실행이 성공(하루 세 번), 실패 알림 메일 수신 설정 | 스테이징·운영 모두 성공(2026-11-19 수동 실행). 운영 첫 배포 전에는 데모 계정이 없어 운영 쪽이 로그인 400으로 실패했다 |
 | 공개 가입 꺼짐(두 환경) | `smoke.sh` 5단계 | 두 환경 통과(운영은 `v0.1.0` 배포, 2026-11-19) |
+| `agent-staging` 최소 인스턴스 1 | 위와 같은 명령(`agent-staging`, `$STAGING_PROJECT`) | 2026-11-23부터 1(`deploy-agent.sh`). 0이면 쉬다가 첫 요청이 올 때 인스턴스 시작에 약 20초가 걸린다 |
 | 최소 인스턴스를 0으로 내릴 날짜 | 운영 시작 + 한 달: `gcloud run services update agent-prod --region $REGION --project $PROD_PROJECT --min-instances 0` | 2026-12-19(운영 시작 2026-11-19) |
 
 운영 기록:
