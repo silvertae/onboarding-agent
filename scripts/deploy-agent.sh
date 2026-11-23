@@ -27,7 +27,8 @@ env_name="$1"
 git_sha="$2"
 
 case "$env_name" in
-  staging) min_instances=0 ;;
+  # 스테이징도 1: 쉬다가 첫 요청이 오면 인스턴스 시작에 약 20초가 걸렸다(2026-11-23 로그)
+  staging) min_instances=1 ;;
   prod) min_instances=1 ;;
   *) echo "[deploy-agent] 환경은 staging 또는 prod여야 합니다: $env_name" >&2; exit 2 ;;
 esac
