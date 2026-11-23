@@ -29,6 +29,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ErrorText } from '@/features/staff/ui'
+import { wakeAgent } from '@/lib/agent'
 import { cn } from '@/lib/utils'
 import { ClauseDialog } from './ClauseDialog'
 import { requestKnowledge } from './knowledgeRequest'
@@ -70,6 +71,11 @@ function ChatAside() {
 
   const tooLong = input.length > MAX_MESSAGE_LENGTH
   const canSend = !sending && input.trim().length > 0 && !tooLong
+
+  // 질문을 입력하는 동안 에이전트 인스턴스가 준비되도록 화면을 열 때 미리 깨운다
+  useEffect(() => {
+    wakeAgent()
+  }, [])
 
   // S3의 "이 과제에 대해 물어보기" → 입력창을 채우고 패널을 연다(보내지는 않는다)
   useEffect(() => {

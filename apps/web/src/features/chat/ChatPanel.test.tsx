@@ -4,13 +4,14 @@ import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
 import { pendingResponse, streamResponse } from './testStream'
 
-const agent = vi.hoisted(() => ({ agentFetch: vi.fn() }))
+const agent = vi.hoisted(() => ({ agentFetch: vi.fn(), wakeAgent: vi.fn() }))
 const auth = vi.hoisted(() => ({ role: 'new_hire' as string }))
 const db = vi.hoisted(() => ({ from: vi.fn(), insert: vi.fn() }))
 
 vi.mock('@/lib/agent', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/agent')>()),
   agentFetch: agent.agentFetch,
+  wakeAgent: agent.wakeAgent,
 }))
 vi.mock('@/lib/supabase', () => ({ supabase: { from: db.from, auth: { signOut: vi.fn() } } }))
 vi.mock('@/app/AuthProvider', () => ({
@@ -47,6 +48,7 @@ async function ask(text: string) {
 
 beforeEach(() => {
   agent.agentFetch.mockReset()
+  agent.wakeAgent.mockReset()
   auth.role = 'new_hire'
   db.insert.mockReset().mockResolvedValue({ error: null, status: 201 })
   db.from.mockReset().mockReturnValue({ insert: db.insert })
@@ -63,6 +65,14 @@ describe('ChatPanel', () => {
 
     expect(screen.getByText('페이지 본문')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: '온보딩 에이전트 채팅' })).not.toBeInTheDocument()
+    expect(agent.wakeAgent).not.toHaveBeenCalled()
+  })
+
+  it('신입 화면을 열면 질문하기 전에 에이전트를 미리 깨운다', () => {
+    renderPanel()
+
+    expect(agent.wakeAgent).toHaveBeenCalledTimes(1)
+    expect(agent.agentFetch).not.toHaveBeenCalled()
   })
 
   it('질문하면 스트리밍한 답을 보여 준다', async () => {
