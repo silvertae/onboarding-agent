@@ -1365,7 +1365,9 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      save_knowledge_drafts: { Args: { p_items: Json }; Returns: number };
+      save_knowledge_drafts:
+        | { Args: { p_document_id: string; p_items: Json }; Returns: number }
+        | { Args: { p_items: Json }; Returns: number };
       save_knowledge_embeddings: { Args: { p_items: Json }; Returns: number };
       save_task_template: {
         Args: {

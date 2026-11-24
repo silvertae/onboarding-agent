@@ -199,7 +199,7 @@ export async function makeKnowledgeDrafts(documentId: string, count = 5): Promis
   if (body.drafts.length === 0) return 0
   const drafts = (body.drafts as Draft[]).slice(0, 10)
   if ((await currentUserId()) !== requestedBy) throw new SessionChangedError()
-  const { data, error, status } = await supabase.rpc('save_knowledge_drafts', { p_items: drafts })
+  const { data, error, status } = await supabase.rpc('save_knowledge_drafts', { p_document_id: documentId, p_items: drafts })
   if (error) await fail(error, status)
   return data as number
 }
