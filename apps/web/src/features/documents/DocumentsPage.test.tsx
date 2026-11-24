@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { vi } from 'vitest'
 import type { Profile } from '@/app/AuthProvider'
 import { AgentError } from '@/lib/agent'
-import type { DocumentClause, PolicyDocument } from './documents'
+import { SessionChangedError, type DocumentClause, type PolicyDocument } from './documents'
 
 const OPS: Partial<Profile> = { id: 'u-ops', org_id: 'org-1', role: 'ops_staff', department: 'hr', team_id: null, full_name: '서지원' }
 const TRAINER: Partial<Profile> = { id: 'u-tr', org_id: 'org-1', role: 'team_trainer', department: null, team_id: 'team-ai', full_name: '가상 서준' }
@@ -408,6 +408,17 @@ describe('S14 지식 초안 만들기', () => {
     await userEvent.click(screen.getByRole('button', { name: '지식 초안 만들기' }))
     expect(await screen.findByText('오늘 사용 한도를 넘었어요. 내일 다시 이용해 주세요.')).toBeInTheDocument()
     expect(screen.queryByText('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')).not.toBeInTheDocument()
+  })
+
+  it('계정이 바뀌어 저장하지 않았으면(SessionChangedError) 알림 없이 버튼만 원래대로 돌아온다', async () => {
+    mocks.makeKnowledgeDrafts.mockRejectedValueOnce(new SessionChangedError())
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: '지식 초안 만들기' }))
+    expect(await screen.findByRole('button', { name: '지식 초안 만들기' })).toBeEnabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')).not.toBeInTheDocument()
+    expect(screen.queryByText('계정이 바뀌어 초안을 저장하지 않았어요.')).not.toBeInTheDocument()
+    expect(screen.queryByText(/만들었어요|새로 만들 초안이 없어요/)).not.toBeInTheDocument()
   })
 
   it('에이전트가 502면 그 문구를 그대로 보여 준다', async () => {

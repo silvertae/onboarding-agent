@@ -21,6 +21,7 @@ import {
   agentMessage,
   canManage,
   isStaleProcessing,
+  SessionChangedError,
   STALE_PROCESSING_MS,
   useDocumentActions,
   useDocumentClauses,
@@ -135,6 +136,8 @@ export function DocumentsPage() {
         const count = await makeDrafts(doc.id)
         setDrafts((prev) => ({ ...prev, [doc.id]: { kind: 'ok', count } }))
       } catch (err) {
+        // 기다리는 동안 계정이 바뀌어 저장하지 않았으면 새 계정 화면에 알리지 않는다.
+        if (err instanceof SessionChangedError) return
         // 에이전트 오류(예: 429 하루 한도)는 그 문구를 보여 준다. 그 밖의 오류는 S14 실패 문구다.
         const message = err instanceof AgentError ? agentMessage(err) : DRAFT_FAILED
         setDrafts((prev) => ({ ...prev, [doc.id]: { kind: 'error', message } }))
