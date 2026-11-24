@@ -1,7 +1,8 @@
 import { vi } from 'vitest'
 
-const { calls, results, agentFetch, signOut, storage } = vi.hoisted(() => ({
+const { calls, results, agentFetch, getSession, signOut, storage } = vi.hoisted(() => ({
   agentFetch: vi.fn(),
+  getSession: vi.fn(),
   calls: [] as { table: string; op: string; args: unknown[] }[],
   results: new Map<string, { data: unknown; error: unknown; status: number }>(),
   signOut: vi.fn(async () => ({})),
@@ -49,7 +50,7 @@ vi.mock('@/lib/supabase', () => ({
         },
       }),
     },
-    auth: { signOut },
+    auth: { signOut, getSession },
   },
 }))
 vi.mock('@/lib/agent', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/agent')>()), agentFetch }))
@@ -57,7 +58,7 @@ vi.mock('@/lib/agent', async (importOriginal) => ({ ...(await importOriginal<typ
 import type { Profile } from '@/app/AuthProvider'
 import { AgentError } from '@/lib/agent'
 import { DbError } from '@/lib/errors'
-import { canManage, checkDocumentFile, deleteDocument, documentsRefetchInterval, loadClauses, isStaleProcessing, makeKnowledgeDrafts, STALE_PROCESSING_MS, uploadDocument } from './documents'
+import { canManage, checkDocumentFile, deleteDocument, documentsRefetchInterval, loadClauses, isStaleProcessing, makeKnowledgeDrafts, SessionChangedError, STALE_PROCESSING_MS, uploadDocument } from './documents'
 
 const ops: Profile = { id: 'u-ops', org_id: 'org-1', role: 'ops_staff', team_id: null } as Profile
 const trainer: Profile = { id: 'u-tr', org_id: 'org-1', role: 'team_trainer', team_id: 'team-ai' } as Profile
@@ -68,6 +69,9 @@ const file = (name: string, size = 10) => {
 }
 const row = { id: 'ignored', org_id: 'org-1', status: 'processing' }
 const order = () => calls.map((c) => `${c.table}.${c.op}`)
+const session = (userId: string) => ({ data: { session: { user: { id: userId } } }, error: null })
+const json = (body: unknown) => new Response(JSON.stringify(body))
+const draft = () => ({ question: 'q', answer: 'a', category: 'c', clause_ids: ['c1'] })
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -83,6 +87,8 @@ beforeEach(() => {
   storage.upload.mockResolvedValue({ data: {}, error: null })
   storage.remove.mockResolvedValue({ data: [], error: null })
   signOut.mockClear()
+  getSession.mockReset()
+  getSession.mockResolvedValue(session('u-hr'))
   vi.spyOn(crypto, 'randomUUID').mockReturnValue('11111111-1111-4111-8111-111111111111')
 })
 
@@ -246,6 +252,34 @@ describe('makeKnowledgeDrafts', () => {
     agentFetch.mockRejectedValue(new AgentError(429, '오늘 사용 한도를 넘었어요'))
     await expect(makeKnowledgeDrafts('d1', 3)).rejects.toBeInstanceOf(AgentError)
     expect(calls.some((c) => c.table.startsWith('rpc:'))).toBe(false)
+  })
+
+  it('does not save when the user changed while drafting (same role)', async () => {
+    getSession.mockResolvedValueOnce(session('u-hr')).mockResolvedValueOnce(session('u-ga'))
+    agentFetch.mockResolvedValueOnce(json({ drafts: [draft()] }))
+    await expect(makeKnowledgeDrafts('d1')).rejects.toBeInstanceOf(SessionChangedError)
+    expect(calls.some((c) => c.table === 'rpc:save_knowledge_drafts')).toBe(false)
+  })
+
+  it('does not save after sign-out', async () => {
+    getSession.mockResolvedValueOnce(session('u-hr')).mockResolvedValueOnce({ data: { session: null }, error: null })
+    agentFetch.mockResolvedValueOnce(json({ drafts: [draft()] }))
+    await expect(makeKnowledgeDrafts('d1')).rejects.toBeInstanceOf(SessionChangedError)
+    expect(calls.some((c) => c.table === 'rpc:save_knowledge_drafts')).toBe(false)
+  })
+
+  it('does not ask the agent when there is no session at the start', async () => {
+    getSession.mockResolvedValueOnce({ data: { session: null }, error: null })
+    await expect(makeKnowledgeDrafts('d1')).rejects.toBeInstanceOf(SessionChangedError)
+    expect(agentFetch).not.toHaveBeenCalled()
+    expect(calls.some((c) => c.table.startsWith('rpc:'))).toBe(false)
+  })
+
+  it('saves when the same user is still signed in', async () => {
+    getSession.mockResolvedValue(session('u-hr'))
+    agentFetch.mockResolvedValueOnce(json({ drafts: [draft()] }))
+    results.set('rpc:save_knowledge_drafts', { data: 1, error: null, status: 200 })
+    await expect(makeKnowledgeDrafts('d1')).resolves.toBe(1)
   })
 })
 
