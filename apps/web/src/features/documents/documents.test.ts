@@ -215,7 +215,7 @@ describe('deleteDocument', () => {
 })
 
 describe('makeKnowledgeDrafts', () => {
-  it('응답의 drafts를 그대로 save_knowledge_drafts에 넘기고 저장한 개수를 돌려준다', async () => {
+  it('응답의 drafts를 문서 id와 함께 save_knowledge_drafts에 넘기고 저장한 개수를 돌려준다', async () => {
     const drafts = [{ question: 'q', answer: 'a', category: 'c', clause_ids: ['c1'] }]
     agentFetch.mockImplementation(async (path: string, body: unknown) => {
       calls.push({ table: 'agent', op: path, args: [body] })
@@ -225,7 +225,7 @@ describe('makeKnowledgeDrafts', () => {
 
     await expect(makeKnowledgeDrafts('d1')).resolves.toBe(1)
     expect(calls[0]).toEqual({ table: 'agent', op: '/knowledge/draft-from-document', args: [{ document_id: 'd1', count: 5 }] })
-    expect(calls[1]).toEqual({ table: 'rpc:save_knowledge_drafts', op: 'rpc', args: [{ p_items: drafts }] })
+    expect(calls[1]).toEqual({ table: 'rpc:save_knowledge_drafts', op: 'rpc', args: [{ p_document_id: 'd1', p_items: drafts }] })
   })
 
   it('drafts가 빈 배열이면 저장하지 않고 0을 돌려준다', async () => {
