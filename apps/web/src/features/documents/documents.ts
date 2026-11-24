@@ -174,14 +174,31 @@ export async function deleteDocument(doc: Pick<PolicyDocument, 'id' | 'file_path
 
 type Draft = { question: string; answer: string; category: string; clause_ids: string[] }
 
+// 초안을 기다리는 동안(수 초) 로그아웃하거나 다른 계정으로 바뀌면 저장하지 않는다.
+export class SessionChangedError extends Error {
+  constructor() {
+    super('계정이 바뀌어 초안을 저장하지 않았어요.')
+    this.name = 'SessionChangedError'
+  }
+}
+
+async function currentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.id ?? null
+}
+
 // 초안 API는 DB에 쓰지 않는다. 받은 초안을 RPC로 저장하고 저장한 개수를 돌려준다.
+// RPC는 저장 시점의 세션으로 불리므로, 요청한 사용자와 같은 사용자일 때만 저장한다.
 export async function makeKnowledgeDrafts(documentId: string, count = 5): Promise<number> {
+  const requestedBy = await currentUserId()
+  if (!requestedBy) throw new SessionChangedError()
   const res = await agentFetch('/knowledge/draft-from-document', { document_id: documentId, count })
   const body = (await res.json()) as { drafts?: unknown }
   if (!Array.isArray(body.drafts)) throw new Error('초안을 만들지 못했어요. 잠시 후 다시 시도해 주세요.')
   // 이미 있는 질문과 겹치는 것만 남았을 때처럼 빈 배열은 정상 결과다
   if (body.drafts.length === 0) return 0
   const drafts = (body.drafts as Draft[]).slice(0, 10)
+  if ((await currentUserId()) !== requestedBy) throw new SessionChangedError()
   const { data, error, status } = await supabase.rpc('save_knowledge_drafts', { p_items: drafts })
   if (error) await fail(error, status)
   return data as number
