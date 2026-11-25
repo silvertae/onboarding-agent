@@ -138,7 +138,7 @@ RPC       match_document_clauses(p_embedding, p_count=6)          invoker. 조�
           resolve_unanswered_with_sources(p_id, p_question, p_answer, p_category, p_clause_ids uuid[], p_origin)
           save_knowledge_drafts(p_document_id, p_items jsonb)     invoker. draft·ai_draft로 최대 10개(0016). 범위·팀은 문서를 따른다,
                                                                   근거는 그 문서의 조항만. 관리 못 하는 문서(없음·다른 조직 포함)면 42501
-          save_knowledge_drafts(p_items jsonb)                    invoker. 범위는 호출자 역할. 웹에서 쓰지 않음, 호환용으로 남김
+          save_knowledge_drafts(p_items jsonb)                    invoker. 범위는 호출자 역할. 0017에서 authenticated 실행 권한 회수(함수만 남김)
           can_manage_document(p_document_id) → boolean            invoker. 관리 범위인지. 색인·문서 초안이 다운로드 전에 확인(읽기 범위와 다르다)
           consume_quota kind 추가: document, draft
 올리기    1) 형식·크기 확인 2) 행 insert(processing) 3) storage upload 4) POST /documents/{id}/index
