@@ -1,7 +1,7 @@
 -- 규정 문서·조항 스키마, RLS, 버킷 테스트. 픽스처는 이 파일 안에서 만들고 끝나면 롤백한다.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(122);
+select plan(123);
 
 -- ── 픽스처 (postgres 권한) ───────────────────────────────────────────
 -- 조직 O(팀 T·T2)와 다른 조직 O2. 사람·문서는 모두 가상.
@@ -130,7 +130,7 @@ select throws_ok(
   $$select public.replace_document_clauses('a9000000-0000-0000-0000-0000000000d3', '[]'::jsonb)$$,
   '42501', null, '신입A: replace_document_clauses 불가');
 select throws_ok(
-  $$select public.save_knowledge_drafts('[{"question":"q","answer":"a","category":"","clause_ids":[]}]'::jsonb)$$,
+  $$select public.save_knowledge_drafts('a9000000-0000-0000-0000-0000000000d3', '[{"question":"q","answer":"a","category":"","clause_ids":[]}]'::jsonb)$$,
   '42501', null, '신입A: save_knowledge_drafts 불가');
 select throws_ok(
   $$select public.resolve_unanswered_with_sources('a9000000-0000-0000-0000-0000000000f2', 'q', 'a', '', null, 'manual')$$,
@@ -289,7 +289,7 @@ select is(
   array[true, false, false],
   'ga: can_manage_document 회사 true, 팀T false, 다른 조직 false');
 select is(
-  public.save_knowledge_drafts($$[
+  public.save_knowledge_drafts('a9000000-0000-0000-0000-0000000000d1', $$[
     {"question":"초안 질문1","answer":"초안 답1","category":"휴가","clause_ids":["a9000000-0000-0000-0000-000000000c01","a9000000-0000-0000-0000-000000000c02"]},
     {"question":"초안 질문2","answer":"초안 답2","category":"휴가","clause_ids":["a9000000-0000-0000-0000-000000000c01","a9000000-0000-0000-0000-000000000c03","a9000000-0000-0000-0000-000000000c05"]}
   ]$$::jsonb),
@@ -308,7 +308,7 @@ select results_eq(
            ('초안 질문2'::text, 'a9000000-0000-0000-0000-000000000c01'::uuid)$$,
   'ga: 읽을 수 없는 조항(팀 조항·다른 조직)은 오류 없이 빠지고 나머지만 연결');
 select is(
-  public.save_knowledge_drafts($$[
+  public.save_knowledge_drafts('a9000000-0000-0000-0000-0000000000d1', $$[
     {"question":"느슨 질문1","answer":"답","category":"","clause_ids":null},
     {"question":"느슨 질문2","answer":"답","category":"","clause_ids":["not-a-uuid","a9000000-0000-0000-0000-000000000c01"]},
     {"question":"느슨 질문3","answer":"답","category":"","clause_ids":"abc"},
@@ -318,13 +318,13 @@ select is(
 select is((select count(*) from public.knowledge_sources ks join public.knowledge_items k on k.id = ks.knowledge_id
             where k.question like '느슨 질문%'), 1::bigint,
   'ga: 연결은 uuid 모양의 읽을 수 있는 조항 1건뿐');
-select throws_ok($$select public.save_knowledge_drafts('[]'::jsonb)$$, '22023', null, 'ga: 빈 배열은 거부');
+select throws_ok($$select public.save_knowledge_drafts('a9000000-0000-0000-0000-0000000000d1', '[]'::jsonb)$$, '22023', null, 'ga: 빈 배열은 거부');
 select throws_ok(
-  $$select public.save_knowledge_drafts((select jsonb_agg(jsonb_build_object('question', 'q' || i, 'answer', 'a', 'category', '', 'clause_ids', '[]'::jsonb))
+  $$select public.save_knowledge_drafts('a9000000-0000-0000-0000-0000000000d1', (select jsonb_agg(jsonb_build_object('question', 'q' || i, 'answer', 'a', 'category', '', 'clause_ids', '[]'::jsonb))
                                            from generate_series(1, 11) i))$$,
   '22023', null, 'ga: 11개는 거부');
 select throws_ok(
-  $$select public.save_knowledge_drafts('[{"question":"  ","answer":"a","category":"","clause_ids":[]}]'::jsonb)$$,
+  $$select public.save_knowledge_drafts('a9000000-0000-0000-0000-0000000000d1', '[{"question":"  ","answer":"a","category":"","clause_ids":[]}]'::jsonb)$$,
   '22023', null, 'ga: 질문이 비면 거부');
 select is((select count(*) from public.knowledge_items where question like '초안 질문%'), 2::bigint,
   'ga: 거부된 호출은 아무것도 남기지 않는다');
@@ -449,7 +449,7 @@ select results_eq(
 
 -- 교육 담당자의 지식 초안: 팀 범위
 select is(
-  public.save_knowledge_drafts($$[{"question":"팀 초안","answer":"팀 초안 답","category":"","clause_ids":["a9000000-0000-0000-0000-000000000c03","a9000000-0000-0000-0000-000000000c04"]}]$$::jsonb),
+  public.save_knowledge_drafts('a9000000-0000-0000-0000-0000000000d3', $$[{"question":"팀 초안","answer":"팀 초안 답","category":"","clause_ids":["a9000000-0000-0000-0000-000000000c03","a9000000-0000-0000-0000-000000000c04"]}]$$::jsonb),
   1, 'trainer: save_knowledge_drafts 1개');
 select results_eq(
   $$select k.scope::text, k.team_id, k.status::text, k.origin, (select array_agg(clause_id) from public.knowledge_sources where knowledge_id = k.id)
@@ -560,6 +560,8 @@ select ok(not has_function_privilege('anon', 'public.save_knowledge_drafts(uuid,
   'anon: save_knowledge_drafts(uuid, jsonb) 실행 불가');
 select ok(has_function_privilege('authenticated', 'public.save_knowledge_drafts(uuid, jsonb)', 'execute'),
   'authenticated: save_knowledge_drafts(uuid, jsonb) 실행 가능');
+select ok(not has_function_privilege('authenticated', 'public.save_knowledge_drafts(jsonb)', 'execute'),
+  'authenticated: 역할 기준 save_knowledge_drafts(jsonb) 실행 불가(0017에서 회수)');
 select ok(has_function_privilege('service_role', 'public.replace_document_clauses(uuid, jsonb, text)', 'execute')
       and has_function_privilege('authenticated', 'public.replace_document_clauses(uuid, jsonb, text)', 'execute'),
   'replace_document_clauses: authenticated·service_role 실행 가능');
