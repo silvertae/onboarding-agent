@@ -13,7 +13,8 @@ import { STAGE_LABEL } from '@/lib/labels'
 import { useFileCounts } from '@/lib/taskFiles'
 import { groupByStage, progress, useMyTasks, type TaskStage, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
-import { daysSinceHire, formatToday, toDateOnly } from './format'
+import { todaySeoul } from '@/features/staff/format'
+import { daysSinceHire, dueTag, formatToday } from './format'
 import { currentStage, STAGES, stageDateLabel, stageSummary } from './stages'
 import { TaskRow } from './TaskRow'
 import { useTeamName } from './useTeamName'
@@ -131,7 +132,7 @@ export function HomePage() {
   const { data: formCounts } = useFileCounts()
   const [filter, setFilter] = useState<OwnerFilter>('all')
   const [today] = useState(() => new Date())
-  const todayKey = toDateOnly(today)
+  const todayKey = todaySeoul(today)
   const [nowExpanded, setNowExpanded] = useState(false)
   // 사용자가 직접 접거나 편 단계만 기억한다. 나머지는 진행 중인 단계만 펼친 기본값을 따른다.
   const [stageOpen, setStageOpen] = useState<Partial<Record<TaskStage, boolean>>>({})
@@ -163,6 +164,7 @@ export function HomePage() {
   const percent = Math.round((finished / total) * 100)
   const doneCount = tasks.filter((t) => t.status === 'done').length
   const reworkCount = now.filter((t) => t.status === 'rework').length
+  const pastCount = now.filter((t) => dueTag(t.due_date, todayKey)?.kind === 'past').length
   const allDone = finished === total
   const started = profile?.hire_date ? daysSinceHire(profile.hire_date, today) >= 1 : false
   const greeting = started ? GREETING[activeStage] : '온보딩을 함께 챙길게요'
@@ -192,7 +194,8 @@ export function HomePage() {
             </p>
           ) : (
             <p className="text-sm text-[var(--text-secondary)]">
-              지금 할 일 {now.length}건{reworkCount > 0 && `, 보완 요청 ${reworkCount}건`}이 있어요.
+              지금 할 일 {now.length}건{reworkCount > 0 && `, 보완 요청 ${reworkCount}건`}
+              {pastCount > 0 && `, 기한 지남 ${pastCount}건`}이 있어요.
             </p>
           )}
         </div>

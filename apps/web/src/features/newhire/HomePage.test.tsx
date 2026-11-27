@@ -272,6 +272,60 @@ describe('신입 홈 — 지금 할 일 초점', () => {
     renderHome(demo)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('가상하늘 님, 첫 주를 보내고 있어요')
   })
+
+  it('오늘이 기한이면 "오늘 마감"을 붙인다', () => {
+    renderHome([makeTask({ code: 'T1', title: '오늘 과제' }, { status: 'todo', due_date: '2026-11-18' })])
+    const now = screen.getByRole('region', { name: '지금 할 일' })
+    expect(within(within(now).getByRole('link', { name: /오늘 과제/ })).getByText('오늘 마감')).toBeInTheDocument()
+  })
+
+  it('7일 안에 남은 과제에는 D-N을 붙인다', () => {
+    renderHome([
+      makeTask({ code: 'T1', title: '사흘 남은 과제' }, { status: 'todo', due_date: '2026-11-21' }),
+      makeTask({ code: 'T2', title: '먼 과제' }, { status: 'todo', due_date: '2026-11-30' }),
+    ])
+    const now = screen.getByRole('region', { name: '지금 할 일' })
+    expect(within(within(now).getByRole('link', { name: /사흘 남은 과제/ })).getByText('D-3')).toBeInTheDocument()
+    expect(within(within(now).getByRole('link', { name: /먼 과제/ })).queryByText(/^D-/)).not.toBeInTheDocument()
+  })
+
+  it('확인 대기·담당자 처리 과제에는 오늘 마감·D-N을 붙이지 않는다', async () => {
+    renderHome([
+      makeTask({ code: 'T1', title: '확인 대기 과제' }, { status: 'submitted', due_date: '2026-11-18' }),
+      makeTask({ code: 'T2', title: '담당자 처리 과제', completion_mode: 'staff_only' }, { status: 'todo', due_date: '2026-11-21' }),
+    ])
+    await expandAllStages()
+    const list = screen.getByRole('region', { name: '전체 과제' })
+    const submitted = within(list).getByRole('link', { name: /확인 대기 과제/ })
+    expect(within(submitted).queryByText('오늘 마감')).not.toBeInTheDocument()
+    expect(within(submitted).queryByText(/^D-/)).not.toBeInTheDocument()
+    const staff = within(list).getByRole('link', { name: /담당자 처리 과제/ })
+    expect(within(staff).queryByText('오늘 마감')).not.toBeInTheDocument()
+    expect(within(staff).queryByText(/^D-/)).not.toBeInTheDocument()
+  })
+
+  it('인사 문구에 기한 지남 건수를 더한다', () => {
+    const { unmount } = renderHome([
+      makeTask({ code: 'T1', title: '지난 과제' }, { status: 'todo', due_date: '2026-11-17' }),
+      makeTask({ code: 'T2', title: '남은 과제' }, { status: 'todo', due_date: '2026-11-25' }),
+    ])
+    expect(screen.getByText(/지금 할 일 2건/)).toHaveTextContent(/기한 지남 1건/)
+    unmount()
+    renderHome([makeTask({ code: 'T2', title: '남은 과제' }, { status: 'todo', due_date: '2026-11-25' })])
+    expect(screen.getByText(/지금 할 일 1건/)).not.toHaveTextContent('기한 지남')
+  })
+
+  it('오늘은 서울 날짜 기준이다', () => {
+    // UTC 15:30 = 서울 11-19 00:30
+    vi.setSystemTime(new Date('2026-11-18T15:30:00Z'))
+    renderHome([
+      makeTask({ code: 'T1', title: '어제 과제' }, { status: 'todo', due_date: '2026-11-18' }),
+      makeTask({ code: 'T2', title: '오늘 과제' }, { status: 'todo', due_date: '2026-11-19' }),
+    ])
+    const now = screen.getByRole('region', { name: '지금 할 일' })
+    expect(within(within(now).getByRole('link', { name: /어제 과제/ })).getByText('지남')).toBeInTheDocument()
+    expect(within(within(now).getByRole('link', { name: /오늘 과제/ })).getByText('오늘 마감')).toBeInTheDocument()
+  })
 })
 
 describe('신입 홈 — 서식 표시', () => {
