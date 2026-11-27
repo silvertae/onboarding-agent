@@ -5,7 +5,7 @@ import { OwnerBadge } from '@/components/OwnerBadge'
 import { StatusBadge } from '@/components/StatusBadge'
 import type { TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
-import { formatDateTime, formatDay, isPastDue } from './format'
+import { dueTag, formatDateTime, formatDay } from './format'
 import { lockedHint } from './locked'
 
 type Props = {
@@ -41,15 +41,15 @@ function Meta({ task, all, highlight, today }: Pick<Props, 'task' | 'all' | 'hig
   if (task.template.kind === 'assessment' && task.scheduled_at) {
     when = [formatDateTime(task.scheduled_at), task.location].filter(Boolean).join(' · ')
   } else if (task.due_date && task.status !== 'done') {
+    const tag = isHiresTurn(task) ? dueTag(task.due_date, today) : null
     when = (
       <>
         기한 {formatDay(task.due_date)}
-        {isHiresTurn(task) && isPastDue(task.due_date, today) && (
-          <>
-            {' · '}
-            <b className="font-semibold text-st-rework-fg">지남</b>
-          </>
+        {tag && ' · '}
+        {(tag?.kind === 'past' || tag?.kind === 'today') && (
+          <b className="font-semibold text-st-rework-fg">{tag.kind === 'past' ? '지남' : '오늘 마감'}</b>
         )}
+        {tag?.kind === 'soon' && <span className="text-muted-foreground tabular-nums">D-{tag.days}</span>}
       </>
     )
   }

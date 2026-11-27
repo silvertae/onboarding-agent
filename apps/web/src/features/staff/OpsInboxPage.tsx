@@ -1,3 +1,4 @@
+import { Download } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
@@ -13,27 +14,28 @@ import { AddTaskButton } from '@/features/templates/AddTaskDialog'
 import { OWNER_LABEL } from '@/lib/labels'
 import { progress, useTaskActions, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
-import { formatDateTime, formatKoreanDate, formatMonthDay, isBeforeHire, isOverdue } from './format'
+import { downloadBlob, toCsv, toXlsx } from './export'
+import { daysLate, daysWaiting, formatDateTime, formatKoreanDate, formatMonthDay, isBeforeHire, isOverdue, todaySeoul } from './format'
 import { useHires, type Hire } from './hires'
+import { exportRows, FINISHED, TAB_LABEL, turnLabel, type Tab } from './inboxTable'
 import { isOneOff, reviewActions } from './reviewActions'
 import { TaskReviewPanel } from './TaskReviewPanel'
 import { EmptyState, ErrorText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs, TaskTitle } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 // 'hires'(입사자별)는 과제가 아니라 입사자 한 줄씩 보여 주는 탭이라 아래 업무 표 함수들에는 오지 않는다.
-type Tab = 'submitted' | 'mine' | 'hires' | 'all'
 type TaskTab = Exclude<Tab, 'hires'>
 
 const EMPTY_TEXT: Record<TaskTab, string> = {
   submitted: '확인 대기 중인 과제가 없어요',
+  overdue: '기한이 지난 과제가 없어요',
   mine: '지금 처리할 과제가 없어요',
   all: '업무함에 과제가 없어요',
 }
 
-const FINISHED = new Set(['done', 'na'])
-
 function inTab(task: TaskView, tab: TaskTab): boolean {
   if (tab === 'submitted') return task.status === 'submitted'
+  if (tab === 'overdue') return !FINISHED.has(task.status) && isOverdue(task.due_date)
   if (tab === 'mine') return task.template.completion_mode === 'staff_only' && task.status === 'todo'
   return true
 }
@@ -42,9 +44,27 @@ function byTab(tab: TaskTab, hireName: (id: string) => string) {
   return (a: TaskView, b: TaskView) => {
     // 확인 대기는 오래 기다린 것부터, 나머지는 기한 순
     if (tab === 'submitted') return (a.submitted_at ?? '').localeCompare(b.submitted_at ?? '')
+    // 기한 초과는 오래 지난 것부터, 같은 날이면 입사자 이름순
+    if (tab === 'overdue') return (a.due_date ?? '').localeCompare(b.due_date ?? '') || hireName(a.new_hire_id).localeCompare(hireName(b.new_hire_id))
     if (tab === 'mine') return (a.due_date ?? '').localeCompare(b.due_date ?? '')
     return hireName(a.new_hire_id).localeCompare(hireName(b.new_hire_id)) || a.template.sort_order - b.template.sort_order
   }
+}
+
+// 제출 시각. 확인 대기가 하루 이상이면 대기 일수를 붙이고 3일 이상은 강조한다(보완 요청은 submitted_at이 남아 있어도 붙이지 않는다)
+function SubmittedAt({ task }: { task: TaskView }) {
+  const waiting = task.status === 'submitted' && task.submitted_at ? daysWaiting(task.submitted_at) : 0
+  return (
+    <>
+      {formatDateTime(task.submitted_at)}
+      {waiting >= 1 && (
+        <>
+          {' · '}
+          <span className={cn(waiting >= 3 && 'font-semibold text-destructive')}>{waiting}일 대기</span>
+        </>
+      )}
+    </>
+  )
 }
 
 function SummaryCard({ label, value, caption }: { label: string; value: number; caption: string }) {
@@ -151,6 +171,9 @@ export function OpsInboxPage() {
   const [tab, setTab] = useState<Tab>('submitted')
   const [hireFilter, setHireFilter] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
+  // Excel 파일을 만드는 동안 두 번 받지 않게 버튼을 잠근다
+  const [exporting, setExporting] = useState(false)
 
   const hireById = useMemo(() => new Map<string, Hire>((hiresQuery.data ?? []).map((h) => [h.id, h])), [hiresQuery.data])
   const hireName = (id: string) => hireById.get(id)?.full_name ?? '이름 없음'
@@ -162,6 +185,7 @@ export function OpsInboxPage() {
 
   const counts = {
     submitted: deptTasks.filter((t) => inTab(t, 'submitted')).length,
+    overdue: deptTasks.filter((t) => inTab(t, 'overdue')).length,
     mine: deptTasks.filter((t) => inTab(t, 'mine')).length,
     rework: deptTasks.filter((t) => t.status === 'rework').length,
     activeHires: new Set(deptTasks.filter((t) => !FINISHED.has(t.status)).map((t) => t.new_hire_id)).size,
@@ -194,30 +218,74 @@ export function OpsInboxPage() {
   if (!department) return null
   const deptLabel = OWNER_LABEL[department]
 
+  // 지금 탭의 지금 행(입사자 필터 반영)을 표와 같은 순서로 내려받는다
+  async function download(format: 'xlsx' | 'csv') {
+    setExportError(null)
+    const { header, rows: cells } = exportRows(rows, hireById)
+    const name = `업무함-${deptLabel}-${TAB_LABEL[tab]}-${todaySeoul().replaceAll('-', '')}.${format}`
+    if (format === 'csv') {
+      downloadBlob(name, new Blob([toCsv(header, cells)], { type: 'text/csv;charset=utf-8' }))
+      return
+    }
+    setExporting(true)
+    try {
+      downloadBlob(name, await toXlsx(TAB_LABEL[tab], header, cells))
+    } catch {
+      setExportError('파일을 만들지 못했어요. 다시 시도해 주세요.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
       <PageHeader
         title={`${deptLabel} 업무함`}
         description={`${deptLabel} 담당 온보딩 과제만 보여요. 서류는 받지 않고 제출 여부만 확인합니다.`}
+        actions={
+          // 입사자별 탭은 과제 표가 아니라 내려받기가 없다
+          tab !== 'hires' && (
+            <div className="flex flex-wrap items-center gap-2">
+              {exportError && <ErrorText>{exportError}</ErrorText>}
+              <Button type="button" variant="outline" disabled={rows.length === 0 || exporting} onClick={() => void download('xlsx')}>
+                <Download aria-hidden />
+                Excel 내려받기
+              </Button>
+              <Button type="button" variant="outline" disabled={rows.length === 0 || exporting} onClick={() => void download('csv')}>
+                <Download aria-hidden />
+                CSV 내려받기
+              </Button>
+            </div>
+          )
+        }
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="확인 대기" value={counts.submitted} caption="신입이 제출하고 확인을 기다려요" />
         <SummaryCard label="보완 요청 중" value={counts.rework} caption="신입의 재제출을 기다려요" />
         <SummaryCard label="진행 중 입사자" value={counts.activeHires} caption="우리 부서 과제가 남은 입사자" />
+        <SummaryCard label="기한 초과" value={counts.overdue} caption="기한이 지난 우리 부서 과제" />
       </div>
 
       <div className={cn('grid grid-cols-1 items-start gap-6', selected && 'lg:grid-cols-[minmax(0,1fr)_380px]')}>
         <Panel className="overflow-hidden">
-          <SegmentTabs value={tab} onChange={setTab}>
+          <SegmentTabs
+            value={tab}
+            onChange={(next) => {
+              // 다른 탭의 내려받기 오류 문구를 남기지 않는다
+              setExportError(null)
+              setTab(next)
+            }}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
               <SegmentTabList
                 label="업무함 보기"
                 items={[
-                  { key: 'submitted', label: '확인 대기', count: counts.submitted },
-                  { key: 'mine', label: '내가 처리할 일', count: counts.mine },
-                  { key: 'hires', label: '입사자별' },
-                  { key: 'all', label: '전체' },
+                  { key: 'submitted', label: TAB_LABEL.submitted, count: counts.submitted },
+                  { key: 'overdue', label: TAB_LABEL.overdue, count: counts.overdue },
+                  { key: 'mine', label: TAB_LABEL.mine, count: counts.mine },
+                  { key: 'hires', label: TAB_LABEL.hires },
+                  { key: 'all', label: TAB_LABEL.all },
                 ]}
               />
               {/* 입사자별 탭은 표 자체가 입사자 목록이라 거르기가 없다 */}
@@ -267,7 +335,7 @@ export function OpsInboxPage() {
                             { label: '입사자', cell: 'two-line', className: WIDE_CELL },
                             { label: '과제' },
                             { label: '상태', cell: 'badge', className: WIDE_CELL },
-                            { label: '제출 시각', className: WIDE_CELL },
+                            { label: tab === 'overdue' ? '차례' : '제출 시각', className: WIDE_CELL },
                             { label: '기한', className: WIDE_CELL },
                             { label: '', cell: 'none' },
                           ]
@@ -295,7 +363,7 @@ export function OpsInboxPage() {
                       <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>입사자</th>
                       <th className="px-4 py-3 font-semibold">과제</th>
                       <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>상태</th>
-                      <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>제출 시각</th>
+                      <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>{tab === 'overdue' ? '차례' : '제출 시각'}</th>
                       <th className={cn('px-4 py-3 font-semibold', WIDE_CELL)}>기한</th>
                       <th className="px-4 py-3">
                         <span className="sr-only">처리</span>
@@ -313,6 +381,7 @@ export function OpsInboxPage() {
                     {rows.map((task) => {
                       const hire = hireById.get(task.new_hire_id)
                       const overdue = !FINISHED.has(task.status) && isOverdue(task.due_date)
+                      const overdueText = overdue && `${formatMonthDay(task.due_date)} · ${daysLate(task.due_date!)}일 지남`
                       const { canComplete } = reviewActions(task)
                       return (
                         <tr
@@ -341,10 +410,16 @@ export function OpsInboxPage() {
                               badge={<StatusBadge status={task.status} completionMode={task.template.completion_mode} />}
                               items={[
                                 hire?.full_name ?? '이름 없음',
-                                task.submitted_at && `제출 ${formatDateTime(task.submitted_at)}`,
+                                // 좁은 화면에서는 "차례" 칸이 숨으므로 메타 줄에 옮긴다
+                                tab === 'overdue' && `차례 ${turnLabel(task)}`,
+                                task.submitted_at && (
+                                  <>
+                                    제출 <SubmittedAt task={task} />
+                                  </>
+                                ),
                                 task.due_date &&
                                   (overdue ? (
-                                    <span className="font-semibold text-destructive">기한 {formatMonthDay(task.due_date)} 지남</span>
+                                    <span className="font-semibold text-destructive">{overdueText}</span>
                                   ) : (
                                     `기한 ${formatMonthDay(task.due_date)}`
                                   )),
@@ -354,10 +429,15 @@ export function OpsInboxPage() {
                           <td className={cn('px-4 py-3', WIDE_CELL)}>
                             <StatusBadge status={task.status} completionMode={task.template.completion_mode} />
                           </td>
-                          <td className={cn('px-4 py-3 text-[var(--text-secondary)]', WIDE_CELL)}>{formatDateTime(task.submitted_at)}</td>
+                          {tab === 'overdue' ? (
+                            <td className={cn('px-4 py-3', WIDE_CELL, task.status === 'blocked' && 'text-muted-foreground')}>{turnLabel(task)}</td>
+                          ) : (
+                            <td className={cn('px-4 py-3 text-[var(--text-secondary)]', WIDE_CELL)}>
+                              <SubmittedAt task={task} />
+                            </td>
+                          )}
                           <td className={cn('px-4 py-3', WIDE_CELL, overdue && 'font-semibold text-destructive')}>
-                            {formatMonthDay(task.due_date)}
-                            {overdue && ' 지남'}
+                            {overdueText || formatMonthDay(task.due_date)}
                           </td>
                           <td className="px-4 py-3 text-right">
                             {canComplete && (
