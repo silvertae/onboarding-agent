@@ -5,7 +5,8 @@ import { afterEach, vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { HIRES, makeTask, TEAM_ID } from './testFixtures'
 
-const { actions, templateActions, state } = vi.hoisted(() => ({
+const { actions, templateActions, state, toXlsx } = vi.hoisted(() => ({
+  toXlsx: vi.fn(),
   templateActions: { save: vi.fn(), archive: vi.fn(), restore: vi.fn(), addForHire: vi.fn() },
   actions: {
     submit: vi.fn(),
@@ -49,6 +50,12 @@ vi.mock('./hires', () => ({ useHires: () => ({
 vi.mock('@/features/templates/templates', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/templates/templates')>()),
   useTemplateActions: () => templateActions,
+}))
+
+// 엑셀 파일 만들기만 바꿔 끼운다(실제 라이브러리는 export.test.ts에서 본다)
+vi.mock('./export', async (importActual) => ({
+  ...(await importActual<typeof import('./export')>()),
+  toXlsx,
 }))
 
 import { OpsInboxPage } from './OpsInboxPage'
@@ -581,6 +588,100 @@ describe('OpsInboxPage (S9) 기한 초과·대기 일수', () => {
     renderPage(notLate)
     await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
     expect(screen.getByText('기한이 지난 과제가 없어요')).toBeInTheDocument()
+  })
+})
+
+describe('OpsInboxPage (S9) 내려받기', () => {
+  let blobs: Blob[]
+  let names: string[]
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-27T03:00:00Z'))
+    blobs = []
+    names = []
+    toXlsx.mockReset()
+    // jsdom에는 createObjectURL이 없어 직접 넣는다
+    URL.createObjectURL = vi.fn((blob: Blob) => {
+      blobs.push(blob)
+      return 'blob:test'
+    })
+    URL.revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download)
+    })
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  const late = [
+    makeTask({ new_hire_id: 'h1', status: 'todo', due_date: '2026-11-20', template: { title: '보안 서약서 제출' } }),
+    makeTask({ new_hire_id: 'h2', status: 'submitted', due_date: '2026-11-18', submitted_at: '2026-11-26T01:00:00Z', template: { title: '사원증 사진 제출' } }),
+    makeTask({ new_hire_id: 'h2', status: 'done', due_date: '2026-11-10', template: { title: '끝난 과제' } }),
+  ]
+
+  function readText(blob: Blob) {
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsText(blob)
+    })
+  }
+
+  it('CSV 내려받기는 지금 탭의 지금 행을 내보낸다', async () => {
+    const user = userEvent.setup()
+    renderPage(late)
+    await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
+    await user.click(screen.getByRole('button', { name: 'CSV 내려받기' }))
+
+    expect(names).toEqual(['업무함-총무팀-기한 초과-20261127.csv'])
+    const lines = (await readText(blobs[0])).replace(/^\uFEFF/, '').trim().split('\r\n')
+    expect(lines[0]).toBe('입사자,팀,과제,상태,차례,제출 시각,기한,지난 일수')
+    expect(lines).toHaveLength(1 + bodyRows().length)
+    // 표와 같은 순서(기한 오름차순)
+    expect(lines[1]).toContain('사원증 사진 제출')
+    expect(lines[2]).toContain('보안 서약서 제출')
+  })
+
+  it('Excel 내려받기는 같은 머리글·행으로 toXlsx를 부르고 .xlsx 이름으로 받는다', async () => {
+    const user = userEvent.setup()
+    const xlsx = new Blob(['x'])
+    toXlsx.mockResolvedValue(xlsx)
+    renderPage(late)
+    await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
+    await user.click(screen.getByRole('button', { name: 'Excel 내려받기' }))
+
+    expect(toXlsx).toHaveBeenCalledWith(
+      '기한 초과',
+      ['입사자', '팀', '과제', '상태', '차례', '제출 시각', '기한', '지난 일수'],
+      [expect.arrayContaining(['사원증 사진 제출']), expect.arrayContaining(['보안 서약서 제출'])],
+    )
+    expect(blobs).toEqual([xlsx])
+    expect(names).toEqual(['업무함-총무팀-기한 초과-20261127.xlsx'])
+  })
+
+  it('xlsx를 만들지 못하면 오류 문구를 보인다', async () => {
+    const user = userEvent.setup()
+    toXlsx.mockRejectedValue(new Error('boom'))
+    renderPage(late)
+    await user.click(screen.getByRole('button', { name: 'Excel 내려받기' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('파일을 만들지 못했어요. 다시 시도해 주세요.')
+    expect(names).toEqual([])
+  })
+
+  it('입사자별 탭에서는 내려받기 버튼이 없고, 행이 없으면 둘 다 비활성', async () => {
+    const user = userEvent.setup()
+    renderPage([late[2]])
+    // 확인 대기 탭: 행이 없다
+    expect(screen.getByRole('button', { name: 'Excel 내려받기' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'CSV 내려받기' })).toBeDisabled()
+
+    await user.click(screen.getByRole('tab', { name: /전체/ }))
+    expect(screen.getByRole('button', { name: 'CSV 내려받기' })).toBeEnabled()
+
+    await user.click(screen.getByRole('tab', { name: /입사자별/ }))
+    expect(screen.queryByRole('button', { name: 'Excel 내려받기' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'CSV 내려받기' })).not.toBeInTheDocument()
   })
 })
 

@@ -1,3 +1,4 @@
+import { Download } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useAuth } from '@/app/AuthProvider'
 import { LoadError } from '@/components/LoadError'
@@ -13,39 +14,23 @@ import { AddTaskButton } from '@/features/templates/AddTaskDialog'
 import { OWNER_LABEL } from '@/lib/labels'
 import { progress, useTaskActions, useVisibleTasks, type TaskView } from '@/lib/tasks'
 import { cn } from '@/lib/utils'
-import { daysLate, daysWaiting, formatDateTime, formatKoreanDate, formatMonthDay, isBeforeHire, isOverdue } from './format'
+import { downloadBlob, toCsv, toXlsx } from './export'
+import { daysLate, daysWaiting, formatDateTime, formatKoreanDate, formatMonthDay, isBeforeHire, isOverdue, todaySeoul } from './format'
 import { useHires, type Hire } from './hires'
+import { exportRows, FINISHED, TAB_LABEL, turnLabel, type Tab } from './inboxTable'
 import { isOneOff, reviewActions } from './reviewActions'
 import { TaskReviewPanel } from './TaskReviewPanel'
 import { EmptyState, ErrorText, PageHeader, Panel, SegmentTabList, SegmentTabPanel, SegmentTabs, TaskTitle } from './ui'
 import { useGuardedAction } from './useGuardedAction'
 
 // 'hires'(입사자별)는 과제가 아니라 입사자 한 줄씩 보여 주는 탭이라 아래 업무 표 함수들에는 오지 않는다.
-type Tab = 'submitted' | 'overdue' | 'mine' | 'hires' | 'all'
 type TaskTab = Exclude<Tab, 'hires'>
-
-const TAB_LABEL: Record<Tab, string> = {
-  submitted: '확인 대기',
-  overdue: '기한 초과',
-  mine: '내가 처리할 일',
-  hires: '입사자별',
-  all: '전체',
-}
 
 const EMPTY_TEXT: Record<TaskTab, string> = {
   submitted: '확인 대기 중인 과제가 없어요',
   overdue: '기한이 지난 과제가 없어요',
   mine: '지금 처리할 과제가 없어요',
   all: '업무함에 과제가 없어요',
-}
-
-const FINISHED = new Set(['done', 'na'])
-
-// 지금 누가 움직여야 하는지(기한 초과 탭의 "차례" 칸)
-function turnLabel(task: TaskView): '신입' | '담당자' | '선행 과제 대기' {
-  if (task.status === 'blocked') return '선행 과제 대기'
-  if (task.status === 'submitted' || task.template.completion_mode === 'staff_only') return '담당자'
-  return '신입'
 }
 
 function inTab(task: TaskView, tab: TaskTab): boolean {
@@ -186,6 +171,7 @@ export function OpsInboxPage() {
   const [tab, setTab] = useState<Tab>('submitted')
   const [hireFilter, setHireFilter] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const hireById = useMemo(() => new Map<string, Hire>((hiresQuery.data ?? []).map((h) => [h.id, h])), [hiresQuery.data])
   const hireName = (id: string) => hireById.get(id)?.full_name ?? '이름 없음'
@@ -230,11 +216,43 @@ export function OpsInboxPage() {
   if (!department) return null
   const deptLabel = OWNER_LABEL[department]
 
+  // 지금 탭의 지금 행(입사자 필터 반영)을 표와 같은 순서로 내려받는다
+  async function download(format: 'xlsx' | 'csv') {
+    setExportError(null)
+    const { header, rows: cells } = exportRows(rows, hireById)
+    const name = `업무함-${deptLabel}-${TAB_LABEL[tab]}-${todaySeoul().replaceAll('-', '')}.${format}`
+    if (format === 'csv') {
+      downloadBlob(name, new Blob([toCsv(header, cells)], { type: 'text/csv;charset=utf-8' }))
+      return
+    }
+    try {
+      downloadBlob(name, await toXlsx(TAB_LABEL[tab], header, cells))
+    } catch {
+      setExportError('파일을 만들지 못했어요. 다시 시도해 주세요.')
+    }
+  }
+
   return (
     <main className="mx-auto flex max-w-[1376px] flex-col gap-6 px-4 py-8 sm:px-8">
       <PageHeader
         title={`${deptLabel} 업무함`}
         description={`${deptLabel} 담당 온보딩 과제만 보여요. 서류는 받지 않고 제출 여부만 확인합니다.`}
+        actions={
+          // 입사자별 탭은 과제 표가 아니라 내려받기가 없다
+          tab !== 'hires' && (
+            <div className="flex flex-wrap items-center gap-2">
+              {exportError && <ErrorText>{exportError}</ErrorText>}
+              <Button type="button" variant="outline" disabled={rows.length === 0} onClick={() => void download('xlsx')}>
+                <Download aria-hidden />
+                Excel 내려받기
+              </Button>
+              <Button type="button" variant="outline" disabled={rows.length === 0} onClick={() => void download('csv')}>
+                <Download aria-hidden />
+                CSV 내려받기
+              </Button>
+            </div>
+          )
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

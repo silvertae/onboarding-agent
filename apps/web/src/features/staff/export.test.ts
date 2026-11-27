@@ -3,10 +3,10 @@ import { toCsv, toXlsx } from './export'
 
 describe('toCsv', () => {
   it('쉼표·따옴표·줄바꿈을 감싼다', () =>
-    expect(toCsv(['a'], [['x,"y"\nz']])).toBe('﻿a\r\n"x,""y""\nz"\r\n'))
+    expect(toCsv(['a'], [['x,"y"\nz']])).toBe('\uFEFFa\r\n"x,""y""\nz"\r\n'))
 
   it('수식으로 시작하는 칸은 작은따옴표를 붙인다', () =>
-    expect(toCsv(['a'], [['=SUM(1)'], ['+1'], ['-1'], ['@x']])).toBe("﻿a\r\n'=SUM(1)\r\n'+1\r\n'-1\r\n'@x\r\n"))
+    expect(toCsv(['a'], [['=SUM(1)'], ['+1'], ['-1'], ['@x']])).toBe("\uFEFFa\r\n'=SUM(1)\r\n'+1\r\n'-1\r\n'@x\r\n"))
 })
 
 describe('toXlsx', () => {
