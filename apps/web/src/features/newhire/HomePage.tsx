@@ -166,7 +166,7 @@ export function HomePage() {
   const reworkCount = now.filter((t) => t.status === 'rework').length
   const pastCount = now.filter((t) => dueTag(t.due_date, todayKey)?.kind === 'past').length
   const allDone = finished === total
-  const started = profile?.hire_date ? daysSinceHire(profile.hire_date, today) >= 1 : false
+  const started = profile?.hire_date ? daysSinceHire(profile.hire_date, todayKey) >= 1 : false
   const greeting = started ? GREETING[activeStage] : '온보딩을 함께 챙길게요'
   const shownNow = nowExpanded ? now : now.slice(0, NOW_LIMIT)
   const hiddenCount = now.length - NOW_LIMIT
@@ -181,8 +181,8 @@ export function HomePage() {
       <Card className="flex flex-wrap items-center justify-between gap-6 p-5 sm:p-7">
         <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-xs text-muted-foreground">
-            {formatToday(today)}
-            {profile?.hire_date && ` · 입사 ${daysSinceHire(profile.hire_date, today)}일째`}
+            {formatToday(todayKey)}
+            {profile?.hire_date && ` · 입사 ${daysSinceHire(profile.hire_date, todayKey)}일째`}
           </span>
           <h1 className="text-title font-semibold sm:text-page">
             {profile?.full_name} 님, {greeting}
