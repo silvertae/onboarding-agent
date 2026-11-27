@@ -51,3 +51,20 @@ export function formatMonthDay(value: string): string {
 export function isPastDue(dueDate: string | null, today: string): boolean {
   return dueDate !== null && dueDate < today
 }
+
+export type DueTag = { kind: 'past' } | { kind: 'today' } | { kind: 'soon'; days: number } | null
+
+// 'YYYY-MM-DD'를 UTC 자정 기준 일 번호로 바꾼다. 브라우저 시간대와 상관없이 날짜 차이를 센다.
+function dayNumber(value: string): number {
+  const [y, m, d] = value.split('-').map(Number)
+  return Math.round(Date.UTC(y, m - 1, d) / 86_400_000)
+}
+
+// 기한 표시. 지났으면 past, 오늘이면 today, 7일 안이면 남은 일수, 그 밖은 표시하지 않는다.
+export function dueTag(dueDate: string | null, today: string): DueTag {
+  if (dueDate === null) return null
+  const days = dayNumber(dueDate) - dayNumber(today)
+  if (days < 0) return { kind: 'past' }
+  if (days === 0) return { kind: 'today' }
+  return days <= 7 ? { kind: 'soon', days } : null
+}
