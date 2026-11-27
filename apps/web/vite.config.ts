@@ -16,5 +16,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // 서비스 기준 시간대(서울)로 테스트한다. 실행하는 PC·CI 시간대에 따라 날짜 테스트가 하루 밀리지 않게 한다.
+    env: { TZ: 'Asia/Seoul' },
   },
 })
