@@ -1,7 +1,7 @@
 // 담당자 화면의 표 내려받기(CSV·엑셀).
 
-// 엑셀이 수식으로 읽는 첫 글자
-const FORMULA_START = /^[=+\-@]/
+// 엑셀이 수식으로 읽는 첫 글자(탭·CR 뒤에 수식을 숨기는 경우 포함)
+const FORMULA_START = /^[=+\-@\t\r]/
 // 큰따옴표로 감싸야 하는 글자
 const NEEDS_QUOTE = /[",\r\n]/
 
@@ -10,7 +10,7 @@ function csvCell(value: string): string {
   return NEEDS_QUOTE.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe
 }
 
-// 앞에 BOM, 줄 끝 \r\n. 쉼표·따옴표·줄바꿈이 있으면 큰따옴표로 감싸고, = + - @ 로 시작하면 앞에 ' 를 붙인다(수식 실행 방지)
+// 앞에 BOM, 줄 끝 \r\n. 쉼표·따옴표·줄바꿈이 있으면 큰따옴표로 감싸고, = + - @ 탭 CR로 시작하면 앞에 ' 를 붙인다(수식 실행 방지)
 export function toCsv(header: string[], rows: string[][]): string {
   return '\uFEFF' + [header, ...rows].map((row) => row.map(csvCell).join(',') + '\r\n').join('')
 }

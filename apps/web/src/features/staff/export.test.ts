@@ -7,6 +7,9 @@ describe('toCsv', () => {
 
   it('수식으로 시작하는 칸은 작은따옴표를 붙인다', () =>
     expect(toCsv(['a'], [['=SUM(1)'], ['+1'], ['-1'], ['@x']])).toBe("\uFEFFa\r\n'=SUM(1)\r\n'+1\r\n'-1\r\n'@x\r\n"))
+
+  it('탭·CR로 시작하는 칸도 작은따옴표를 붙인다', () =>
+    expect(toCsv(['a'], [['\t=1'], ['\r=1']])).toBe("\uFEFFa\r\n'\t=1\r\n\"'\r=1\"\r\n"))
 })
 
 describe('toXlsx', () => {

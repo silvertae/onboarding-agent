@@ -274,12 +274,16 @@ describe('신입 홈 — 지금 할 일 초점', () => {
   })
 
   it('오늘이 기한이면 "오늘 마감"을 붙인다', () => {
+    // 오늘은 서울 날짜로 정한다. 실행 환경 시간대와 상관없이 서울 11/18 09:00으로 고정한다
+    vi.setSystemTime(new Date('2026-11-18T00:00:00Z'))
     renderHome([makeTask({ code: 'T1', title: '오늘 과제' }, { status: 'todo', due_date: '2026-11-18' })])
     const now = screen.getByRole('region', { name: '지금 할 일' })
     expect(within(within(now).getByRole('link', { name: /오늘 과제/ })).getByText('오늘 마감')).toBeInTheDocument()
   })
 
   it('7일 안에 남은 과제에는 D-N을 붙인다', () => {
+    // 오늘은 서울 날짜로 정한다. 실행 환경 시간대와 상관없이 서울 11/18 09:00으로 고정한다
+    vi.setSystemTime(new Date('2026-11-18T00:00:00Z'))
     renderHome([
       makeTask({ code: 'T1', title: '사흘 남은 과제' }, { status: 'todo', due_date: '2026-11-21' }),
       makeTask({ code: 'T2', title: '먼 과제' }, { status: 'todo', due_date: '2026-11-30' }),

@@ -172,6 +172,8 @@ export function OpsInboxPage() {
   const [hireFilter, setHireFilter] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  // Excel 파일을 만드는 동안 두 번 받지 않게 버튼을 잠근다
+  const [exporting, setExporting] = useState(false)
 
   const hireById = useMemo(() => new Map<string, Hire>((hiresQuery.data ?? []).map((h) => [h.id, h])), [hiresQuery.data])
   const hireName = (id: string) => hireById.get(id)?.full_name ?? '이름 없음'
@@ -225,10 +227,13 @@ export function OpsInboxPage() {
       downloadBlob(name, new Blob([toCsv(header, cells)], { type: 'text/csv;charset=utf-8' }))
       return
     }
+    setExporting(true)
     try {
       downloadBlob(name, await toXlsx(TAB_LABEL[tab], header, cells))
     } catch {
       setExportError('파일을 만들지 못했어요. 다시 시도해 주세요.')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -242,11 +247,11 @@ export function OpsInboxPage() {
           tab !== 'hires' && (
             <div className="flex flex-wrap items-center gap-2">
               {exportError && <ErrorText>{exportError}</ErrorText>}
-              <Button type="button" variant="outline" disabled={rows.length === 0} onClick={() => void download('xlsx')}>
+              <Button type="button" variant="outline" disabled={rows.length === 0 || exporting} onClick={() => void download('xlsx')}>
                 <Download aria-hidden />
                 Excel 내려받기
               </Button>
-              <Button type="button" variant="outline" disabled={rows.length === 0} onClick={() => void download('csv')}>
+              <Button type="button" variant="outline" disabled={rows.length === 0 || exporting} onClick={() => void download('csv')}>
                 <Download aria-hidden />
                 CSV 내려받기
               </Button>
@@ -264,7 +269,14 @@ export function OpsInboxPage() {
 
       <div className={cn('grid grid-cols-1 items-start gap-6', selected && 'lg:grid-cols-[minmax(0,1fr)_380px]')}>
         <Panel className="overflow-hidden">
-          <SegmentTabs value={tab} onChange={setTab}>
+          <SegmentTabs
+            value={tab}
+            onChange={(next) => {
+              // 다른 탭의 내려받기 오류 문구를 남기지 않는다
+              setExportError(null)
+              setTab(next)
+            }}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5">
               <SegmentTabList
                 label="업무함 보기"
@@ -398,6 +410,8 @@ export function OpsInboxPage() {
                               badge={<StatusBadge status={task.status} completionMode={task.template.completion_mode} />}
                               items={[
                                 hire?.full_name ?? '이름 없음',
+                                // 좁은 화면에서는 "차례" 칸이 숨으므로 메타 줄에 옮긴다
+                                tab === 'overdue' && `차례 ${turnLabel(task)}`,
                                 task.submitted_at && (
                                   <>
                                     제출 <SubmittedAt task={task} />

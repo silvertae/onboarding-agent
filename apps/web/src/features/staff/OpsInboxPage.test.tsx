@@ -531,6 +531,15 @@ describe('OpsInboxPage (S9) 기한 초과·대기 일수', () => {
     expect(due).toHaveClass('font-semibold', 'text-destructive')
   })
 
+  it('기한 초과 탭은 좁은 화면 메타 줄에도 차례를 보인다', async () => {
+    const user = userEvent.setup()
+    renderPage([lateBlocked])
+    await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
+    const row = bodyRows().find((r) => r.textContent?.includes('좌석·사물함 배정 확인'))!
+    // 과제 칸(좁은 화면에서도 남는 칸)의 메타 줄
+    expect(within(row).getAllByRole('cell')[1]).toHaveTextContent('차례 선행 과제 대기')
+  })
+
   it('탭 순서와 개수', () => {
     renderPage([lateTodo, lateSubmitted, lateBlocked, ...notLate])
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
