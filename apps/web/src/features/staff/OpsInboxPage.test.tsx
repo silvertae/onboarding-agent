@@ -558,6 +558,14 @@ describe('OpsInboxPage (S9) 기한 초과·대기 일수', () => {
     expect(card).toHaveTextContent('기한이 지난 우리 부서 과제')
   })
 
+  it('요약 카드는 휴대폰에서 2×2, 1024px부터 한 줄 4개이고 좁은 칸에서는 설명을 숨긴다', () => {
+    renderPage([lateTodo])
+    const card = screen.getByRole('region', { name: '기한 초과' })
+    // jsdom은 배치를 계산하지 않으므로 반응형 클래스로 확인한다(실제 배치는 PR 스크린샷)
+    expect(card.parentElement).toHaveClass('grid-cols-2', 'lg:grid-cols-4')
+    expect(within(card).getByText('기한이 지난 우리 부서 과제')).toHaveClass('hidden', 'sm:block')
+  })
+
   it('확인 대기 줄에 대기 일수를 붙이고 3일 이상은 강조한다', () => {
     renderPage([
       makeTask({ id: 'old', new_hire_id: 'h1', status: 'submitted', submitted_at: '2026-11-24T03:00:00Z', due_date: null, template: { title: '오래 기다린 과제' } }),
