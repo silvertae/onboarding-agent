@@ -58,6 +58,16 @@ export function isOverdue(dueDate: string | null | undefined, today: string = to
   return Boolean(dueDate) && dayIndex(dueDate!) < dayIndex(today)
 }
 
+// 기한을 넘긴 일수. 기한 다음 날이 1
+export function daysLate(dueDate: string, today: string = todaySeoul()): number {
+  return dayIndex(today) - dayIndex(dueDate)
+}
+
+// 제출 시각(ISO)을 서울 날짜로 바꾼 뒤 오늘과의 일수 차이
+export function daysWaiting(submittedAt: string, today: string = todaySeoul()): number {
+  return dayIndex(today) - dayIndex(dateParts.format(new Date(submittedAt)))
+}
+
 // <input type="datetime-local"> 값('2026-11-20T14:00')을 서울 시각 ISO로
 export function localInputToIso(value: string): string | undefined {
   if (!value) return undefined
