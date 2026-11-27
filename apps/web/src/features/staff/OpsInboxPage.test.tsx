@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import type { TaskView } from '@/lib/tasks'
 import { HIRES, makeTask, TEAM_ID } from './testFixtures'
 
@@ -115,6 +115,10 @@ beforeEach(() => {
   state.refetch.mockClear()
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('OpsInboxPage (S9)', () => {
   it('제목은 내 부서 업무함이다', () => {
     renderPage()
@@ -157,7 +161,8 @@ describe('OpsInboxPage (S9)', () => {
     expect(mine).toHaveAttribute('tabindex', '-1')
 
     await user.click(submitted)
-    await user.keyboard('{ArrowRight}')
+    // 확인 대기 다음은 기한 초과, 그다음이 내가 처리할 일
+    await user.keyboard('{ArrowRight}{ArrowRight}')
 
     expect(mine).toHaveFocus()
     expect(mine).toHaveAttribute('aria-selected', 'true')
@@ -255,10 +260,12 @@ describe('OpsInboxPage (S9)', () => {
     expect(meta).toHaveTextContent('제출')
   })
 
-  it('좁은 화면 메타 줄에서도 기한 지남은 빨간 굵은 글자다', () => {
-    renderPage([makeTask({ id: 'late', new_hire_id: 'h1', status: 'submitted', due_date: '2020-01-02', template: { title: '늦은 과제' } })])
+  it('좁은 화면 메타 줄에서도 기한 지남은 지난 일수와 함께 빨간 굵은 글자다', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-27T03:00:00Z'))
+    renderPage([makeTask({ id: 'late', new_hire_id: 'h1', status: 'submitted', due_date: '2026-11-20', template: { title: '늦은 과제' } })])
     const meta = within(bodyRows()[0]).getByTestId('row-meta')
-    expect(within(meta).getByText('기한 1/2 지남')).toHaveClass('font-semibold', 'text-destructive')
+    expect(within(meta).getByText('11/20 · 7일 지남')).toHaveClass('font-semibold', 'text-destructive')
   })
 
   it('선택한 행은 aria-selected이고 배경을 칸(td)에 칠한다', async () => {
@@ -444,6 +451,136 @@ describe('OpsInboxPage (S9) 입사자별 탭', () => {
   it('입사자가 없으면 빈 상태 문구', async () => {
     await openHiresTab([hrTask])
     expect(screen.getByText('업무함에 입사자가 없어요')).toBeInTheDocument()
+  })
+})
+
+// 오늘은 2026-11-27(서울)로 고정한다
+describe('OpsInboxPage (S9) 기한 초과·대기 일수', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-27T03:00:00Z'))
+  })
+
+  const lateTodo = makeTask({ id: 'late-todo', new_hire_id: 'h1', status: 'todo', due_date: '2026-11-20', template: { title: '보안 서약서 제출' } })
+  const lateBlocked = makeTask({ id: 'late-blocked', new_hire_id: 'h2', status: 'blocked', due_date: '2026-11-18', template: { title: '좌석·사물함 배정 확인' } })
+  const lateSubmitted = makeTask({
+    id: 'late-submitted',
+    new_hire_id: 'h2',
+    status: 'submitted',
+    due_date: '2026-11-20',
+    submitted_at: '2026-11-26T01:00:00Z',
+    template: { title: '사원증 사진 제출' },
+  })
+  const lateStaff = makeTask({
+    id: 'late-staff',
+    new_hire_id: 'h2',
+    status: 'todo',
+    due_date: '2026-11-25',
+    template: { title: '출입카드 발급', completion_mode: 'staff_only' },
+  })
+  const notLate = [
+    makeTask({ id: 'done', status: 'done', due_date: '2026-11-10', template: { title: '끝난 과제' } }),
+    makeTask({ id: 'na', status: 'na', due_date: '2026-11-10', template: { title: '해당 없음 과제' } }),
+    makeTask({ id: 'no-due', status: 'todo', due_date: null, template: { title: '기한 없는 과제' } }),
+    makeTask({ id: 'today', status: 'todo', due_date: '2026-11-27', template: { title: '오늘 마감 과제' } }),
+    makeTask({ id: 'hr', status: 'todo', due_date: '2026-11-10', template: { department: 'hr', title: '다른 부서 과제' } }),
+  ]
+
+  it('기한 초과 탭은 끝나지 않고 기한이 지난 우리 부서 과제만 기한 오름차순으로 보인다', async () => {
+    const user = userEvent.setup()
+    renderPage([lateTodo, lateSubmitted, lateBlocked, ...notLate])
+    await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
+
+    const rows = bodyRows()
+    // 같은 기한(11/20)은 입사자 이름순: 김하늘 → 정민서
+    expect(rows.map((r) => within(r).getAllByRole('cell')[1].textContent)).toEqual([
+      expect.stringContaining('좌석·사물함 배정 확인'),
+      expect.stringContaining('보안 서약서 제출'),
+      expect.stringContaining('사원증 사진 제출'),
+    ])
+  })
+
+  it('기한 초과 탭은 차례와 지난 일수를 보인다', async () => {
+    const user = userEvent.setup()
+    renderPage([lateTodo, lateSubmitted, lateBlocked, lateStaff])
+    await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
+
+    const table = screen.getByRole('table', { name: '업무 목록' })
+    expect(within(table).getByRole('columnheader', { name: '차례' })).toBeInTheDocument()
+    expect(within(table).queryByRole('columnheader', { name: '제출 시각' })).not.toBeInTheDocument()
+
+    const turnOf = (title: string) => {
+      const row = bodyRows().find((r) => r.textContent?.includes(title))!
+      return within(row).getAllByRole('cell')[3]
+    }
+    expect(turnOf('보안 서약서 제출')).toHaveTextContent(/^신입$/)
+    expect(turnOf('사원증 사진 제출')).toHaveTextContent(/^담당자$/)
+    expect(turnOf('출입카드 발급')).toHaveTextContent(/^담당자$/)
+    expect(turnOf('좌석·사물함 배정 확인')).toHaveTextContent(/^선행 과제 대기$/)
+
+    const row = bodyRows().find((r) => r.textContent?.includes('보안 서약서 제출'))!
+    const due = within(row).getAllByRole('cell')[4]
+    expect(due).toHaveTextContent(/^11\/20 · 7일 지남$/)
+    expect(due).toHaveClass('font-semibold', 'text-destructive')
+  })
+
+  it('탭 순서와 개수', () => {
+    renderPage([lateTodo, lateSubmitted, lateBlocked, ...notLate])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      '확인 대기 1',
+      '기한 초과 3',
+      '내가 처리할 일 0',
+      '입사자별',
+      '전체',
+    ])
+  })
+
+  it('요약에 기한 초과 카드가 있다', () => {
+    renderPage([lateTodo, lateSubmitted, lateBlocked, ...notLate])
+    const card = screen.getByRole('region', { name: '기한 초과' })
+    expect(card).toHaveTextContent('3')
+    expect(card).toHaveTextContent('기한이 지난 우리 부서 과제')
+  })
+
+  it('확인 대기 줄에 대기 일수를 붙이고 3일 이상은 강조한다', () => {
+    renderPage([
+      makeTask({ id: 'old', new_hire_id: 'h1', status: 'submitted', submitted_at: '2026-11-24T03:00:00Z', due_date: null, template: { title: '오래 기다린 과제' } }),
+      makeTask({ id: 'new', new_hire_id: 'h2', status: 'submitted', submitted_at: '2026-11-27T01:00:00Z', due_date: null, template: { title: '오늘 낸 과제' } }),
+    ])
+    const [old, fresh] = bodyRows()
+    const oldCell = within(old).getAllByRole('cell')[3]
+    expect(within(oldCell).getByText('3일 대기')).toHaveClass('font-semibold', 'text-destructive')
+    expect(within(within(old).getByTestId('row-meta')).getByText('3일 대기')).toHaveClass('text-destructive')
+    expect(within(fresh).getAllByRole('cell')[3]).not.toHaveTextContent('대기')
+  })
+
+  it('보완 요청 과제에는 대기 일수를 붙이지 않는다', async () => {
+    const user = userEvent.setup()
+    renderPage([
+      makeTask({ id: 'rw', status: 'rework', submitted_at: '2026-11-20T03:00:00Z', due_date: null, template: { title: '보완 중 과제' } }),
+    ])
+    await user.click(screen.getByRole('tab', { name: /전체/ }))
+    expect(bodyRows()[0]).not.toHaveTextContent('대기')
+  })
+
+  it('입사자 필터는 기한 초과 탭에도 적용된다', async () => {
+    const user = userEvent.setup()
+    renderPage([lateTodo, lateSubmitted, lateBlocked])
+    await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
+    await user.selectOptions(screen.getByLabelText('입사자'), 'h2')
+
+    const rows = bodyRows()
+    expect(rows).toHaveLength(2)
+    rows.forEach((row) => expect(row).toHaveTextContent('정민서'))
+    // 탭 개수는 부서 전체 기준 그대로
+    expect(screen.getByRole('tab', { name: /기한 초과/ })).toHaveTextContent('기한 초과 3')
+  })
+
+  it('기한이 지난 과제가 없으면 빈 상태 문구', async () => {
+    const user = userEvent.setup()
+    renderPage(notLate)
+    await user.click(screen.getByRole('tab', { name: /기한 초과/ }))
+    expect(screen.getByText('기한이 지난 과제가 없어요')).toBeInTheDocument()
   })
 })
 
