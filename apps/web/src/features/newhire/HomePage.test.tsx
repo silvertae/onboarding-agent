@@ -330,6 +330,13 @@ describe('신입 홈 — 지금 할 일 초점', () => {
     expect(within(within(now).getByRole('link', { name: /어제 과제/ })).getByText('지남')).toBeInTheDocument()
     expect(within(within(now).getByRole('link', { name: /오늘 과제/ })).getByText('오늘 마감')).toBeInTheDocument()
   })
+
+  it('머리글 날짜와 입사 N일째도 서울 날짜 기준이다', () => {
+    // UTC 15:30 = 서울 11-19 00:30. 입사일 11-14 → 6일째
+    vi.setSystemTime(new Date('2026-11-18T15:30:00Z'))
+    renderHome([makeTask({ code: 'T1', title: '과제' }, { status: 'todo', due_date: '2026-11-19' })])
+    expect(screen.getByText(/2026년 11월 19일 목요일 · 입사 6일째/)).toBeInTheDocument()
+  })
 })
 
 describe('신입 홈 — 서식 표시', () => {

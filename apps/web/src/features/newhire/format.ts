@@ -21,16 +21,14 @@ export function formatDateTime(value: string): string {
   return `${DAY.format(date)} ${TIME.format(date)}`
 }
 
-// "2026년 11월 17일 화요일"
-export function formatToday(now: Date): string {
-  return TODAY.format(now)
+// 'YYYY-MM-DD'(서울 기준 오늘) → "2026년 11월 17일 화요일"
+export function formatToday(today: string): string {
+  return TODAY.format(parseDateOnly(today))
 }
 
-// 입사일이 1일째
-export function daysSinceHire(hireDate: string, now: Date): number {
-  const start = parseDateOnly(hireDate)
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  return Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1
+// 입사일이 1일째. today는 'YYYY-MM-DD'(서울 기준 오늘)
+export function daysSinceHire(hireDate: string, today: string): number {
+  return dayNumber(today) - dayNumber(hireDate) + 1
 }
 
 const MONTH_DAY = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' })
