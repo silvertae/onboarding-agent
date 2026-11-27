@@ -67,12 +67,13 @@ function SubmittedAt({ task }: { task: TaskView }) {
   )
 }
 
+// 좁은 화면(sm 미만)에서는 2×2 칸이 좁아 설명을 숨기고 이름·숫자만 둔다
 function SummaryCard({ label, value, caption }: { label: string; value: number; caption: string }) {
   return (
-    <Panel aria-label={label} className="px-6 py-5">
+    <Panel aria-label={label} className="px-4 py-4 sm:px-6 sm:py-5">
       <p className="text-sm text-[var(--text-secondary)]">{label}</p>
       <p className="mt-1 text-page font-semibold tabular-nums">{value}</p>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">{caption}</p>
+      <p className="mt-1 hidden text-sm text-[var(--text-secondary)] sm:block">{caption}</p>
     </Panel>
   )
 }
@@ -260,7 +261,8 @@ export function OpsInboxPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {/* 요약 카드: 휴대폰·태블릿은 2×2, 1024px(lg)부터 한 줄 4개 */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <SummaryCard label="확인 대기" value={counts.submitted} caption="신입이 제출하고 확인을 기다려요" />
         <SummaryCard label="보완 요청 중" value={counts.rework} caption="신입의 재제출을 기다려요" />
         <SummaryCard label="진행 중 입사자" value={counts.activeHires} caption="우리 부서 과제가 남은 입사자" />
